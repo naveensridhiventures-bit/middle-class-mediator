@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-paper text-ink font-body antialiased;
+    background-image: radial-gradient(#1B2A4A0d 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
+  :focus-visible {
+    outline: 2px solid #C89B3C;
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .perforated {
+    background-image: radial-gradient(circle, #FAF6EF 3px, transparent 3px);
+    background-size: 14px 14px;
+    background-position: center;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-ink text-paper font-semibold px-6 py-3 transition hover:bg-ink-light active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-whatsapp {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-whatsapp text-white font-semibold px-6 py-3 transition hover:brightness-95 active:scale-[0.98] shadow-lg shadow-whatsapp/30;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border-2 border-ink/15 text-ink font-semibold px-6 py-3 transition hover:border-ink/40;
+  }
+  .field-label {
+    @apply text-xs uppercase tracking-[0.14em] font-semibold text-ink/60 mb-1.5 block;
+  }
+  .field-input {
+    @apply w-full rounded-xl border-2 bg-white/70 px-4 py-3 text-ink placeholder:text-ink/35 focus:border-gold focus:bg-white transition outline-none;
+    border-color: rgba(27, 42, 74, 0.12);
+  }
+  .card-ledger {
+    @apply relative bg-white/80 border-2 border-ink/10 rounded-2xl shadow-[0_2px_0_0_rgba(27,42,74,0.08)];
+  }
+}
