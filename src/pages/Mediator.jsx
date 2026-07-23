@@ -68,7 +68,7 @@ export default function Mediator() {
 
   if (status === "done") {
     return (
-      <div className="max-w-md mx-auto px-5 pt-16 text-center">
+      <div className="max-w-md mx-auto px-5 pt-16 pb-28 lg:pb-0 text-center">
         <Seal label="Received" color={ACCENT} size={80} rotate={-10} />
         <h1 className="font-display font-semibold text-2xl text-ink mt-5 mb-2">
           You're on our network
@@ -93,7 +93,7 @@ export default function Mediator() {
   }
 
   return (
-    <div className="max-w-lg mx-auto px-5 pb-20">
+    <div className="max-w-lg mx-auto px-5 pb-28 lg:pb-20">
       <div className="pt-10 pb-6 flex items-center gap-4">
         <Seal label="Mediator" color={ACCENT} size={64} rotate={-8} />
         <div>

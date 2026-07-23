@@ -42,4 +42,11 @@
   .card-ledger {
     @apply relative bg-white/80 border-2 border-ink/10 rounded-2xl shadow-[0_2px_0_0_rgba(27,42,74,0.08)];
   }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }

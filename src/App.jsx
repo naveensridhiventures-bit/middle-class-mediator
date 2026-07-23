@@ -1,5 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import Header from "./components/Header";
+import BottomNav from "./components/BottomNav";
 import Home from "./pages/Home";
 import Mediator from "./pages/Mediator";
 import Seller from "./pages/Seller";
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="*" element={<Home />} />
         </Routes>
       </main>
+      <BottomNav />
     </div>
   );
 }

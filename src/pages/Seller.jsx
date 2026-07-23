@@ -67,7 +67,7 @@ export default function Seller() {
 
   if (status === "done") {
     return (
-      <div className="max-w-md mx-auto px-5 pt-16 text-center">
+      <div className="max-w-md mx-auto px-5 pt-16 pb-28 lg:pb-0 text-center">
         <Seal label="Listed" color={ACCENT} size={80} rotate={6} />
         <h1 className="font-display font-semibold text-2xl text-ink mt-5 mb-2">
           Your property is on record
@@ -92,7 +92,7 @@ export default function Seller() {
   }
 
   return (
-    <div className="max-w-lg mx-auto px-5 pb-20">
+    <div className="max-w-lg mx-auto px-5 pb-28 lg:pb-20">
       <div className="pt-10 pb-6 flex items-center gap-4">
         <Seal label="Seller" color={ACCENT} size={64} rotate={5} />
         <div>

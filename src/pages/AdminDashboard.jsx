@@ -32,7 +32,7 @@ export default function AdminDashboard() {
   if (!password) return null;
 
   return (
-    <div className="max-w-4xl mx-auto px-5 pb-20">
+    <div className="max-w-4xl mx-auto px-5 pb-28 lg:pb-20">
       <div className="pt-10 pb-6 flex items-center justify-between">
         <div>
           <p className="field-label mb-0.5">Admin</p>
