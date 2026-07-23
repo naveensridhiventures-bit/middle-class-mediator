@@ -31,6 +31,7 @@ async function callApi(action, payload = {}) {
 
 export const addMediatorLead = (payload) => callApi("addMediator", payload);
 export const addSellerLead = (payload) => callApi("addSeller", payload);
+export const addBuyerLead = (payload) => callApi("addBuyer", payload);
 export const listPublicProperties = () => callApi("listProperties");
 
 // ---------- Admin (password required, checked server-side per call) ----------
@@ -42,6 +43,9 @@ export const adminListMediators = (password) =>
 
 export const adminListSellers = (password) =>
   callApi("listSellers", { password });
+
+export const adminListBuyers = (password) =>
+  callApi("listBuyers", { password });
 
 export const adminUpdateRemark = (password, sheet, id, remarks, status) =>
   callApi("updateRemark", { password, sheet, id, remarks, status });

@@ -1,23 +1,30 @@
 import { useState } from "react";
 import Seal from "../components/Seal";
-import ImageUploader from "../components/ImageUploader";
+import RadioGroup from "../components/RadioGroup";
 import { addMediatorLead } from "../lib/api";
 import { whatsappLink } from "../lib/whatsapp";
 import { ADMIN_WHATSAPP_NUMBER } from "../lib/config";
 
 const ACCENT = "#2D4373";
 
+const PROFESSIONS = ["Mediator", "Real Estate Agent", "Builder", "Developer"];
+const AREAS = ["North Chennai", "Central Chennai", "South Chennai", "All Over Chennai"];
+const CATEGORIES = ["Residential", "Commercial", "Land", "Rental", "All Categories"];
+const EXPERIENCE = ["Below 1 Year", "1–3 Years", "3–5 Years", "Above 5 Years"];
+const DEAL_TYPES = ["Sale", "Rental", "Lease", "All"];
+const YES_NO = ["Yes", "No"];
+
 export default function Mediator() {
   const [form, setForm] = useState({
     name: "",
     phone: "",
-    instaRef: "",
-    propertyTitle: "",
-    location: "",
-    price: "",
-    message: "",
+    profession: "",
+    workingArea: "",
+    propertyCategory: "",
+    experience: "",
+    dealType: "",
+    genuineLeads: "",
   });
-  const [imageUrl, setImageUrl] = useState("");
   const [status, setStatus] = useState("idle"); // idle | saving | done | error
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -25,13 +32,23 @@ export default function Mediator() {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  const isComplete =
+    form.name &&
+    form.phone &&
+    form.profession &&
+    form.workingArea &&
+    form.propertyCategory &&
+    form.experience &&
+    form.dealType &&
+    form.genuineLeads;
+
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!form.name || !form.phone || !form.propertyTitle) return;
+    if (!isComplete) return;
     setStatus("saving");
     setErrorMsg("");
     try {
-      await addMediatorLead({ ...form, imageUrl });
+      await addMediatorLead(form);
       setStatus("done");
     } catch (err) {
       setErrorMsg(err.message || "Could not save — check your connection and try again.");
@@ -40,23 +57,25 @@ export default function Mediator() {
   }
 
   const waMessage =
-    `New mediator lead — ${form.propertyTitle || "(property)"}\n` +
-    `From: ${form.name} (${form.phone})\n` +
-    `Insta reference: ${form.instaRef || "—"}\n` +
-    `Location: ${form.location || "—"}\n` +
-    `Price: ${form.price || "—"}\n` +
-    `Note: ${form.message || "—"}`;
+    `Chennai Mediator Network — New registration\n` +
+    `Name: ${form.name} (${form.phone})\n` +
+    `Profession: ${form.profession}\n` +
+    `Working Area: ${form.workingArea}\n` +
+    `Property Category: ${form.propertyCategory}\n` +
+    `Experience: ${form.experience}\n` +
+    `Deal Type: ${form.dealType}\n` +
+    `Shares only genuine leads: ${form.genuineLeads}`;
 
   if (status === "done") {
     return (
       <div className="max-w-md mx-auto px-5 pt-16 text-center">
         <Seal label="Received" color={ACCENT} size={80} rotate={-10} />
         <h1 className="font-display font-semibold text-2xl text-ink mt-5 mb-2">
-          Saved to our records
+          You're on our network
         </h1>
         <p className="text-ink/60 mb-7 leading-relaxed">
-          Your listing for <strong>{form.propertyTitle}</strong> is logged. Send it to us on
-          WhatsApp now so we can start the conversation right away.
+          Thanks <strong>{form.name}</strong> — your registration is logged. Send it to us on
+          WhatsApp now so our team can review and get in touch.
         </p>
         <a
           href={whatsappLink(ADMIN_WHATSAPP_NUMBER, waMessage)}
@@ -67,7 +86,7 @@ export default function Mediator() {
           Message admin on WhatsApp
         </a>
         <a href="/mediator" className="block mt-4 text-sm text-ink/50 hover:text-ink">
-          Submit another property
+          Register another
         </a>
       </div>
     );
@@ -78,52 +97,36 @@ export default function Mediator() {
       <div className="pt-10 pb-6 flex items-center gap-4">
         <Seal label="Mediator" color={ACCENT} size={64} rotate={-8} />
         <div>
-          <p className="field-label mb-0.5">Bring the deal</p>
-          <h1 className="font-display font-semibold text-2xl text-ink">Mediator details</h1>
+          <p className="field-label mb-0.5">Chennai Mediator Network</p>
+          <h1 className="font-display font-semibold text-2xl text-ink">Registration form</h1>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="card-ledger p-6 space-y-5">
+      <form onSubmit={handleSubmit} className="card-ledger p-6 space-y-6">
         <div>
-          <label className="field-label">Your name</label>
+          <label className="field-label">Full name</label>
           <input className="field-input" value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Full name" required />
         </div>
         <div>
-          <label className="field-label">Your phone / WhatsApp number</label>
+          <label className="field-label">Mobile number (WhatsApp)</label>
           <input className="field-input" value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="10-digit number" required />
         </div>
-        <div>
-          <label className="field-label">Which Instagram video / post?</label>
-          <input className="field-input" value={form.instaRef} onChange={(e) => update("instaRef", e.target.value)} placeholder="Paste the reel link or describe it" />
-        </div>
-        <div>
-          <label className="field-label">Property title</label>
-          <input className="field-input" value={form.propertyTitle} onChange={(e) => update("propertyTitle", e.target.value)} placeholder="e.g. 2BHK near Anna Nagar" required />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="field-label">Location</label>
-            <input className="field-input" value={form.location} onChange={(e) => update("location", e.target.value)} placeholder="Area, city" />
-          </div>
-          <div>
-            <label className="field-label">Price</label>
-            <input className="field-input" value={form.price} onChange={(e) => update("price", e.target.value)} placeholder="₹ amount" />
-          </div>
-        </div>
-        <div>
-          <label className="field-label">Message for admin</label>
-          <textarea className="field-input min-h-[90px]" value={form.message} onChange={(e) => update("message", e.target.value)} placeholder="Anything admin should know" />
-        </div>
-        <div>
-          <label className="field-label">Property photo</label>
-          <ImageUploader accentColor={ACCENT} onUploaded={setImageUrl} />
-        </div>
+
+        <RadioGroup label="1. Your profession" options={PROFESSIONS} value={form.profession} onChange={(v) => update("profession", v)} accentColor={ACCENT} />
+        <RadioGroup label="2. Working area" options={AREAS} value={form.workingArea} onChange={(v) => update("workingArea", v)} accentColor={ACCENT} />
+        <RadioGroup label="3. Property category" options={CATEGORIES} value={form.propertyCategory} onChange={(v) => update("propertyCategory", v)} accentColor={ACCENT} />
+        <RadioGroup label="4. Experience" options={EXPERIENCE} value={form.experience} onChange={(v) => update("experience", v)} accentColor={ACCENT} />
+        <RadioGroup label="5. Deal type" options={DEAL_TYPES} value={form.dealType} onChange={(v) => update("dealType", v)} accentColor={ACCENT} />
+        <RadioGroup label="6. Do you share only genuine property leads?" options={YES_NO} value={form.genuineLeads} onChange={(v) => update("genuineLeads", v)} accentColor={ACCENT} />
 
         {errorMsg && <p className="text-sm text-buyer">{errorMsg}</p>}
 
-        <button type="submit" disabled={status === "saving"} className="btn-primary w-full">
+        <button type="submit" disabled={status === "saving" || !isComplete} className="btn-primary w-full">
           {status === "saving" ? "Saving…" : "Save & continue to WhatsApp"}
         </button>
+        <p className="text-xs text-ink/40 leading-relaxed">
+          After submitting this form, our team will review your details and get in touch.
+        </p>
       </form>
     </div>
   );

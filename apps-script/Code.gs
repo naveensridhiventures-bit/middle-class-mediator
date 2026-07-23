@@ -5,12 +5,13 @@
  * then deploy as a Web App (see README.md for the full walkthrough).
  *
  * Sheet tabs used (created automatically the first time they're needed):
- *   Mediators, Sellers, Properties
+ *   Mediators, Sellers, Buyers, Properties
  */
 
 const SHEETS = {
-  Mediators: ["id", "timestamp", "name", "phone", "instaRef", "propertyTitle", "location", "price", "message", "imageUrl", "status", "remarks"],
-  Sellers: ["id", "timestamp", "name", "phone", "propertyType", "location", "price", "details", "imageUrl", "status", "remarks"],
+  Mediators: ["id", "timestamp", "name", "phone", "profession", "workingArea", "propertyCategory", "experience", "dealType", "genuineLeads", "status", "remarks"],
+  Sellers: ["id", "timestamp", "name", "phone", "propertyType", "propertyLocation", "propertyStatus", "expectedPrice", "ownership", "timeline", "status", "remarks"],
+  Buyers: ["id", "timestamp", "name", "phone", "propertyType", "purpose", "budget", "preferredLocation", "loanRequirement", "timeline", "status", "remarks"],
   Properties: ["id", "timestamp", "title", "type", "location", "price", "description", "imageUrl", "contactPhone"],
 };
 
@@ -30,16 +31,25 @@ function doPost(e) {
     switch (action) {
       case "addMediator":
         result = addRow("Mediators", {
-          name: p.name, phone: p.phone, instaRef: p.instaRef, propertyTitle: p.propertyTitle,
-          location: p.location, price: p.price, message: p.message, imageUrl: p.imageUrl,
-          status: "New", remarks: "",
+          name: p.name, phone: p.phone, profession: p.profession, workingArea: p.workingArea,
+          propertyCategory: p.propertyCategory, experience: p.experience, dealType: p.dealType,
+          genuineLeads: p.genuineLeads, status: "New", remarks: "",
         });
         break;
 
       case "addSeller":
         result = addRow("Sellers", {
-          name: p.name, phone: p.phone, propertyType: p.propertyType, location: p.location,
-          price: p.price, details: p.details, imageUrl: p.imageUrl, status: "New", remarks: "",
+          name: p.name, phone: p.phone, propertyType: p.propertyType, propertyLocation: p.propertyLocation,
+          propertyStatus: p.propertyStatus, expectedPrice: p.expectedPrice, ownership: p.ownership,
+          timeline: p.timeline, status: "New", remarks: "",
+        });
+        break;
+
+      case "addBuyer":
+        result = addRow("Buyers", {
+          name: p.name, phone: p.phone, propertyType: p.propertyType, purpose: p.purpose,
+          budget: p.budget, preferredLocation: p.preferredLocation, loanRequirement: p.loanRequirement,
+          timeline: p.timeline, status: "New", remarks: "",
         });
         break;
 
@@ -60,6 +70,11 @@ function doPost(e) {
       case "listSellers":
         checkPassword(p.password);
         result = readSheet("Sellers");
+        break;
+
+      case "listBuyers":
+        checkPassword(p.password);
+        result = readSheet("Buyers");
         break;
 
       case "updateRemark":
@@ -189,6 +204,6 @@ function jsonResponse(obj) {
  */
 function setup() {
   PropertiesService.getScriptProperties().setProperty("ADMIN_PASSWORD", "changeme123");
-  ["Mediators", "Sellers", "Properties"].forEach(getSheet);
+  ["Mediators", "Sellers", "Buyers", "Properties"].forEach(getSheet);
   Logger.log("Setup complete. Admin password set — remember to change it!");
 }

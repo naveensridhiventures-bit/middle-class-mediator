@@ -6,7 +6,8 @@ import PropertiesTab from "../components/admin/PropertiesTab";
 const TABS = [
   { key: "mediator", label: "Mediator leads" },
   { key: "seller", label: "Seller leads" },
-  { key: "properties", label: "Buyer listings" },
+  { key: "buyer", label: "Buyer leads" },
+  { key: "properties", label: "Published listings" },
 ];
 
 export default function AdminDashboard() {
@@ -58,6 +59,7 @@ export default function AdminDashboard() {
 
       {tab === "mediator" && <LeadsTab type="mediator" password={password} />}
       {tab === "seller" && <LeadsTab type="seller" password={password} />}
+      {tab === "buyer" && <LeadsTab type="buyer" password={password} />}
       {tab === "properties" && <PropertiesTab password={password} />}
     </div>
   );

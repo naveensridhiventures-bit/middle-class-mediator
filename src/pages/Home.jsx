@@ -24,8 +24,8 @@ const roles = [
     label: "Buyer",
     color: "buyer",
     hex: "#B5533C",
-    tag: "Browse listings",
-    desc: "See verified properties we're currently mediating, with photos and full details.",
+    tag: "Register requirement",
+    desc: "Tell us your budget, location and property type — we'll contact you with matching properties.",
   },
 ];
 

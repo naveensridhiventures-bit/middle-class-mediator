@@ -34,8 +34,8 @@ clicking buttons. Do them in order.
    - Click **Deploy**, authorize again if asked.
 5. Copy the **Web app URL** it gives you (ends in `/exec`). You'll paste this
    into the app's config in step 3 below.
-6. Go back to the spreadsheet — you'll see three tabs appear automatically
-   the first time each is used: `Mediators`, `Sellers`, `Properties`.
+6. Go back to the spreadsheet — you'll see tabs appear automatically the
+   first time each is used: `Mediators`, `Sellers`, `Buyers`, `Properties`.
 
 > Whenever you edit `Code.gs` later, you must click **Deploy → Manage
 > deployments → Edit (pencil) → New version → Deploy** for changes to go live.
@@ -100,15 +100,21 @@ that's the link customers, mediators, and sellers use.
 ## 6. Using the app
 
 ### Public pages (linked from the home screen)
-- `/mediator` — mediator submits a lead with property + Insta reference + photo
-- `/seller` — seller lists their property
-- `/buyer` — buyer browses properties **you've** published
+- `/mediator` — mediator/agent/builder/developer registers on the network (profession, area,
+  category, experience, deal type, genuine-leads pledge)
+- `/seller` — seller registers their property (type, location, status, expected price,
+  ownership, timeline)
+- `/buyer` — buyer registers what they're looking for (property type, purpose, budget,
+  preferred location, loan requirement, timeline)
+
+Each form ends with a **"Message admin on WhatsApp"** button that opens a pre-filled WhatsApp
+message with everything they just entered.
 
 ### Hidden admin pages (not linked anywhere in the UI — bookmark them)
 - `/control` — admin login (the password you set in step 1.3)
-- `/control/dashboard` — view mediator & seller leads, add private remarks,
-  change status, call/WhatsApp any lead directly, and publish/edit/remove
-  the listings buyers see
+- `/control/dashboard` — view mediator, seller & buyer leads, add private
+  remarks, change status, call/WhatsApp any lead directly, and manage a
+  separate "Published listings" tab if you want to curate properties
 
 Since every submission is saved instantly to your Google Sheet, you always
 have the full record even before you check WhatsApp — this is what answers
