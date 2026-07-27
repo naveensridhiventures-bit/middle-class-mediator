@@ -99,7 +99,7 @@ function doPost(e) {
       // JSON array in one cell) instead of overwriting previous notes.
       case "addRemark":
         checkPassword(p.password);
-        result = appendRemark(p.sheet, p.id, p.text);
+        result = appendRemark(p.sheet, p.id, p.text, p.by);
         break;
 
       case "addProperty":
@@ -227,7 +227,7 @@ function updateRow(sheetName, id, patch) {
 // Reads the existing remarksLog JSON array for a lead, pushes a new
 // { text, at } entry onto it (never removing previous entries), and saves
 // it back as a JSON string in the same cell.
-function appendRemark(sheetName, id, text) {
+function appendRemark(sheetName, id, text, by) {
   if (!text || !String(text).trim()) throw new Error("Remark text is required.");
   var sheet = getSheet(sheetName);
   var headers = getHeaders(sheet);
@@ -246,7 +246,7 @@ function appendRemark(sheetName, id, text) {
       log = [];
     }
   }
-  log.push({ text: String(text).trim(), at: new Date().toISOString() });
+  log.push({ text: String(text).trim(), at: new Date().toISOString(), by: by ? String(by).trim() : "" });
   cell.setValue(JSON.stringify(log));
   return { id: id, remarksLog: log };
 }

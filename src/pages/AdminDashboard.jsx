@@ -59,6 +59,8 @@ const TABS = [
 export default function AdminDashboard() {
   const [tab, setTab] = useState("seller");
   const [password, setPassword] = useState(null);
+  const [adminName, setAdminName] = useState(() => localStorage.getItem("mcm_admin_name") || "");
+  const [editingName, setEditingName] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -69,6 +71,17 @@ export default function AdminDashboard() {
     }
     setPassword(pw);
   }, [navigate]);
+
+  useEffect(() => {
+    if (!adminName) setEditingName(true);
+  }, [adminName]);
+
+  function saveName(value) {
+    const trimmed = value.trim();
+    setAdminName(trimmed);
+    localStorage.setItem("mcm_admin_name", trimmed);
+    setEditingName(false);
+  }
 
   function logout() {
     sessionStorage.removeItem("mcm_admin_pw");
@@ -81,14 +94,42 @@ export default function AdminDashboard() {
 
   return (
     <div className="max-w-6xl mx-auto px-5 pb-28 lg:pb-20">
-      <div className="pt-10 pb-6 flex items-center justify-between">
+      <div className="pt-10 pb-6 flex items-center justify-between flex-wrap gap-3">
         <div>
           <p className="field-label mb-0.5">Admin · hidden control room</p>
           <h1 className="font-display font-semibold text-2xl text-ink">Command Center</h1>
         </div>
-        <button onClick={logout} className="text-xs uppercase tracking-wide font-semibold text-ink/50 hover:text-ink">
-          Log out
-        </button>
+        <div className="flex items-center gap-4">
+          {editingName ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                saveName(e.target.elements.name.value);
+              }}
+              className="flex items-center gap-2"
+            >
+              <input
+                name="name"
+                autoFocus
+                defaultValue={adminName}
+                placeholder="Your name (shown on remarks)"
+                className="field-input !py-1.5 !px-3 text-xs w-48"
+              />
+              <button type="submit" className="btn-primary !py-1.5 !px-3 text-xs">Save</button>
+            </form>
+          ) : (
+            <button
+              onClick={() => setEditingName(true)}
+              className="text-xs text-ink/50 hover:text-ink"
+              title="Change the name shown on remarks you add"
+            >
+              Logged in as <span className="font-semibold text-ink/80">{adminName}</span> ✎
+            </button>
+          )}
+          <button onClick={logout} className="text-xs uppercase tracking-wide font-semibold text-ink/50 hover:text-ink">
+            Log out
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-2 mb-6 flex-wrap">
@@ -115,6 +156,7 @@ export default function AdminDashboard() {
           fetcher={active.fetcher}
           fields={active.fields}
           password={password}
+          adminName={adminName}
         />
       )}
       {tab === "properties" && <PropertiesTab password={password} />}

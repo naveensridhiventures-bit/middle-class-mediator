@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Clock, User } from "lucide-react";
 import { adminUpdateLead, adminAddRemark } from "../../lib/api";
 import { whatsappLink, callLink } from "../../lib/whatsapp";
 import { downloadReport } from "../../lib/report";
@@ -27,7 +28,7 @@ function timeAgo(iso) {
   return d.toLocaleDateString();
 }
 
-function formatDateTime(iso) {
+function formatRemarkDateTime(iso) {
   if (!iso) return "";
   const d = new Date(iso);
   if (isNaN(d)) return String(iso);
@@ -82,7 +83,7 @@ function StarRating({ value, onChange, disabled }) {
   );
 }
 
-function LeadCard({ lead, fields, accent, onChanged }) {
+function LeadCard({ lead, fields, accent, onChanged, adminName }) {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState(lead.status || "New");
   const [priority, setPriority] = useState(Number(lead.priority) || 0);
@@ -124,7 +125,7 @@ function LeadCard({ lead, fields, accent, onChanged }) {
     if (!newRemark.trim()) return;
     setSavingRemark(true);
     try {
-      await onChanged.addRemark(lead.id, newRemark.trim());
+      await onChanged.addRemark(lead.id, newRemark.trim(), adminName);
       setNewRemark("");
     } finally {
       setSavingRemark(false);
@@ -194,40 +195,62 @@ function LeadCard({ lead, fields, accent, onChanged }) {
         </div>
       </div>
 
-      <div className="space-y-2 pt-1 border-t border-ink/5">
-        <p className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold">
-          Remarks history {remarksLog.length > 0 && `(${remarksLog.length})`}
-        </p>
+      <div className="space-y-2.5 pt-2 border-t border-ink/5">
+        <div>
+          <p className="font-semibold text-ink text-sm">Remarks</p>
+          <p className="text-[11px] text-ink/40">
+            {remarksLog.length} {remarksLog.length === 1 ? "entry" : "entries"}
+          </p>
+        </div>
+
         {remarksLog.length === 0 ? (
           <p className="text-xs text-ink/40 italic">No remarks logged yet.</p>
         ) : (
-          <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+          <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
             {remarksLog.map((r, i) => (
-              <div key={i} className="text-xs bg-white/60 rounded-lg px-2.5 py-1.5">
-                <p className="text-ink/40 text-[10px] font-mono mb-0.5">{formatDateTime(r.at)}</p>
-                <p className="text-ink/75">{r.text}</p>
+              <div
+                key={i}
+                className="border-l-[3px] rounded-lg bg-white/70 px-3 py-2"
+                style={{ borderLeftColor: accent }}
+              >
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-ink/45 mb-1">
+                  <span className="inline-flex items-center gap-1">
+                    <Clock size={11} strokeWidth={2.25} />
+                    {formatRemarkDateTime(r.at)}
+                  </span>
+                  {r.by && (
+                    <span className="inline-flex items-center gap-1 font-semibold" style={{ color: accent }}>
+                      <User size={11} strokeWidth={2.25} />
+                      {r.by}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-ink/80 leading-snug">{r.text}</p>
               </div>
             ))}
           </div>
         )}
-        <div className="flex gap-1.5">
-          <input
-            className="field-input !py-2 text-xs flex-1"
-            placeholder="Log a call / update…"
-            value={newRemark}
-            onChange={(e) => setNewRemark(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAddRemark()}
-          />
-          <button onClick={handleAddRemark} disabled={savingRemark || !newRemark.trim()} className="btn-primary !py-2 !px-3 text-xs">
-            {savingRemark ? "…" : "Add"}
-          </button>
-        </div>
+
+        <input
+          className="field-input !py-2.5 text-sm"
+          placeholder="Add a remark…"
+          value={newRemark}
+          onChange={(e) => setNewRemark(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleAddRemark()}
+        />
+        <button
+          onClick={handleAddRemark}
+          disabled={savingRemark || !newRemark.trim()}
+          className="btn-whatsapp w-full !py-2.5 text-sm"
+        >
+          {savingRemark ? "Saving…" : "Save Remark"}
+        </button>
       </div>
     </div>
   );
 }
 
-export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, password }) {
+export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, password, adminName }) {
   const [leads, setLeads] = useState(null);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
@@ -337,7 +360,7 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
       )}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map((lead) => (
-          <LeadCard key={lead.id} lead={lead} fields={fields} accent={accent} onChanged={onChanged} />
+          <LeadCard key={lead.id} lead={lead} fields={fields} accent={accent} onChanged={onChanged} adminName={adminName} />
         ))}
       </div>
     </div>
