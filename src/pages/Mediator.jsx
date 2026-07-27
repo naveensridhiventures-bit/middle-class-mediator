@@ -2,8 +2,6 @@ import { useState } from "react";
 import Seal from "../components/Seal";
 import RadioGroup from "../components/RadioGroup";
 import { addMediatorLead } from "../lib/api";
-import { whatsappLink } from "../lib/whatsapp";
-import { ADMIN_WHATSAPP_NUMBER } from "../lib/config";
 
 const ACCENT = "#2D4373";
 
@@ -56,36 +54,18 @@ export default function Mediator() {
     }
   }
 
-  const waMessage =
-    `Chennai Mediator Network — New registration\n` +
-    `Name: ${form.name} (${form.phone})\n` +
-    `Profession: ${form.profession}\n` +
-    `Working Area: ${form.workingArea}\n` +
-    `Property Category: ${form.propertyCategory}\n` +
-    `Experience: ${form.experience}\n` +
-    `Deal Type: ${form.dealType}\n` +
-    `Shares only genuine leads: ${form.genuineLeads}`;
-
   if (status === "done") {
     return (
       <div className="max-w-md mx-auto px-5 pt-16 pb-28 lg:pb-0 text-center">
         <Seal label="Received" color={ACCENT} size={80} rotate={-10} />
         <h1 className="font-display font-semibold text-2xl text-ink mt-5 mb-2">
-          You're on our network
+          Your report has been submitted
         </h1>
         <p className="text-ink/60 mb-7 leading-relaxed">
-          Thanks <strong>{form.name}</strong> — your registration is logged. Send it to us on
-          WhatsApp now so our team can review and get in touch.
+          Thanks <strong>{form.name}</strong> — your registration is logged as a report for
+          our team. We review every submission and will get in touch directly.
         </p>
-        <a
-          href={whatsappLink(ADMIN_WHATSAPP_NUMBER, waMessage)}
-          target="_blank"
-          rel="noreferrer"
-          className="btn-whatsapp w-full"
-        >
-          Message admin on WhatsApp
-        </a>
-        <a href="/mediator" className="block mt-4 text-sm text-ink/50 hover:text-ink">
+        <a href="/mediator" className="btn-ghost w-full">
           Register another
         </a>
       </div>
@@ -122,10 +102,10 @@ export default function Mediator() {
         {errorMsg && <p className="text-sm text-buyer">{errorMsg}</p>}
 
         <button type="submit" disabled={status === "saving" || !isComplete} className="btn-primary w-full">
-          {status === "saving" ? "Saving…" : "Save & continue to WhatsApp"}
+          {status === "saving" ? "Saving…" : "Submit report"}
         </button>
         <p className="text-xs text-ink/40 leading-relaxed">
-          After submitting this form, our team will review your details and get in touch.
+          This submits your details as a report. Our team will review it and get in touch.
         </p>
       </form>
     </div>

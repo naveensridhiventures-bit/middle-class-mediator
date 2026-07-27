@@ -14,5 +14,10 @@ export const CLOUDINARY_UPLOAD_PRESET = "PASTE_YOUR_UNSIGNED_UPLOAD_PRESET";
 //    e.g. 919876543210 for an Indian number
 export const ADMIN_WHATSAPP_NUMBER = "91XXXXXXXXXX";
 
+// 4. Mediator's WhatsApp / contact number — this is the number a SELLER's
+//    "Message the mediator" button sends to. International format, no
+//    + or spaces (e.g. 918838660663 for +91 883 866 0663).
+export const MEDIATOR_WHATSAPP_NUMBER = "918838660663";
+
 // App display name shown across the UI
 export const APP_NAME = "Middle Class Mediator";

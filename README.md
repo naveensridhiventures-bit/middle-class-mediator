@@ -61,6 +61,7 @@ export const APPS_SCRIPT_URL = "https://script.google.com/macros/s/XXXX/exec";
 export const CLOUDINARY_CLOUD_NAME = "your-cloud-name";
 export const CLOUDINARY_UPLOAD_PRESET = "your-preset-name";
 export const ADMIN_WHATSAPP_NUMBER = "919876543210"; // your number, no + or spaces
+export const MEDIATOR_WHATSAPP_NUMBER = "918838660663"; // mediator's number — sellers message this directly
 ```
 
 ---
@@ -107,14 +108,19 @@ that's the link customers, mediators, and sellers use.
 - `/buyer` — buyer registers what they're looking for (property type, purpose, budget,
   preferred location, loan requirement, timeline)
 
-Each form ends with a **"Message admin on WhatsApp"** button that opens a pre-filled WhatsApp
-message with everything they just entered.
+- **Seller** forms end with a **"Message the mediator on WhatsApp"** button that opens a
+  pre-filled WhatsApp chat straight to the mediator's number (`MEDIATOR_WHATSAPP_NUMBER`
+  in `config.js`), so only sellers can message the mediator directly.
+- **Buyer** and **Mediator** forms only **submit a report** — everything is saved to the
+  Google Sheet, but there's no WhatsApp button; the admin follows up from the CRM instead.
 
 ### Hidden admin pages (not linked anywhere in the UI — bookmark them)
 - `/control` — admin login (the password you set in step 1.3)
-- `/control/dashboard` — view mediator, seller & buyer leads, add private
-  remarks, change status, call/WhatsApp any lead directly, and manage a
-  separate "Published listings" tab if you want to curate properties
+- `/control/dashboard` — **three separate CRMs** (Seller CRM, Buyer CRM, Mediator CRM),
+  each color-coded, with live stat/status pills, search, per-lead status pipeline
+  (New → Contacted → In progress → Closed → Dropped), private notes, and one-tap
+  call/WhatsApp — plus a separate "Published listings" tab if you want to curate
+  properties
 
 Since every submission is saved instantly to your Google Sheet, you always
 have the full record even before you check WhatsApp — this is what answers

@@ -3,7 +3,7 @@ import Seal from "../components/Seal";
 import RadioGroup from "../components/RadioGroup";
 import { addSellerLead } from "../lib/api";
 import { whatsappLink } from "../lib/whatsapp";
-import { ADMIN_WHATSAPP_NUMBER } from "../lib/config";
+import { MEDIATOR_WHATSAPP_NUMBER } from "../lib/config";
 
 const ACCENT = "#1F6F5C";
 
@@ -73,16 +73,16 @@ export default function Seller() {
           Your property is on record
         </h1>
         <p className="text-ink/60 mb-7 leading-relaxed">
-          We've saved your listing in {form.propertyLocation}. Send it across on WhatsApp and
-          we'll follow up with you directly.
+          We've saved your listing in {form.propertyLocation}. As the seller, you can message
+          the mediator directly on WhatsApp — they'll follow up with you personally.
         </p>
         <a
-          href={whatsappLink(ADMIN_WHATSAPP_NUMBER, waMessage)}
+          href={whatsappLink(MEDIATOR_WHATSAPP_NUMBER, waMessage)}
           target="_blank"
           rel="noreferrer"
           className="btn-whatsapp w-full"
         >
-          Message admin on WhatsApp
+          Message the mediator on WhatsApp
         </a>
         <a href="/seller" className="block mt-4 text-sm text-ink/50 hover:text-ink">
           List another property

@@ -2,8 +2,6 @@ import { useState } from "react";
 import Seal from "../components/Seal";
 import RadioGroup from "../components/RadioGroup";
 import { addBuyerLead } from "../lib/api";
-import { whatsappLink } from "../lib/whatsapp";
-import { ADMIN_WHATSAPP_NUMBER } from "../lib/config";
 
 const ACCENT = "#B5533C";
 
@@ -56,35 +54,18 @@ export default function Buyer() {
     }
   }
 
-  const waMessage =
-    `New buyer registration — ${form.propertyType}\n` +
-    `From: ${form.name} (${form.phone})\n` +
-    `Purpose: ${form.purpose}\n` +
-    `Budget: ${form.budget}\n` +
-    `Preferred location: ${form.preferredLocation}\n` +
-    `Loan requirement: ${form.loanRequirement}\n` +
-    `Planning to buy: ${form.timeline}`;
-
   if (status === "done") {
     return (
       <div className="max-w-md mx-auto px-5 pt-16 pb-28 lg:pb-0 text-center">
         <Seal label="Registered" color={ACCENT} size={80} rotate={-4} />
         <h1 className="font-display font-semibold text-2xl text-ink mt-5 mb-2">
-          We've got your requirements
+          Your report has been submitted
         </h1>
         <p className="text-ink/60 mb-7 leading-relaxed">
-          Thanks <strong>{form.name}</strong> — we'll contact you with matching properties based
-          on what you're looking for. Send it across on WhatsApp so we can start right away.
+          Thanks <strong>{form.name}</strong> — your requirements are on record. Our team
+          reviews every submission and will reach out to you directly with matching properties.
         </p>
-        <a
-          href={whatsappLink(ADMIN_WHATSAPP_NUMBER, waMessage)}
-          target="_blank"
-          rel="noreferrer"
-          className="btn-whatsapp w-full"
-        >
-          Message admin on WhatsApp
-        </a>
-        <a href="/buyer" className="block mt-4 text-sm text-ink/50 hover:text-ink">
+        <a href="/buyer" className="btn-ghost w-full">
           Register another requirement
         </a>
       </div>
@@ -121,11 +102,11 @@ export default function Buyer() {
         {errorMsg && <p className="text-sm text-buyer">{errorMsg}</p>}
 
         <button type="submit" disabled={status === "saving" || !isComplete} className="btn-primary w-full">
-          {status === "saving" ? "Saving…" : "Save & continue to WhatsApp"}
+          {status === "saving" ? "Saving…" : "Submit report"}
         </button>
         <p className="text-xs text-ink/40 leading-relaxed">
-          After reviewing, our team will contact you with matching properties based on your
-          requirements.
+          This submits your requirements as a report for our team. After reviewing, our team
+          will contact you with matching properties based on your requirements.
         </p>
       </form>
     </div>
