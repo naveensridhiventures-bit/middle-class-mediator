@@ -47,8 +47,11 @@ export const adminListSellers = (password) =>
 export const adminListBuyers = (password) =>
   callApi("listBuyers", { password });
 
-export const adminUpdateRemark = (password, sheet, id, remarks, status) =>
-  callApi("updateRemark", { password, sheet, id, remarks, status });
+export const adminUpdateLead = (password, sheet, id, patch) =>
+  callApi("updateLead", { password, sheet, id, ...patch });
+
+export const adminAddRemark = (password, sheet, id, text) =>
+  callApi("addRemark", { password, sheet, id, text });
 
 export const adminAddProperty = (password, payload) =>
   callApi("addProperty", { password, ...payload });

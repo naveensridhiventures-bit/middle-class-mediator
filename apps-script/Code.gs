@@ -6,12 +6,19 @@
  *
  * Sheet tabs used (created automatically the first time they're needed):
  *   Mediators, Sellers, Buyers, Properties
+ *
+ * NOTE ON UPGRADES: if you already had this sheet running before priority /
+ * follow-up / remarks-history existed, you don't need to do anything special —
+ * the first time each sheet is read or written after you redeploy this file,
+ * ensureColumns() below will automatically add any missing columns
+ * (priority, followUpDate, remarksLog) to the end of that sheet's header row
+ * without touching your existing data.
  */
 
 const SHEETS = {
-  Mediators: ["id", "timestamp", "name", "phone", "profession", "workingArea", "propertyCategory", "experience", "dealType", "genuineLeads", "status", "remarks"],
-  Sellers: ["id", "timestamp", "name", "phone", "propertyType", "propertyLocation", "propertyStatus", "expectedPrice", "ownership", "timeline", "status", "remarks"],
-  Buyers: ["id", "timestamp", "name", "phone", "propertyType", "purpose", "budget", "preferredLocation", "loanRequirement", "timeline", "status", "remarks"],
+  Mediators: ["id", "timestamp", "name", "phone", "profession", "workingArea", "propertyCategory", "experience", "dealType", "genuineLeads", "status", "priority", "followUpDate", "remarksLog"],
+  Sellers: ["id", "timestamp", "name", "phone", "propertyType", "propertyLocation", "propertyStatus", "expectedPrice", "ownership", "timeline", "status", "priority", "followUpDate", "remarksLog"],
+  Buyers: ["id", "timestamp", "name", "phone", "propertyType", "purpose", "budget", "preferredLocation", "loanRequirement", "timeline", "status", "priority", "followUpDate", "remarksLog"],
   Properties: ["id", "timestamp", "title", "type", "location", "price", "description", "imageUrl", "contactPhone"],
 };
 
@@ -33,7 +40,7 @@ function doPost(e) {
         result = addRow("Mediators", {
           name: p.name, phone: p.phone, profession: p.profession, workingArea: p.workingArea,
           propertyCategory: p.propertyCategory, experience: p.experience, dealType: p.dealType,
-          genuineLeads: p.genuineLeads, status: "New", remarks: "",
+          genuineLeads: p.genuineLeads, status: "New", priority: 3, followUpDate: "", remarksLog: "[]",
         });
         break;
 
@@ -41,7 +48,7 @@ function doPost(e) {
         result = addRow("Sellers", {
           name: p.name, phone: p.phone, propertyType: p.propertyType, propertyLocation: p.propertyLocation,
           propertyStatus: p.propertyStatus, expectedPrice: p.expectedPrice, ownership: p.ownership,
-          timeline: p.timeline, status: "New", remarks: "",
+          timeline: p.timeline, status: "New", priority: 3, followUpDate: "", remarksLog: "[]",
         });
         break;
 
@@ -49,7 +56,7 @@ function doPost(e) {
         result = addRow("Buyers", {
           name: p.name, phone: p.phone, propertyType: p.propertyType, purpose: p.purpose,
           budget: p.budget, preferredLocation: p.preferredLocation, loanRequirement: p.loanRequirement,
-          timeline: p.timeline, status: "New", remarks: "",
+          timeline: p.timeline, status: "New", priority: 3, followUpDate: "", remarksLog: "[]",
         });
         break;
 
@@ -77,9 +84,22 @@ function doPost(e) {
         result = readSheet("Buyers");
         break;
 
-      case "updateRemark":
+      // Updates status / priority / follow-up date only. Does NOT touch
+      // remarksLog — use "addRemark" for that so history is never overwritten.
+      case "updateLead":
         checkPassword(p.password);
-        result = updateRow(p.sheet, p.id, { status: p.status, remarks: p.remarks });
+        result = updateRow(p.sheet, p.id, {
+          status: p.status,
+          priority: p.priority,
+          followUpDate: p.followUpDate,
+        });
+        break;
+
+      // Appends a single dated remark to the lead's remarksLog (stored as a
+      // JSON array in one cell) instead of overwriting previous notes.
+      case "addRemark":
+        checkPassword(p.password);
+        result = appendRemark(p.sheet, p.id, p.text);
         break;
 
       case "addProperty":
@@ -117,6 +137,28 @@ function doPost(e) {
 
 // ---------- helpers ----------
 
+function getHeaders(sheet) {
+  var lastCol = sheet.getLastColumn();
+  if (lastCol === 0) return [];
+  return sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+}
+
+// Adds any headers from SHEETS[name] that are missing from the sheet's
+// current header row, appending them as new columns at the end. Safe to
+// call every time — a no-op once the sheet is already up to date.
+function ensureColumns(sheet, name) {
+  var required = SHEETS[name];
+  if (!required) return;
+  var headers = getHeaders(sheet);
+  var missing = required.filter(function (h) {
+    return headers.indexOf(h) === -1;
+  });
+  if (missing.length > 0) {
+    var startCol = headers.length + 1;
+    sheet.getRange(1, startCol, 1, missing.length).setValues([missing]);
+  }
+}
+
 function getSheet(name) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(name);
@@ -124,17 +166,20 @@ function getSheet(name) {
     sheet = ss.insertSheet(name);
     sheet.appendRow(SHEETS[name]);
     sheet.setFrozenRows(1);
+  } else {
+    ensureColumns(sheet, name);
   }
   return sheet;
 }
 
 function addRow(sheetName, data) {
   var sheet = getSheet(sheetName);
-  var headers = SHEETS[sheetName];
+  var headers = getHeaders(sheet);
   var id = sheetName.substring(0, 3).toUpperCase() + "-" + Utilities.getUuid().slice(0, 6).toUpperCase();
   var row = headers.map(function (h) {
     if (h === "id") return id;
     if (h === "timestamp") return new Date().toISOString();
+    if (h === "remarksLog" && data[h] === undefined) return "[]";
     return data[h] !== undefined ? data[h] : "";
   });
   sheet.appendRow(row);
@@ -167,7 +212,7 @@ function findRowIndexById(sheet, id) {
 
 function updateRow(sheetName, id, patch) {
   var sheet = getSheet(sheetName);
-  var headers = SHEETS[sheetName];
+  var headers = getHeaders(sheet);
   var rowIndex = findRowIndexById(sheet, id);
   if (rowIndex === -1) throw new Error("Record not found: " + id);
   Object.keys(patch).forEach(function (key) {
@@ -177,6 +222,33 @@ function updateRow(sheetName, id, patch) {
     }
   });
   return { id: id };
+}
+
+// Reads the existing remarksLog JSON array for a lead, pushes a new
+// { text, at } entry onto it (never removing previous entries), and saves
+// it back as a JSON string in the same cell.
+function appendRemark(sheetName, id, text) {
+  if (!text || !String(text).trim()) throw new Error("Remark text is required.");
+  var sheet = getSheet(sheetName);
+  var headers = getHeaders(sheet);
+  var rowIndex = findRowIndexById(sheet, id);
+  if (rowIndex === -1) throw new Error("Record not found: " + id);
+  var colIndex = headers.indexOf("remarksLog");
+  if (colIndex === -1) throw new Error("remarksLog column missing — redeploy Code.gs and try again.");
+  var cell = sheet.getRange(rowIndex, colIndex + 1);
+  var existing = cell.getValue();
+  var log = [];
+  if (existing) {
+    try {
+      log = JSON.parse(existing);
+      if (!Array.isArray(log)) log = [];
+    } catch (e) {
+      log = [];
+    }
+  }
+  log.push({ text: String(text).trim(), at: new Date().toISOString() });
+  cell.setValue(JSON.stringify(log));
+  return { id: id, remarksLog: log };
 }
 
 function deleteRow(sheetName, id) {

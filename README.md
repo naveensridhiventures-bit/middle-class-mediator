@@ -118,9 +118,14 @@ that's the link customers, mediators, and sellers use.
 - `/control` — admin login (the password you set in step 1.3)
 - `/control/dashboard` — **three separate CRMs** (Seller CRM, Buyer CRM, Mediator CRM),
   each color-coded, with live stat/status pills, search, per-lead status pipeline
-  (New → Contacted → In progress → Closed → Dropped), private notes, and one-tap
-  call/WhatsApp — plus a separate "Published listings" tab if you want to curate
-  properties
+  (New → Contacted → In progress → Closed → Dropped), a 5-star priority rating,
+  a next-follow-up date picker (flagged as **Overdue** once it passes), a full
+  dated **remarks history** per lead (every note you add is kept, never
+  overwritten), one-tap call/WhatsApp, and a **Download report** button that
+  exports the currently filtered leads (all, or just one status like
+  "Contacted" or "Closed") as a polished standalone HTML report — open it in
+  any browser and print/save as PDF if you want a hard copy — plus a separate
+  "Published listings" tab if you want to curate properties
 
 Since every submission is saved instantly to your Google Sheet, you always
 have the full record even before you check WhatsApp — this is what answers
