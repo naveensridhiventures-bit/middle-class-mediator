@@ -1,14 +1,8 @@
-Drop your own photos here (same filenames) to replace the gradient
-placeholders on the home page:
+hero-banner.jpg — the full hero photo shown behind the "Middle Class
+Mediator" logo/heading on the home page (the skyline + businessman +
+restaurant + Hotel/Home/Flats/Lands composition).
 
-- hero-skyline.jpg    — the big hero visual (e.g. someone looking out over a
-                         city skyline)
-- hero-restaurant.jpg — the small overlapping "Restaurant" panel
-- category-hotel.jpg
-- category-home.jpg
-- category-flats.jpg
-- category-lands.jpg
-
-Any image works — the page gracefully falls back to a styled gradient +
-icon if a file is missing, so nothing breaks if you only add some of them.
-Recommended: landscape photos, at least 800px wide, JPG or PNG.
+To change it: replace this file with your own image at the same filename
+(recommended: roughly the same 1535x1024 / 1.5:1 landscape aspect ratio,
+dark on the left side so the gold text stays readable). No code changes
+needed — the home page just reads /images/hero-banner.jpg directly.
