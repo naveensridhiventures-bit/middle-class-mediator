@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Header from "./components/Header";
 import BottomNav from "./components/BottomNav";
 import Home from "./pages/Home";
@@ -9,9 +9,12 @@ import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 
 export default function App() {
+  const { pathname } = useLocation();
+  const isHome = pathname === "/";
+
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      {!isHome && <Header />}
       <main className="flex-1">
         <Routes>
           <Route path="/" element={<Home />} />
@@ -24,7 +27,7 @@ export default function App() {
           <Route path="*" element={<Home />} />
         </Routes>
       </main>
-      <BottomNav />
+      {!isHome && <BottomNav />}
     </div>
   );
 }
