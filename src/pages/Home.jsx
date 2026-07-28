@@ -74,15 +74,19 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ---------- Role cards ---------- */}
-      <section className="bg-paper">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 py-14 lg:py-20">
+      {/* ---------- Role cards — float up over the hero photo's floor ---------- */}
+      <section className="relative z-10 -mt-16 sm:-mt-24 lg:-mt-28 pb-14 lg:pb-20">
+        <div
+          className="absolute inset-0 -z-10"
+          style={{ background: "linear-gradient(to bottom, transparent, #111B33 35%, #111B33)" }}
+        />
+        <div className="max-w-7xl mx-auto px-6 lg:px-10">
           <div className="grid sm:grid-cols-3 gap-6">
             {roles.map((r) => (
               <Link
                 key={r.to}
                 to={r.to}
-                className="group rounded-3xl p-8 flex flex-col items-center text-center gap-4 shadow-lg hover:-translate-y-1.5 hover:shadow-2xl transition-all"
+                className="group rounded-3xl p-8 flex flex-col items-center text-center gap-4 shadow-2xl hover:-translate-y-1.5 hover:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6)] transition-all"
                 style={{ background: `linear-gradient(160deg, ${r.from}, ${r.to2})` }}
               >
                 <span className="w-16 h-16 rounded-full bg-white/12 flex items-center justify-center group-hover:bg-white/20 transition">
