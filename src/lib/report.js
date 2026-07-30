@@ -49,6 +49,16 @@ function starString(priority) {
   return "\u2605".repeat(p) + "\u2606".repeat(5 - p);
 }
 
+function parseCustomFields(lead) {
+  if (!lead.customFields) return {};
+  try {
+    const parsed = JSON.parse(lead.customFields);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 export function downloadReport({ roleLabel, accent, fields, leads, filterLabel }) {
   const [r, g, b] = hexToRgb(accent);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -108,9 +118,15 @@ export function downloadReport({ roleLabel, accent, fields, leads, filterLabel }
     const detailRows = fields
       .filter(([key]) => lead[key])
       .map(([key, label]) => [label, String(lead[key])]);
+    if (lead.area) detailRows.push(["Area / locality", lead.area]);
+    if (lead.budgetValue) detailRows.push(["Budget (₹)", Number(lead.budgetValue).toLocaleString()]);
+    if (lead.sqft) detailRows.push(["Size (sqft)", Number(lead.sqft).toLocaleString()]);
     if (lead.followUpDate) {
       detailRows.push(["Next follow-up", formatDate(lead.followUpDate)]);
     }
+    Object.entries(parseCustomFields(lead)).forEach(([key, value]) => {
+      if (value) detailRows.push([key, String(value)]);
+    });
 
     if (detailRows.length) {
       autoTable(doc, {

@@ -117,18 +117,22 @@ that's the link customers, mediators, and sellers use.
 ### Hidden admin pages (not linked anywhere in the UI — bookmark them)
 - `/control` — admin login (the password you set in step 1.3)
 - `/control/dashboard` — **three separate CRMs** (Seller CRM, Buyer CRM, Mediator CRM),
-  each color-coded, with live stat/status pills, search, an **Advanced filters**
-  panel (filter by area/locality, budget range, and property size in sqft),
-  per-lead status pipeline (New → Contacted → In progress → Closed → Dropped),
-  a 5-star priority rating, a next-follow-up date picker (flagged as
+  each color-coded, with live stat/status pills, search, an **e-commerce-style
+  advanced filter panel** — filter by area/locality, budget range, property
+  size (sqft), and any **custom field** you've tagged onto leads (add any
+  attribute you need, like "Facing" or "Furnishing", from a lead's detail
+  panel — it automatically becomes a checkbox facet with counts across all
+  leads, so you can narrow 1,000 leads down to one in a few clicks), per-lead
+  status pipeline (New → Contacted → In progress → Closed → Dropped), a
+  5-star priority rating, a next-follow-up date picker (flagged as
   **Overdue** once it passes), and a full-detail **View & edit** panel per
   lead where the admin can edit every submitted field (name, phone, and all
-  the role-specific details) plus admin-only metadata (area, budget, sqft)
-  used for the advanced filters — none of this overwrites the dated
-  **remarks history** (every note you add is kept, never overwritten), and
-  there's one-tap call/WhatsApp plus a **Download report** button that
-  exports the currently filtered leads (all, or a specific status/area/budget/
-  size selection) as a polished PDF with each lead's full remarks history —
+  the role-specific details) plus admin-only metadata (area, budget, sqft,
+  custom fields) used for the filters — none of this overwrites the dated
+  **remarks history** (every note you add is kept, never overwritten, and
+  the latest one shows right on the lead card for quick reference), one-tap
+  call/WhatsApp, and a **Download report** button that exports the currently
+  filtered leads as a polished PDF with each lead's full remarks history —
   plus a separate "Published listings" tab if you want to curate properties
 
 Since every submission is saved instantly to your Google Sheet, you always

@@ -16,9 +16,9 @@
  */
 
 const SHEETS = {
-  Mediators: ["id", "timestamp", "name", "phone", "profession", "workingArea", "propertyCategory", "experience", "dealType", "genuineLeads", "status", "priority", "followUpDate", "area", "remarksLog"],
-  Sellers: ["id", "timestamp", "name", "phone", "propertyType", "propertyLocation", "propertyStatus", "expectedPrice", "ownership", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "remarksLog"],
-  Buyers: ["id", "timestamp", "name", "phone", "propertyType", "purpose", "budget", "preferredLocation", "loanRequirement", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "remarksLog"],
+  Mediators: ["id", "timestamp", "name", "phone", "profession", "workingArea", "propertyCategory", "experience", "dealType", "genuineLeads", "status", "priority", "followUpDate", "area", "customFields", "remarksLog"],
+  Sellers: ["id", "timestamp", "name", "phone", "propertyType", "propertyLocation", "propertyStatus", "expectedPrice", "ownership", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "remarksLog"],
+  Buyers: ["id", "timestamp", "name", "phone", "propertyType", "purpose", "budget", "preferredLocation", "loanRequirement", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "remarksLog"],
   Properties: ["id", "timestamp", "title", "type", "location", "price", "description", "imageUrl", "contactPhone"],
 };
 
@@ -40,7 +40,7 @@ function doPost(e) {
         result = addRow("Mediators", {
           name: p.name, phone: p.phone, profession: p.profession, workingArea: p.workingArea,
           propertyCategory: p.propertyCategory, experience: p.experience, dealType: p.dealType,
-          genuineLeads: p.genuineLeads, status: "New", priority: 3, followUpDate: "", remarksLog: "[]",
+          genuineLeads: p.genuineLeads, status: "New", priority: 3, followUpDate: "", customFields: "{}", remarksLog: "[]",
         });
         break;
 
@@ -48,7 +48,7 @@ function doPost(e) {
         result = addRow("Sellers", {
           name: p.name, phone: p.phone, propertyType: p.propertyType, propertyLocation: p.propertyLocation,
           propertyStatus: p.propertyStatus, expectedPrice: p.expectedPrice, ownership: p.ownership,
-          timeline: p.timeline, status: "New", priority: 3, followUpDate: "", remarksLog: "[]",
+          timeline: p.timeline, status: "New", priority: 3, followUpDate: "", customFields: "{}", remarksLog: "[]",
         });
         break;
 
@@ -56,7 +56,7 @@ function doPost(e) {
         result = addRow("Buyers", {
           name: p.name, phone: p.phone, propertyType: p.propertyType, purpose: p.purpose,
           budget: p.budget, preferredLocation: p.preferredLocation, loanRequirement: p.loanRequirement,
-          timeline: p.timeline, status: "New", priority: 3, followUpDate: "", remarksLog: "[]",
+          timeline: p.timeline, status: "New", priority: 3, followUpDate: "", customFields: "{}", remarksLog: "[]",
         });
         break;
 

@@ -53,6 +53,16 @@ function parseRemarksLog(lead) {
   return [...log].sort((a, b) => new Date(b.at) - new Date(a.at));
 }
 
+function parseCustomFields(lead) {
+  if (!lead.customFields) return {};
+  try {
+    const parsed = JSON.parse(lead.customFields);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 function isOverdue(followUpDate, status) {
   if (!followUpDate || status === "Closed" || status === "Dropped") return false;
   const d = new Date(followUpDate);
@@ -90,7 +100,9 @@ function LeadCard({ lead, accent, onOpen }) {
   const priority = Number(lead.priority) || 0;
   const overdue = isOverdue(lead.followUpDate, status);
   const sStyle = STATUS_STYLE[status] || STATUS_STYLE.New;
-  const remarksCount = parseRemarksLog(lead).length;
+  const remarksLog = parseRemarksLog(lead);
+  const customFields = parseCustomFields(lead);
+  const latestRemark = remarksLog[0];
 
   return (
     <div className="card-ledger p-4 space-y-3 border-l-4" style={{ borderLeftColor: accent }}>
@@ -117,11 +129,25 @@ function LeadCard({ lead, accent, onOpen }) {
         )}
       </div>
 
-      {(lead.area || lead.budgetValue || lead.sqft) && (
+      {(lead.area || lead.budgetValue || lead.sqft || Object.keys(customFields).length > 0) && (
         <div className="flex flex-wrap gap-1.5">
           {lead.area && <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-ink/5 text-ink/60">📍 {lead.area}</span>}
           {lead.budgetValue && <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-ink/5 text-ink/60">₹ {Number(lead.budgetValue).toLocaleString()}</span>}
           {lead.sqft && <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-ink/5 text-ink/60">{Number(lead.sqft).toLocaleString()} sqft</span>}
+          {Object.entries(customFields).map(([k, v]) => (
+            <span key={k} className="text-[10px] font-semibold px-2 py-1 rounded-full bg-ink/5 text-ink/60">{k}: {v}</span>
+          ))}
+        </div>
+      )}
+
+      {latestRemark && (
+        <div className="rounded-lg bg-ink/[0.035] px-2.5 py-2">
+          <div className="flex items-center gap-1.5 text-[10px] text-ink/40 mb-0.5">
+            <Clock size={10} strokeWidth={2.25} />
+            {formatRemarkDateTime(latestRemark.at)}
+            {latestRemark.by && <span className="font-semibold" style={{ color: accent }}>· {latestRemark.by}</span>}
+          </div>
+          <p className="text-xs text-ink/70 leading-snug line-clamp-2">{latestRemark.text}</p>
         </div>
       )}
 
@@ -138,7 +164,7 @@ function LeadCard({ lead, accent, onOpen }) {
       >
         <Pencil size={12} strokeWidth={2.25} />
         View & edit full details
-        {remarksCount > 0 && <span className="opacity-70">· {remarksCount} remark{remarksCount === 1 ? "" : "s"}</span>}
+        {remarksLog.length > 0 && <span className="opacity-70">· {remarksLog.length} remark{remarksLog.length === 1 ? "" : "s"}</span>}
       </button>
     </div>
   );
@@ -162,6 +188,9 @@ function LeadDetailModal({ lead, fields, accent, onClose, onSaveDetails, onAddRe
   const [saved, setSaved] = useState(false);
   const [newRemark, setNewRemark] = useState("");
   const [savingRemark, setSavingRemark] = useState(false);
+  const [customFields, setCustomFields] = useState(() => parseCustomFields(lead));
+  const [newFieldName, setNewFieldName] = useState("");
+  const [newFieldValue, setNewFieldValue] = useState("");
 
   const remarksLog = useMemo(() => parseRemarksLog(lead), [lead]);
 
@@ -170,10 +199,33 @@ function LeadDetailModal({ lead, fields, accent, onClose, onSaveDetails, onAddRe
     setSaved(false);
   }
 
+  function updateCustomField(key, value) {
+    setCustomFields((cf) => ({ ...cf, [key]: value }));
+    setSaved(false);
+  }
+
+  function removeCustomField(key) {
+    setCustomFields((cf) => {
+      const next = { ...cf };
+      delete next[key];
+      return next;
+    });
+    setSaved(false);
+  }
+
+  function addCustomField() {
+    const name = newFieldName.trim();
+    if (!name) return;
+    setCustomFields((cf) => ({ ...cf, [name]: newFieldValue.trim() }));
+    setNewFieldName("");
+    setNewFieldValue("");
+    setSaved(false);
+  }
+
   async function handleSave() {
     setSaving(true);
     try {
-      await onSaveDetails(lead.id, form);
+      await onSaveDetails(lead.id, { ...form, customFields: JSON.stringify(customFields) });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } finally {
@@ -270,6 +322,51 @@ function LeadDetailModal({ lead, fields, accent, onClose, onSaveDetails, onAddRe
             </div>
           </div>
 
+          {/* Custom fields — mediator can add any attribute they need; it becomes a filter facet automatically */}
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">
+              Custom fields {Object.keys(customFields).length > 0 && `(${Object.keys(customFields).length})`}
+            </p>
+            <p className="text-xs text-ink/40 mb-2">
+              Add any attribute you need (e.g. "Facing", "Furnishing", "Amenity") — it'll automatically show up as a filter option across all leads.
+            </p>
+            {Object.keys(customFields).length > 0 && (
+              <div className="space-y-2 mb-3">
+                {Object.entries(customFields).map(([key, value]) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-ink/60 w-28 shrink-0 truncate">{key}</span>
+                    <input
+                      className="field-input !py-1.5 text-xs flex-1"
+                      value={value}
+                      onChange={(e) => updateCustomField(key, e.target.value)}
+                    />
+                    <button onClick={() => removeCustomField(key)} className="shrink-0 w-7 h-7 rounded-full bg-ink/5 flex items-center justify-center hover:bg-buyer/10">
+                      <X size={13} className="text-ink/50" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <input
+                className="field-input !py-2 text-xs flex-1"
+                placeholder="Field name (e.g. Facing)"
+                value={newFieldName}
+                onChange={(e) => setNewFieldName(e.target.value)}
+              />
+              <input
+                className="field-input !py-2 text-xs flex-1"
+                placeholder="Value (e.g. East)"
+                value={newFieldValue}
+                onChange={(e) => setNewFieldValue(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addCustomField()}
+              />
+              <button onClick={addCustomField} disabled={!newFieldName.trim()} className="btn-ghost !py-2 !px-3 text-xs whitespace-nowrap">
+                + Add
+              </button>
+            </div>
+          </div>
+
           {/* Remarks history */}
           <div>
             <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">
@@ -327,7 +424,8 @@ function LeadDetailModal({ lead, fields, accent, onClose, onSaveDetails, onAddRe
 
 // ---------- Advanced filter panel ----------
 
-function AdvancedFilters({ areas, selectedAreas, onToggleArea, budgetMin, budgetMax, setBudgetMin, setBudgetMax, sqftMin, sqftMax, setSqftMin, setSqftMax, onClear }) {
+function AdvancedFilters({ areas, selectedAreas, onToggleArea, budgetMin, budgetMax, setBudgetMin, setBudgetMax, sqftMin, sqftMax, setSqftMin, setSqftMax, facets, selectedFacets, onToggleFacetValue, onClear }) {
+  const facetNames = Object.keys(facets);
   return (
     <div className="card-ledger p-4 space-y-4">
       {areas.length > 0 && (
@@ -366,6 +464,34 @@ function AdvancedFilters({ areas, selectedAreas, onToggleArea, budgetMin, budget
           </div>
         </div>
       </div>
+
+      {facetNames.length > 0 && (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-3 border-t border-ink/5">
+          {facetNames.map((name) => (
+            <div key={name}>
+              <p className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold mb-1.5">{name}</p>
+              <div className="space-y-1">
+                {Object.entries(facets[name]).map(([value, count]) => {
+                  const checked = (selectedFacets[name] || []).includes(value);
+                  return (
+                    <label key={value} className="flex items-center gap-2 text-xs text-ink/70 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => onToggleFacetValue(name, value)}
+                        className="accent-ink w-3.5 h-3.5"
+                      />
+                      <span className="flex-1 truncate">{value}</span>
+                      <span className="text-ink/35">({count})</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <button onClick={onClear} className="text-xs font-semibold text-ink/40 hover:text-ink">Clear advanced filters</button>
     </div>
   );
@@ -386,6 +512,7 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
   const [budgetMax, setBudgetMax] = useState("");
   const [sqftMin, setSqftMin] = useState("");
   const [sqftMax, setSqftMax] = useState("");
+  const [selectedFacets, setSelectedFacets] = useState({});
 
   function load() {
     fetcher(password)
@@ -399,6 +526,7 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
     setOpenLeadId(null);
     setSelectedAreas([]);
     setBudgetMin(""); setBudgetMax(""); setSqftMin(""); setSqftMax("");
+    setSelectedFacets({});
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
@@ -420,8 +548,24 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
     return [...set].sort();
   }, [leads]);
 
+  const facets = useMemo(() => {
+    if (!leads) return {};
+    const result = {};
+    leads.forEach((l) => {
+      const cf = parseCustomFields(l);
+      Object.entries(cf).forEach(([name, value]) => {
+        if (!value) return;
+        if (!result[name]) result[name] = {};
+        result[name][value] = (result[name][value] || 0) + 1;
+      });
+    });
+    return result;
+  }, [leads]);
+
+  const facetActiveCount = Object.values(selectedFacets).reduce((sum, arr) => sum + arr.length, 0);
+
   const advancedActiveCount =
-    selectedAreas.length + [budgetMin, budgetMax, sqftMin, sqftMax].filter((v) => v !== "").length;
+    selectedAreas.length + [budgetMin, budgetMax, sqftMin, sqftMax].filter((v) => v !== "").length + facetActiveCount;
 
   const filtered = useMemo(() => {
     if (!leads) return [];
@@ -442,9 +586,14 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
         (Number.isFinite(sqft) &&
           (!sqftMin || sqft >= Number(sqftMin)) &&
           (!sqftMax || sqft <= Number(sqftMax)));
-      return matchesQuery && matchesStatus && matchesArea && matchesBudget && matchesSqft;
+      const leadCustomFields = parseCustomFields(l);
+      const matchesFacets = Object.entries(selectedFacets).every(([name, values]) => {
+        if (values.length === 0) return true;
+        return values.includes(leadCustomFields[name]);
+      });
+      return matchesQuery && matchesStatus && matchesArea && matchesBudget && matchesSqft && matchesFacets;
     });
-  }, [leads, query, activeStatus, selectedAreas, budgetMin, budgetMax, sqftMin, sqftMax]);
+  }, [leads, query, activeStatus, selectedAreas, budgetMin, budgetMax, sqftMin, sqftMax, selectedFacets]);
 
   const counts = useMemo(() => {
     const c = { All: leads?.length || 0 };
@@ -460,9 +609,18 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
     setSelectedAreas((prev) => (prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]));
   }
 
+  function toggleFacetValue(name, value) {
+    setSelectedFacets((prev) => {
+      const current = prev[name] || [];
+      const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+      return { ...prev, [name]: next };
+    });
+  }
+
   function clearAdvanced() {
     setSelectedAreas([]);
     setBudgetMin(""); setBudgetMax(""); setSqftMin(""); setSqftMax("");
+    setSelectedFacets({});
   }
 
   function handleDownload() {
@@ -540,6 +698,9 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
           onToggleArea={toggleArea}
           budgetMin={budgetMin} budgetMax={budgetMax} setBudgetMin={setBudgetMin} setBudgetMax={setBudgetMax}
           sqftMin={sqftMin} sqftMax={sqftMax} setSqftMin={setSqftMin} setSqftMax={setSqftMax}
+          facets={facets}
+          selectedFacets={selectedFacets}
+          onToggleFacetValue={toggleFacetValue}
           onClear={clearAdvanced}
         />
       )}
