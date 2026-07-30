@@ -7,7 +7,7 @@ import { MEDIATOR_WHATSAPP_NUMBER } from "../lib/config";
 
 const ACCENT = "#1F6F5C";
 
-const PROPERTY_TYPES = ["Apartment / Flat", "Independent House", "Villa", "Plot / Land", "Commercial Property"];
+const PROPERTY_TYPES = ["Home / Independent House", "Apartment / Flat", "Villa", "Plot / Land", "Hotel", "Restaurant", "Saloon", "Shop / Retail", "Office / Commercial Space"];
 const LOCATIONS = ["North Chennai", "Central Chennai", "South Chennai", "Other"];
 const PROPERTY_STATUS = ["Brand New", "Resale", "Under Construction"];
 const PRICE_RANGES = ["Below ₹30 Lakhs", "₹30–50 Lakhs", "₹50–75 Lakhs", "₹75 Lakhs–₹1 Crore", "Above ₹1 Crore"];

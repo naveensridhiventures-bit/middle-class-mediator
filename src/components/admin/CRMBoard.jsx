@@ -499,7 +499,7 @@ function AdvancedFilters({ areas, selectedAreas, onToggleArea, budgetMin, budget
 
 // ---------- Main board ----------
 
-export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, password, adminName }) {
+export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, facetFields = [], password, adminName }) {
   const [leads, setLeads] = useState(null);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
@@ -551,6 +551,18 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
   const facets = useMemo(() => {
     if (!leads) return {};
     const result = {};
+
+    // Built-in facets from known enumerated fields (e.g. Property type)
+    facetFields.forEach(([key, facetLabel]) => {
+      leads.forEach((l) => {
+        const value = l[key];
+        if (!value) return;
+        if (!result[facetLabel]) result[facetLabel] = {};
+        result[facetLabel][value] = (result[facetLabel][value] || 0) + 1;
+      });
+    });
+
+    // Ad-hoc facets from custom fields the admin has tagged onto leads
     leads.forEach((l) => {
       const cf = parseCustomFields(l);
       Object.entries(cf).forEach(([name, value]) => {
@@ -559,8 +571,25 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
         result[name][value] = (result[name][value] || 0) + 1;
       });
     });
+
     return result;
-  }, [leads]);
+  }, [leads, facetFields]);
+
+  // Maps a facet label to how to read that value off a lead — either a
+  // known built-in field (propertyType, etc.) or an ad-hoc custom field.
+  const facetKeyLookup = useMemo(() => {
+    const map = {};
+    facetFields.forEach(([key, facetLabel]) => {
+      map[facetLabel] = { type: "field", key };
+    });
+    return map;
+  }, [facetFields]);
+
+  function getFacetValue(lead, facetName) {
+    const known = facetKeyLookup[facetName];
+    if (known) return lead[known.key];
+    return parseCustomFields(lead)[facetName];
+  }
 
   const facetActiveCount = Object.values(selectedFacets).reduce((sum, arr) => sum + arr.length, 0);
 
@@ -586,10 +615,9 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
         (Number.isFinite(sqft) &&
           (!sqftMin || sqft >= Number(sqftMin)) &&
           (!sqftMax || sqft <= Number(sqftMax)));
-      const leadCustomFields = parseCustomFields(l);
       const matchesFacets = Object.entries(selectedFacets).every(([name, values]) => {
         if (values.length === 0) return true;
-        return values.includes(leadCustomFields[name]);
+        return values.includes(getFacetValue(l, name));
       });
       return matchesQuery && matchesStatus && matchesArea && matchesBudget && matchesSqft && matchesFacets;
     });

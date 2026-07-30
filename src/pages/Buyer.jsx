@@ -5,7 +5,7 @@ import { addBuyerLead } from "../lib/api";
 
 const ACCENT = "#B5533C";
 
-const PROPERTY_TYPES = ["Apartment / Flat", "Independent House", "Villa", "Plot / Land", "Commercial Property"];
+const PROPERTY_TYPES = ["Home / Independent House", "Apartment / Flat", "Villa", "Plot / Land", "Hotel", "Restaurant", "Saloon", "Shop / Retail", "Office / Commercial Space"];
 const PURPOSE = ["Own Use", "Investment"];
 const BUDGET = ["Below ₹30 Lakhs", "₹30–50 Lakhs", "₹50–75 Lakhs", "₹75 Lakhs–₹1 Crore", "Above ₹1 Crore"];
 const LOCATIONS = ["North Chennai", "Central Chennai", "South Chennai", "No Specific Preference"];

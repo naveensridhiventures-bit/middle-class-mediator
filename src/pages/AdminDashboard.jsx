@@ -18,6 +18,11 @@ const CRM_CONFIG = {
       ["ownership", "Ownership"],
       ["timeline", "Planning to sell"],
     ],
+    facetFields: [
+      ["propertyType", "Property type"],
+      ["propertyStatus", "Property status"],
+      ["timeline", "Planning to sell"],
+    ],
   },
   buyer: {
     label: "Buyer",
@@ -30,6 +35,11 @@ const CRM_CONFIG = {
       ["budget", "Budget"],
       ["preferredLocation", "Preferred location"],
       ["loanRequirement", "Loan requirement"],
+      ["timeline", "Planning to buy"],
+    ],
+    facetFields: [
+      ["propertyType", "Property type"],
+      ["purpose", "Purpose"],
       ["timeline", "Planning to buy"],
     ],
   },
@@ -45,6 +55,11 @@ const CRM_CONFIG = {
       ["experience", "Experience"],
       ["dealType", "Deal type"],
       ["genuineLeads", "Genuine leads only"],
+    ],
+    facetFields: [
+      ["propertyCategory", "Category"],
+      ["profession", "Profession"],
+      ["dealType", "Deal type"],
     ],
   },
 };
@@ -155,6 +170,7 @@ export default function AdminDashboard() {
           sheet={active.sheet}
           fetcher={active.fetcher}
           fields={active.fields}
+          facetFields={active.facetFields}
           password={password}
           adminName={adminName}
         />
