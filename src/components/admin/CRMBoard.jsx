@@ -249,7 +249,10 @@ function LeadDetailModal({ lead, fields, accent, sheet, onClose, onSaveDetails, 
   // Site visit capture (camera + GPS + reverse-geocoded address) — sellers only
   const [visitPhoto, setVisitPhoto] = useState(null);
   const [visitPhotoPreview, setVisitPhotoPreview] = useState("");
-  const [visitStatus, setVisitStatus] = useState("idle"); // idle | locating | uploading | saving
+  const [visitCoords, setVisitCoords] = useState(null); // { lat, lng }
+  const [visitAddress, setVisitAddress] = useState("");
+  const [visitLocating, setVisitLocating] = useState(false);
+  const [visitSaving, setVisitSaving] = useState(false);
   const [visitError, setVisitError] = useState("");
 
   const remarksLog = useMemo(() => parseRemarksLog(lead), [lead]);
@@ -320,35 +323,53 @@ function LeadDetailModal({ lead, fields, accent, sheet, onClose, onSaveDetails, 
     setVisitError("");
   }
 
+  async function handleCaptureVisitLocation() {
+    setVisitLocating(true);
+    setVisitError("");
+    try {
+      const loc = await getCurrentLocation();
+      setVisitCoords(loc);
+      try {
+        const auto = await reverseGeocode(loc.lat, loc.lng);
+        if (auto) setVisitAddress(auto);
+      } catch {
+        // reverse geocoding failed — coords are still captured, admin can type the address manually
+      }
+    } catch (err) {
+      setVisitError(err.message || "Couldn't get your location.");
+    } finally {
+      setVisitLocating(false);
+    }
+  }
+
   async function handleLogVisit() {
     if (!visitPhoto) {
       setVisitError("Take a photo first.");
       return;
     }
+    if (!visitAddress.trim() && !visitCoords) {
+      setVisitError("Capture your live location or type the address manually.");
+      return;
+    }
     setVisitError("");
+    setVisitSaving(true);
     try {
-      setVisitStatus("locating");
-      const { lat, lng } = await getCurrentLocation();
-
-      let address = "";
-      try {
-        address = await reverseGeocode(lat, lng);
-      } catch {
-        address = ""; // non-fatal — visit still saves with just coordinates
-      }
-
-      setVisitStatus("uploading");
       const photoUrl = await uploadImage(visitPhoto);
-
-      setVisitStatus("saving");
-      await onAddVisit(lead.id, { photoUrl, lat, lng, address });
+      await onAddVisit(lead.id, {
+        photoUrl,
+        lat: visitCoords?.lat || "",
+        lng: visitCoords?.lng || "",
+        address: visitAddress.trim(),
+      });
 
       setVisitPhoto(null);
       setVisitPhotoPreview("");
-      setVisitStatus("idle");
+      setVisitCoords(null);
+      setVisitAddress("");
     } catch (err) {
       setVisitError(err.message || "Couldn't log this visit.");
-      setVisitStatus("idle");
+    } finally {
+      setVisitSaving(false);
     }
   }
 
@@ -419,7 +440,7 @@ function LeadDetailModal({ lead, fields, accent, sheet, onClose, onSaveDetails, 
                 </div>
               )}
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mb-2">
                 <label className="btn-ghost !py-2 !px-3 text-xs cursor-pointer flex items-center gap-1.5 shrink-0">
                   <Camera size={13} strokeWidth={2.25} />
                   {visitPhoto ? "Retake" : "Take photo"}
@@ -429,16 +450,32 @@ function LeadDetailModal({ lead, fields, accent, sheet, onClose, onSaveDetails, 
                   <img src={visitPhotoPreview} alt="Preview" className="w-9 h-9 rounded-lg object-cover shrink-0" />
                 )}
                 <button
-                  onClick={handleLogVisit}
-                  disabled={!visitPhoto || visitStatus !== "idle"}
-                  className="btn-primary !py-2 !px-3 text-xs flex-1 whitespace-nowrap"
+                  onClick={handleCaptureVisitLocation}
+                  disabled={visitLocating}
+                  className="btn-ghost !py-2 !px-3 text-xs flex-1 flex items-center justify-center gap-1.5 whitespace-nowrap"
                 >
-                  {visitStatus === "locating" && "Getting location…"}
-                  {visitStatus === "uploading" && "Uploading photo…"}
-                  {visitStatus === "saving" && "Saving…"}
-                  {visitStatus === "idle" && "Log this visit"}
+                  <MapPin size={13} strokeWidth={2.25} />
+                  {visitLocating ? "Locating…" : visitCoords ? "Re-capture" : "Capture live location"}
                 </button>
               </div>
+              {visitCoords && (
+                <p className="text-[11px] text-ink/40 mb-1.5">
+                  📍 Captured: {visitCoords.lat.toFixed(5)}, {visitCoords.lng.toFixed(5)}
+                </p>
+              )}
+              <input
+                className="field-input !py-2 text-xs mb-2"
+                placeholder="Address (auto-filled after capture, or type manually)"
+                value={visitAddress}
+                onChange={(e) => setVisitAddress(e.target.value)}
+              />
+              <button
+                onClick={handleLogVisit}
+                disabled={!visitPhoto || visitSaving}
+                className="btn-primary w-full !py-2 text-xs"
+              >
+                {visitSaving ? "Saving…" : "Log this visit"}
+              </button>
               {visitError && <p className="text-xs text-buyer mt-2">{visitError}</p>}
             </div>
           )}
@@ -607,7 +644,11 @@ function NewFieldVisitModal({ accent, onClose, onCreate }) {
   const [phone, setPhone] = useState("");
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState("");
-  const [status, setStatus] = useState("idle"); // idle | locating | uploading | creating
+  const [coords, setCoords] = useState(null); // { lat, lng }
+  const [address, setAddress] = useState("");
+  const [locating, setLocating] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [uploadPct, setUploadPct] = useState(0);
   const [error, setError] = useState("");
 
   function handlePhotoChange(e) {
@@ -618,40 +659,52 @@ function NewFieldVisitModal({ accent, onClose, onCreate }) {
     setError("");
   }
 
+  async function handleCaptureLocation() {
+    setLocating(true);
+    setError("");
+    try {
+      const loc = await getCurrentLocation();
+      setCoords(loc);
+      try {
+        const auto = await reverseGeocode(loc.lat, loc.lng);
+        if (auto) setAddress(auto);
+      } catch {
+        // reverse geocoding failed — coords are still captured, admin can type the address manually
+      }
+    } catch (err) {
+      setError(err.message || "Couldn't get your location.");
+    } finally {
+      setLocating(false);
+    }
+  }
+
   async function handleCreate() {
     if (!photo) {
       setError("Take a photo first.");
       return;
     }
+    if (!address.trim() && !coords) {
+      setError("Capture your live location or type the address manually.");
+      return;
+    }
     setError("");
+    setCreating(true);
+    setUploadPct(0);
     try {
-      setStatus("locating");
-      const { lat, lng } = await getCurrentLocation();
-
-      let address = "";
-      try {
-        address = await reverseGeocode(lat, lng);
-      } catch {
-        address = "";
-      }
-
-      setStatus("uploading");
-      const photoUrl = await uploadImage(photo);
-
-      setStatus("creating");
-      await onCreate({ name: name.trim() || "Field visit lead", phone: phone.trim(), photoUrl, lat, lng, address });
+      const photoUrl = await uploadImage(photo, setUploadPct);
+      await onCreate({
+        name: name.trim() || "Field visit lead",
+        phone: phone.trim(),
+        photoUrl,
+        lat: coords?.lat || "",
+        lng: coords?.lng || "",
+        address: address.trim(),
+      });
     } catch (err) {
       setError(err.message || "Couldn't create this lead.");
-      setStatus("idle");
+      setCreating(false);
     }
   }
-
-  const statusLabel = {
-    idle: "Create lead from this visit",
-    locating: "Getting location…",
-    uploading: "Uploading photo…",
-    creating: "Creating lead…",
-  }[status];
 
   return (
     <div className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-start sm:items-center justify-center p-3 sm:p-6 overflow-y-auto" onClick={onClose}>
@@ -669,8 +722,8 @@ function NewFieldVisitModal({ accent, onClose, onCreate }) {
 
         <div className="p-5 sm:p-6 space-y-4">
           <p className="text-xs text-ink/50 leading-relaxed">
-            Snap a photo on-site and this creates a brand-new seller lead with that photo, your GPS
-            location, and the address, all timestamped now. Fill in the rest of the details later
+            Snap a photo on-site, capture your live location (or just type the address), and this
+            creates a brand-new seller lead timestamped now. Fill in the rest of the details later
             from the lead's edit panel.
           </p>
 
@@ -694,10 +747,33 @@ function NewFieldVisitModal({ accent, onClose, onCreate }) {
             {photoPreview && <img src={photoPreview} alt="Preview" className="w-12 h-12 rounded-lg object-cover" />}
           </div>
 
+          <div>
+            <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1.5">Location &amp; address</label>
+            <button
+              onClick={handleCaptureLocation}
+              disabled={locating}
+              className="btn-ghost w-full !py-2.5 text-sm flex items-center justify-center gap-1.5 mb-2"
+            >
+              <MapPin size={14} strokeWidth={2.25} />
+              {locating ? "Getting live location…" : coords ? "Re-capture live location" : "Capture live location"}
+            </button>
+            {coords && (
+              <p className="text-[11px] text-ink/40 mb-2">
+                📍 Captured: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+              </p>
+            )}
+            <input
+              className="field-input !py-2.5 text-sm"
+              placeholder="Address (auto-filled after capture, or type manually)"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+            />
+          </div>
+
           {error && <p className="text-xs text-buyer">{error}</p>}
 
-          <button onClick={handleCreate} disabled={!photo || status !== "idle"} className="btn-primary w-full !py-3">
-            {statusLabel}
+          <button onClick={handleCreate} disabled={!photo || creating} className="btn-primary w-full !py-3">
+            {creating ? (uploadPct > 0 && uploadPct < 100 ? `Uploading photo… ${uploadPct}%` : "Creating lead…") : "Create lead from this visit"}
           </button>
         </div>
       </div>
