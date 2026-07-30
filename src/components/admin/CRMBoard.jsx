@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Clock, User, X, SlidersHorizontal, Pencil, Camera, MapPin } from "lucide-react";
-import { adminUpdateLead, adminAddRemark, adminAddVisit } from "../../lib/api";
+import { adminUpdateLead, adminAddRemark, adminAddVisit, addSellerLead } from "../../lib/api";
 import { whatsappLink, callLink } from "../../lib/whatsapp";
 import { downloadReport } from "../../lib/report";
 import { uploadImage } from "../../lib/cloudinary";
@@ -139,9 +139,24 @@ function LeadCard({ lead, accent, onOpen }) {
   const remarksLog = parseRemarksLog(lead);
   const customFields = parseCustomFields(lead);
   const latestRemark = remarksLog[0];
+  const visitLog = parseVisitLog(lead);
+  const latestVisit = visitLog[0];
 
   return (
-    <div className="card-ledger p-4 space-y-3 border-l-4" style={{ borderLeftColor: accent }}>
+    <div className="card-ledger overflow-hidden space-y-3 border-l-4" style={{ borderLeftColor: accent }}>
+      {latestVisit?.photoUrl && (
+        <div className="relative -mx-4 -mt-4 mb-1">
+          <img src={latestVisit.photoUrl} alt="Field visit" className="w-full h-36 object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/10 to-transparent" />
+          <div className="absolute bottom-2 left-3 right-3 text-white">
+            <p className="text-[11px] font-semibold flex items-center gap-1">
+              📷 Field visit · {formatRemarkDateTime(latestVisit.at)}
+            </p>
+            {latestVisit.address && <p className="text-[10px] text-white/80 truncate">{latestVisit.address}</p>}
+          </div>
+        </div>
+      )}
+      <div className="px-4 space-y-3" style={{ paddingTop: latestVisit?.photoUrl ? 0 : 16, paddingBottom: 16 }}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="font-semibold text-ink text-sm truncate">{lead.name}</p>
@@ -202,6 +217,7 @@ function LeadCard({ lead, accent, onOpen }) {
         View & edit full details
         {remarksLog.length > 0 && <span className="opacity-70">· {remarksLog.length} remark{remarksLog.length === 1 ? "" : "s"}</span>}
       </button>
+      </div>
     </div>
   );
 }
@@ -584,6 +600,111 @@ function LeadDetailModal({ lead, fields, accent, sheet, onClose, onSaveDetails, 
   );
 }
 
+// ---------- New field-visit lead (standalone — creates a brand new seller lead) ----------
+
+function NewFieldVisitModal({ accent, onClose, onCreate }) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [photo, setPhoto] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState("");
+  const [status, setStatus] = useState("idle"); // idle | locating | uploading | creating
+  const [error, setError] = useState("");
+
+  function handlePhotoChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhoto(file);
+    setPhotoPreview(URL.createObjectURL(file));
+    setError("");
+  }
+
+  async function handleCreate() {
+    if (!photo) {
+      setError("Take a photo first.");
+      return;
+    }
+    setError("");
+    try {
+      setStatus("locating");
+      const { lat, lng } = await getCurrentLocation();
+
+      let address = "";
+      try {
+        address = await reverseGeocode(lat, lng);
+      } catch {
+        address = "";
+      }
+
+      setStatus("uploading");
+      const photoUrl = await uploadImage(photo);
+
+      setStatus("creating");
+      await onCreate({ name: name.trim() || "Field visit lead", phone: phone.trim(), photoUrl, lat, lng, address });
+    } catch (err) {
+      setError(err.message || "Couldn't create this lead.");
+      setStatus("idle");
+    }
+  }
+
+  const statusLabel = {
+    idle: "Create lead from this visit",
+    locating: "Getting location…",
+    uploading: "Uploading photo…",
+    creating: "Creating lead…",
+  }[status];
+
+  return (
+    <div className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-start sm:items-center justify-center p-3 sm:p-6 overflow-y-auto" onClick={onClose}>
+      <div
+        className="bg-paper rounded-3xl w-full max-w-md shadow-2xl my-6 sm:my-0 border-t-4"
+        style={{ borderTopColor: accent }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-5 sm:p-6 flex items-center justify-between border-b border-ink/5">
+          <h3 className="font-display font-semibold text-lg text-ink">New field visit lead</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-ink/5 flex items-center justify-center hover:bg-ink/10">
+            <X size={16} className="text-ink/60" />
+          </button>
+        </div>
+
+        <div className="p-5 sm:p-6 space-y-4">
+          <p className="text-xs text-ink/50 leading-relaxed">
+            Snap a photo on-site and this creates a brand-new seller lead with that photo, your GPS
+            location, and the address, all timestamped now. Fill in the rest of the details later
+            from the lead's edit panel.
+          </p>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Name (optional)</label>
+              <input className="field-input !py-2 text-sm" placeholder="Customer name" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Phone (optional)</label>
+              <input className="field-input !py-2 text-sm" placeholder="Phone number" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <label className="btn-ghost !py-2.5 !px-4 text-sm cursor-pointer flex items-center gap-1.5 shrink-0">
+              <Camera size={14} strokeWidth={2.25} />
+              {photo ? "Retake photo" : "Take photo"}
+              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoChange} />
+            </label>
+            {photoPreview && <img src={photoPreview} alt="Preview" className="w-12 h-12 rounded-lg object-cover" />}
+          </div>
+
+          {error && <p className="text-xs text-buyer">{error}</p>}
+
+          <button onClick={handleCreate} disabled={!photo || status !== "idle"} className="btn-primary w-full !py-3">
+            {statusLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---------- Advanced filter panel ----------
 
 function AdvancedFilters({ areas, selectedAreas, onToggleArea, budgetMin, budgetMax, setBudgetMin, setBudgetMax, sqftMin, sqftMax, setSqftMin, setSqftMax, facets, selectedFacets, onToggleFacetValue, onClear }) {
@@ -667,6 +788,7 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
   const [query, setQuery] = useState("");
   const [activeStatus, setActiveStatus] = useState("All");
   const [openLeadId, setOpenLeadId] = useState(null);
+  const [showNewVisit, setShowNewVisit] = useState(false);
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selectedAreas, setSelectedAreas] = useState([]);
@@ -827,6 +949,22 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
     });
   }
 
+  async function handleCreateFieldVisit({ name, phone, photoUrl, lat, lng, address }) {
+    const { id } = await addSellerLead({
+      name,
+      phone,
+      propertyType: "",
+      propertyLocation: address || "",
+      propertyStatus: "",
+      expectedPrice: "",
+      ownership: "",
+      timeline: "",
+    });
+    await adminAddVisit(password, sheet, id, { photoUrl, lat, lng, address }, adminName);
+    setShowNewVisit(false);
+    load();
+  }
+
   if (error) return <p className="text-buyer text-sm">{error}</p>;
 
   return (
@@ -841,11 +979,17 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
             <h2 className="font-display font-semibold text-xl text-ink">{label} CRM</h2>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <div className="text-right">
             <p className="text-2xl font-display font-bold text-ink leading-none">{counts.All}</p>
             <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mt-0.5">Total leads</p>
           </div>
+          {sheet === "Sellers" && (
+            <button onClick={() => setShowNewVisit(true)} className="btn-whatsapp !py-2.5 !px-4 text-xs whitespace-nowrap flex items-center gap-1.5">
+              <Camera size={13} strokeWidth={2.25} />
+              New field visit
+            </button>
+          )}
           <button onClick={handleDownload} disabled={!leads || filtered.length === 0} className="btn-primary !py-2.5 !px-4 text-xs whitespace-nowrap">
             Download report
           </button>
@@ -919,6 +1063,14 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
           onSaveDetails={onChanged.updateMeta}
           onAddRemark={onChanged.addRemark}
           onAddVisit={onChanged.addVisit}
+        />
+      )}
+
+      {showNewVisit && (
+        <NewFieldVisitModal
+          accent={accent}
+          onClose={() => setShowNewVisit(false)}
+          onCreate={handleCreateFieldVisit}
         />
       )}
     </div>

@@ -134,13 +134,17 @@ that's the link customers, mediators, and sellers use.
   call/WhatsApp, and a **Download report** button that exports the currently
   filtered leads as a polished PDF with each lead's full remarks history —
   plus a separate "Published listings" tab if you want to curate properties
-- **Site visits (Seller CRM only)** — at the top of a seller lead's detail
-  panel, tap "Take photo" (opens the phone's camera), then "Log this visit"
-  — it captures GPS location, reverse-geocodes it into a readable address
-  (via OpenStreetMap, free/no API key needed), uploads the photo to
-  Cloudinary, and saves it all with a date/time stamp. Every past visit
-  stays listed (photo thumbnail, address, date/time, who logged it) —
-  nothing gets overwritten.
+- **New field visit lead (Seller CRM only)** — a **"New field visit"** button
+  sits right in the Seller CRM header. Tap it, take a photo on-site, and it
+  creates a **brand-new seller lead** immediately — capturing GPS location,
+  reverse-geocoding the address, and uploading the photo — all before you've
+  even spoken details with the customer. That new lead's card shows the
+  photo as a banner at the top with "Field visit" and the date/time, so it's
+  instantly recognizable in the list. Fill in the rest of the details (name,
+  property type, etc.) later from its "View & edit full details" panel.
+  You can also log additional visits to any existing seller lead from
+  inside its detail panel's "Site visits" section — every visit stays in
+  the history, nothing gets overwritten.
 - Errors from any admin action (saving details, adding a remark, logging a
   visit) now show directly in the panel instead of failing silently — if
   something's wrong (e.g. the Apps Script deployment needs redeploying, or
