@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Clock, User, X, SlidersHorizontal, Pencil } from "lucide-react";
-import { adminUpdateLead, adminAddRemark } from "../../lib/api";
+import { Clock, User, X, SlidersHorizontal, Pencil, Camera, MapPin } from "lucide-react";
+import { adminUpdateLead, adminAddRemark, adminAddVisit } from "../../lib/api";
 import { whatsappLink, callLink } from "../../lib/whatsapp";
 import { downloadReport } from "../../lib/report";
+import { uploadImage } from "../../lib/cloudinary";
 
 const STATUSES = ["New", "Contacted", "In progress", "Closed", "Dropped"];
 
@@ -61,6 +62,41 @@ function parseCustomFields(lead) {
   } catch {
     return {};
   }
+}
+
+function parseVisitLog(lead) {
+  if (!lead.visitLog) return [];
+  try {
+    const parsed = JSON.parse(lead.visitLog);
+    if (!Array.isArray(parsed)) return [];
+    return [...parsed].sort((a, b) => new Date(b.at) - new Date(a.at));
+  } catch {
+    return [];
+  }
+}
+
+function getCurrentLocation() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Location isn't available on this device/browser."));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => reject(new Error("Couldn't get your location — check location permission for this site.")),
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  });
+}
+
+// Free reverse-geocoding via OpenStreetMap Nominatim. Non-commercial, low-
+// volume use only — if this app grows, swap in a paid geocoding provider.
+async function reverseGeocode(lat, lng) {
+  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
+  const res = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!res.ok) throw new Error("Reverse geocoding failed");
+  const data = await res.json();
+  return data.display_name || "";
 }
 
 function isOverdue(followUpDate, status) {
@@ -172,7 +208,7 @@ function LeadCard({ lead, accent, onOpen }) {
 
 // ---------- Full detail / edit modal ----------
 
-function LeadDetailModal({ lead, fields, accent, onClose, onSaveDetails, onAddRemark }) {
+function LeadDetailModal({ lead, fields, accent, sheet, onClose, onSaveDetails, onAddRemark, onAddVisit }) {
   const [form, setForm] = useState(() => ({
     name: lead.name || "",
     phone: lead.phone || "",
@@ -186,13 +222,23 @@ function LeadDetailModal({ lead, fields, accent, onClose, onSaveDetails, onAddRe
   }));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [newRemark, setNewRemark] = useState("");
   const [savingRemark, setSavingRemark] = useState(false);
+  const [remarkError, setRemarkError] = useState("");
   const [customFields, setCustomFields] = useState(() => parseCustomFields(lead));
   const [newFieldName, setNewFieldName] = useState("");
   const [newFieldValue, setNewFieldValue] = useState("");
 
+  // Site visit capture (camera + GPS + reverse-geocoded address) — sellers only
+  const [visitPhoto, setVisitPhoto] = useState(null);
+  const [visitPhotoPreview, setVisitPhotoPreview] = useState("");
+  const [visitStatus, setVisitStatus] = useState("idle"); // idle | locating | uploading | saving
+  const [visitError, setVisitError] = useState("");
+
   const remarksLog = useMemo(() => parseRemarksLog(lead), [lead]);
+  const visitLog = useMemo(() => parseVisitLog(lead), [lead]);
+  const supportsVisits = sheet === "Sellers";
 
   function set(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -224,10 +270,13 @@ function LeadDetailModal({ lead, fields, accent, onClose, onSaveDetails, onAddRe
 
   async function handleSave() {
     setSaving(true);
+    setSaveError("");
     try {
       await onSaveDetails(lead.id, { ...form, customFields: JSON.stringify(customFields) });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setSaveError(err.message || "Couldn't save changes.");
     } finally {
       setSaving(false);
     }
@@ -236,11 +285,54 @@ function LeadDetailModal({ lead, fields, accent, onClose, onSaveDetails, onAddRe
   async function handleAddRemark() {
     if (!newRemark.trim()) return;
     setSavingRemark(true);
+    setRemarkError("");
     try {
       await onAddRemark(lead.id, newRemark.trim());
       setNewRemark("");
+    } catch (err) {
+      setRemarkError(err.message || "Couldn't save that remark.");
     } finally {
       setSavingRemark(false);
+    }
+  }
+
+  function handleVisitPhotoChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setVisitPhoto(file);
+    setVisitPhotoPreview(URL.createObjectURL(file));
+    setVisitError("");
+  }
+
+  async function handleLogVisit() {
+    if (!visitPhoto) {
+      setVisitError("Take a photo first.");
+      return;
+    }
+    setVisitError("");
+    try {
+      setVisitStatus("locating");
+      const { lat, lng } = await getCurrentLocation();
+
+      let address = "";
+      try {
+        address = await reverseGeocode(lat, lng);
+      } catch {
+        address = ""; // non-fatal — visit still saves with just coordinates
+      }
+
+      setVisitStatus("uploading");
+      const photoUrl = await uploadImage(visitPhoto);
+
+      setVisitStatus("saving");
+      await onAddVisit(lead.id, { photoUrl, lat, lng, address });
+
+      setVisitPhoto(null);
+      setVisitPhotoPreview("");
+      setVisitStatus("idle");
+    } catch (err) {
+      setVisitError(err.message || "Couldn't log this visit.");
+      setVisitStatus("idle");
     }
   }
 
@@ -269,6 +361,72 @@ function LeadDetailModal({ lead, fields, accent, onClose, onSaveDetails, onAddRe
         </div>
 
         <div className="p-5 sm:p-6 space-y-6 max-h-[65vh] overflow-y-auto">
+          {/* Site visits — camera + GPS + address, shown at the top per request. Sellers only. */}
+          {supportsVisits && (
+            <div className="rounded-2xl bg-ink/[0.03] p-4 -mt-1">
+              <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">
+                Site visits {visitLog.length > 0 && `(${visitLog.length})`}
+              </p>
+
+              {visitLog.length === 0 ? (
+                <p className="text-xs text-ink/40 italic mb-3">No visits logged yet.</p>
+              ) : (
+                <div className="space-y-2 mb-3 max-h-56 overflow-y-auto pr-1">
+                  {visitLog.map((v, i) => (
+                    <div key={i} className="flex gap-3 bg-white/70 rounded-xl p-2.5">
+                      {v.photoUrl ? (
+                        <img src={v.photoUrl} alt="Site visit" className="w-16 h-16 rounded-lg object-cover shrink-0" />
+                      ) : (
+                        <div className="w-16 h-16 rounded-lg bg-ink/10 flex items-center justify-center shrink-0">
+                          <Camera size={18} className="text-ink/30" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 text-[11px] text-ink/45 mb-0.5">
+                          <Clock size={11} strokeWidth={2.25} />
+                          {formatRemarkDateTime(v.at)}
+                          {v.by && <span className="font-semibold" style={{ color: accent }}>· {v.by}</span>}
+                        </div>
+                        {v.address ? (
+                          <p className="text-xs text-ink/70 leading-snug flex items-start gap-1">
+                            <MapPin size={12} className="shrink-0 mt-0.5" />
+                            <span>{v.address}</span>
+                          </p>
+                        ) : (
+                          <p className="text-xs text-ink/50">
+                            {v.lat}, {v.lng}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                <label className="btn-ghost !py-2 !px-3 text-xs cursor-pointer flex items-center gap-1.5 shrink-0">
+                  <Camera size={13} strokeWidth={2.25} />
+                  {visitPhoto ? "Retake" : "Take photo"}
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleVisitPhotoChange} />
+                </label>
+                {visitPhotoPreview && (
+                  <img src={visitPhotoPreview} alt="Preview" className="w-9 h-9 rounded-lg object-cover shrink-0" />
+                )}
+                <button
+                  onClick={handleLogVisit}
+                  disabled={!visitPhoto || visitStatus !== "idle"}
+                  className="btn-primary !py-2 !px-3 text-xs flex-1 whitespace-nowrap"
+                >
+                  {visitStatus === "locating" && "Getting location…"}
+                  {visitStatus === "uploading" && "Uploading photo…"}
+                  {visitStatus === "saving" && "Saving…"}
+                  {visitStatus === "idle" && "Log this visit"}
+                </button>
+              </div>
+              {visitError && <p className="text-xs text-buyer mt-2">{visitError}</p>}
+            </div>
+          )}
+
           {/* Pipeline controls */}
           <div>
             <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">Pipeline</p>
@@ -407,15 +565,19 @@ function LeadDetailModal({ lead, fields, accent, onClose, onSaveDetails, onAddRe
                 {savingRemark ? "…" : "Save"}
               </button>
             </div>
+            {remarkError && <p className="text-xs text-buyer mt-1.5">{remarkError}</p>}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-5 sm:p-6 border-t border-ink/5 flex items-center gap-3">
+        <div className="p-5 sm:p-6 border-t border-ink/5">
+          {saveError && <p className="text-xs text-buyer mb-2">{saveError}</p>}
+          <div className="flex items-center gap-3">
           <button onClick={handleSave} disabled={saving} className="btn-primary flex-1 !py-3">
             {saving ? "Saving…" : saved ? "Saved ✓" : "Save changes"}
           </button>
           <button onClick={onClose} className="btn-ghost !py-3 !px-5">Close</button>
+          </div>
         </div>
       </div>
     </div>
@@ -538,6 +700,10 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
     },
     addRemark: async (id, text) => {
       await adminAddRemark(password, sheet, id, text, adminName);
+      load();
+    },
+    addVisit: async (id, visit) => {
+      await adminAddVisit(password, sheet, id, visit, adminName);
       load();
     },
   };
@@ -748,9 +914,11 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
           lead={openLead}
           fields={fields}
           accent={accent}
+          sheet={sheet}
           onClose={() => setOpenLeadId(null)}
           onSaveDetails={onChanged.updateMeta}
           onAddRemark={onChanged.addRemark}
+          onAddVisit={onChanged.addVisit}
         />
       )}
     </div>

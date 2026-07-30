@@ -20,7 +20,16 @@ async function callApi(action, payload = {}) {
     throw new Error(`Server error (${res.status})`);
   }
 
-  const json = await res.json();
+  const text = await res.text();
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error(
+      "The server didn't return valid data — this usually means the Apps Script deployment's " +
+        '"Who has access" setting isn\'t set to "Anyone", or it needs redeploying as a new version.'
+    );
+  }
   if (!json.ok) {
     throw new Error(json.error || "Something went wrong");
   }
@@ -52,6 +61,9 @@ export const adminUpdateLead = (password, sheet, id, patch) =>
 
 export const adminAddRemark = (password, sheet, id, text, by) =>
   callApi("addRemark", { password, sheet, id, text, by });
+
+export const adminAddVisit = (password, sheet, id, visit, by) =>
+  callApi("addVisit", { password, sheet, id, ...visit, by });
 
 export const adminAddProperty = (password, payload) =>
   callApi("addProperty", { password, ...payload });

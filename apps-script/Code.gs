@@ -17,7 +17,7 @@
 
 const SHEETS = {
   Mediators: ["id", "timestamp", "name", "phone", "profession", "workingArea", "propertyCategory", "experience", "dealType", "genuineLeads", "status", "priority", "followUpDate", "area", "customFields", "remarksLog"],
-  Sellers: ["id", "timestamp", "name", "phone", "propertyType", "propertyLocation", "propertyStatus", "expectedPrice", "ownership", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "remarksLog"],
+  Sellers: ["id", "timestamp", "name", "phone", "propertyType", "propertyLocation", "propertyStatus", "expectedPrice", "ownership", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "visitLog", "remarksLog"],
   Buyers: ["id", "timestamp", "name", "phone", "propertyType", "purpose", "budget", "preferredLocation", "loanRequirement", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "remarksLog"],
   Properties: ["id", "timestamp", "title", "type", "location", "price", "description", "imageUrl", "contactPhone"],
 };
@@ -48,7 +48,7 @@ function doPost(e) {
         result = addRow("Sellers", {
           name: p.name, phone: p.phone, propertyType: p.propertyType, propertyLocation: p.propertyLocation,
           propertyStatus: p.propertyStatus, expectedPrice: p.expectedPrice, ownership: p.ownership,
-          timeline: p.timeline, status: "New", priority: 3, followUpDate: "", customFields: "{}", remarksLog: "[]",
+          timeline: p.timeline, status: "New", priority: 3, followUpDate: "", customFields: "{}", visitLog: "[]", remarksLog: "[]",
         });
         break;
 
@@ -99,6 +99,16 @@ function doPost(e) {
       case "addRemark":
         checkPassword(p.password);
         result = appendRemark(p.sheet, p.id, p.text, p.by);
+        break;
+
+      // Appends a dated site-visit entry (photo URL, GPS coords, reverse-
+      // geocoded address) to a seller lead's visitLog. Additive only —
+      // never overwrites previous visits.
+      case "addVisit":
+        checkPassword(p.password);
+        result = appendVisit(p.sheet, p.id, {
+          photoUrl: p.photoUrl, lat: p.lat, lng: p.lng, address: p.address, by: p.by,
+        });
         break;
 
       case "addProperty":
@@ -240,6 +250,36 @@ function updateRow(sheetName, id, patch) {
 // Reads the existing remarksLog JSON array for a lead, pushes a new
 // { text, at } entry onto it (never removing previous entries), and saves
 // it back as a JSON string in the same cell.
+function appendVisit(sheetName, id, visit) {
+  var sheet = getSheet(sheetName);
+  var headers = getHeaders(sheet);
+  var rowIndex = findRowIndexById(sheet, id);
+  if (rowIndex === -1) throw new Error("Record not found: " + id);
+  var colIndex = headers.indexOf("visitLog");
+  if (colIndex === -1) throw new Error("visitLog column missing — redeploy Code.gs and try again.");
+  var cell = sheet.getRange(rowIndex, colIndex + 1);
+  var existing = cell.getValue();
+  var log = [];
+  if (existing) {
+    try {
+      log = JSON.parse(existing);
+      if (!Array.isArray(log)) log = [];
+    } catch (e) {
+      log = [];
+    }
+  }
+  log.push({
+    photoUrl: visit.photoUrl || "",
+    lat: visit.lat || "",
+    lng: visit.lng || "",
+    address: visit.address || "",
+    at: new Date().toISOString(),
+    by: visit.by ? String(visit.by).trim() : "",
+  });
+  cell.setValue(JSON.stringify(log));
+  return { id: id, visitLog: log };
+}
+
 function appendRemark(sheetName, id, text, by) {
   if (!text || !String(text).trim()) throw new Error("Remark text is required.");
   var sheet = getSheet(sheetName);

@@ -134,6 +134,17 @@ that's the link customers, mediators, and sellers use.
   call/WhatsApp, and a **Download report** button that exports the currently
   filtered leads as a polished PDF with each lead's full remarks history —
   plus a separate "Published listings" tab if you want to curate properties
+- **Site visits (Seller CRM only)** — at the top of a seller lead's detail
+  panel, tap "Take photo" (opens the phone's camera), then "Log this visit"
+  — it captures GPS location, reverse-geocodes it into a readable address
+  (via OpenStreetMap, free/no API key needed), uploads the photo to
+  Cloudinary, and saves it all with a date/time stamp. Every past visit
+  stays listed (photo thumbnail, address, date/time, who logged it) —
+  nothing gets overwritten.
+- Errors from any admin action (saving details, adding a remark, logging a
+  visit) now show directly in the panel instead of failing silently — if
+  something's wrong (e.g. the Apps Script deployment needs redeploying, or
+  its "Who has access" isn't set to "Anyone"), you'll see a clear message.
 
 Since every submission is saved instantly to your Google Sheet, you always
 have the full record even before you check WhatsApp — this is what answers
