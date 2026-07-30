@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Clock, User } from "lucide-react";
+import { Clock, User, X, SlidersHorizontal, Pencil } from "lucide-react";
 import { adminUpdateLead, adminAddRemark } from "../../lib/api";
 import { whatsappLink, callLink } from "../../lib/whatsapp";
 import { downloadReport } from "../../lib/report";
@@ -53,8 +53,8 @@ function parseRemarksLog(lead) {
   return [...log].sort((a, b) => new Date(b.at) - new Date(a.at));
 }
 
-function isOverdue(followUpDate) {
-  if (!followUpDate) return false;
+function isOverdue(followUpDate, status) {
+  if (!followUpDate || status === "Closed" || status === "Dropped") return false;
   const d = new Date(followUpDate);
   if (isNaN(d)) return false;
   const today = new Date();
@@ -62,7 +62,7 @@ function isOverdue(followUpDate) {
   return d < today;
 }
 
-function StarRating({ value, onChange, disabled }) {
+function StarRating({ value, onChange, disabled, size = "text-lg" }) {
   const stars = [1, 2, 3, 4, 5];
   return (
     <div className="flex items-center gap-0.5">
@@ -70,9 +70,9 @@ function StarRating({ value, onChange, disabled }) {
         <button
           key={n}
           type="button"
-          disabled={disabled}
-          onClick={() => onChange(n === value ? 0 : n)}
-          className="text-lg leading-none disabled:opacity-50"
+          disabled={disabled || !onChange}
+          onClick={() => onChange && onChange(n === value ? 0 : n)}
+          className={`${size} leading-none disabled:opacity-100`}
           style={{ color: n <= value ? "#C89B3C" : "#1B2A4A26" }}
           aria-label={`Set priority ${n}`}
         >
@@ -83,56 +83,14 @@ function StarRating({ value, onChange, disabled }) {
   );
 }
 
-function LeadCard({ lead, fields, accent, onChanged, adminName }) {
-  const [open, setOpen] = useState(false);
-  const [status, setStatus] = useState(lead.status || "New");
-  const [priority, setPriority] = useState(Number(lead.priority) || 0);
-  const [followUpDate, setFollowUpDate] = useState(lead.followUpDate || "");
-  const [newRemark, setNewRemark] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [savingRemark, setSavingRemark] = useState(false);
+// ---------- Compact summary card ----------
 
-  const remarksLog = useMemo(() => parseRemarksLog(lead), [lead]);
-  const overdue = isOverdue(followUpDate) && status !== "Closed" && status !== "Dropped";
-
-  async function persistMeta(patch) {
-    setSaving(true);
-    try {
-      await onChanged.updateMeta(lead.id, patch);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function handleStatusChange(e) {
-    const next = e.target.value;
-    setStatus(next);
-    persistMeta({ status: next, priority, followUpDate });
-  }
-
-  function handlePriorityChange(next) {
-    setPriority(next);
-    persistMeta({ status, priority: next, followUpDate });
-  }
-
-  function handleFollowUpChange(e) {
-    const next = e.target.value;
-    setFollowUpDate(next);
-    persistMeta({ status, priority, followUpDate: next });
-  }
-
-  async function handleAddRemark() {
-    if (!newRemark.trim()) return;
-    setSavingRemark(true);
-    try {
-      await onChanged.addRemark(lead.id, newRemark.trim(), adminName);
-      setNewRemark("");
-    } finally {
-      setSavingRemark(false);
-    }
-  }
-
+function LeadCard({ lead, accent, onOpen }) {
+  const status = lead.status || "New";
+  const priority = Number(lead.priority) || 0;
+  const overdue = isOverdue(lead.followUpDate, status);
   const sStyle = STATUS_STYLE[status] || STATUS_STYLE.New;
+  const remarksCount = parseRemarksLog(lead).length;
 
   return (
     <div className="card-ledger p-4 space-y-3 border-l-4" style={{ borderLeftColor: accent }}>
@@ -150,30 +108,22 @@ function LeadCard({ lead, fields, accent, onChanged, adminName }) {
       <p className="text-sm text-ink/70">{lead.phone}</p>
 
       <div className="flex items-center justify-between">
-        <StarRating value={priority} onChange={handlePriorityChange} disabled={saving} />
-        {followUpDate && (
+        <StarRating value={priority} />
+        {lead.followUpDate && (
           <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${overdue ? "bg-buyer/15 text-buyer" : "bg-ink/5 text-ink/50"}`}>
             {overdue ? "Overdue · " : "Follow up "}
-            {new Date(followUpDate).toLocaleDateString(undefined, { day: "2-digit", month: "short" })}
+            {new Date(lead.followUpDate).toLocaleDateString(undefined, { day: "2-digit", month: "short" })}
           </span>
         )}
       </div>
 
-      {open && (
-        <div className="grid grid-cols-2 gap-x-3 gap-y-1 pt-1 border-t border-ink/5">
-          {fields.map(([key, label]) =>
-            lead[key] ? (
-              <p key={key} className="text-xs text-ink/60 pt-1.5">
-                <span className="text-ink/40">{label}:</span> {lead[key]}
-              </p>
-            ) : null
-          )}
+      {(lead.area || lead.budgetValue || lead.sqft) && (
+        <div className="flex flex-wrap gap-1.5">
+          {lead.area && <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-ink/5 text-ink/60">📍 {lead.area}</span>}
+          {lead.budgetValue && <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-ink/5 text-ink/60">₹ {Number(lead.budgetValue).toLocaleString()}</span>}
+          {lead.sqft && <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-ink/5 text-ink/60">{Number(lead.sqft).toLocaleString()} sqft</span>}
         </div>
       )}
-
-      <button onClick={() => setOpen((o) => !o)} className="text-[11px] font-semibold uppercase tracking-wide text-ink/40 hover:text-ink">
-        {open ? "Hide details ▲" : "View details ▼"}
-      </button>
 
       <div className="flex gap-2">
         <a href={whatsappLink(lead.phone, `Hi ${lead.name}, following up on your registration`)} target="_blank" rel="noreferrer" className="btn-whatsapp !py-1.5 !px-3 text-xs flex-1">
@@ -182,79 +132,260 @@ function LeadCard({ lead, fields, accent, onChanged, adminName }) {
         <a href={callLink(lead.phone)} className="btn-ghost !py-1.5 !px-3 text-xs flex-1">Call</a>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Status</label>
-          <select className="field-input !py-2 text-xs" value={status} onChange={handleStatusChange} disabled={saving}>
-            {STATUSES.map((s) => <option key={s}>{s}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Next follow-up</label>
-          <input type="date" className="field-input !py-2 text-xs" value={followUpDate} onChange={handleFollowUpChange} disabled={saving} />
-        </div>
-      </div>
+      <button
+        onClick={onOpen}
+        className="w-full flex items-center justify-center gap-1.5 btn-primary !py-2 text-xs"
+      >
+        <Pencil size={12} strokeWidth={2.25} />
+        View & edit full details
+        {remarksCount > 0 && <span className="opacity-70">· {remarksCount} remark{remarksCount === 1 ? "" : "s"}</span>}
+      </button>
+    </div>
+  );
+}
 
-      <div className="space-y-2.5 pt-2 border-t border-ink/5">
-        <div>
-          <p className="font-semibold text-ink text-sm">Remarks</p>
-          <p className="text-[11px] text-ink/40">
-            {remarksLog.length} {remarksLog.length === 1 ? "entry" : "entries"}
-          </p>
-        </div>
+// ---------- Full detail / edit modal ----------
 
-        {remarksLog.length === 0 ? (
-          <p className="text-xs text-ink/40 italic">No remarks logged yet.</p>
-        ) : (
-          <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
-            {remarksLog.map((r, i) => (
-              <div
-                key={i}
-                className="border-l-[3px] rounded-lg bg-white/70 px-3 py-2"
-                style={{ borderLeftColor: accent }}
-              >
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-ink/45 mb-1">
-                  <span className="inline-flex items-center gap-1">
-                    <Clock size={11} strokeWidth={2.25} />
-                    {formatRemarkDateTime(r.at)}
-                  </span>
-                  {r.by && (
-                    <span className="inline-flex items-center gap-1 font-semibold" style={{ color: accent }}>
-                      <User size={11} strokeWidth={2.25} />
-                      {r.by}
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-ink/80 leading-snug">{r.text}</p>
-              </div>
-            ))}
+function LeadDetailModal({ lead, fields, accent, onClose, onSaveDetails, onAddRemark }) {
+  const [form, setForm] = useState(() => ({
+    name: lead.name || "",
+    phone: lead.phone || "",
+    status: lead.status || "New",
+    priority: Number(lead.priority) || 0,
+    followUpDate: lead.followUpDate || "",
+    area: lead.area || "",
+    budgetValue: lead.budgetValue || "",
+    sqft: lead.sqft || "",
+    ...Object.fromEntries(fields.map(([k]) => [k, lead[k] ?? ""])),
+  }));
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [newRemark, setNewRemark] = useState("");
+  const [savingRemark, setSavingRemark] = useState(false);
+
+  const remarksLog = useMemo(() => parseRemarksLog(lead), [lead]);
+
+  function set(key, value) {
+    setForm((f) => ({ ...f, [key]: value }));
+    setSaved(false);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await onSaveDetails(lead.id, form);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleAddRemark() {
+    if (!newRemark.trim()) return;
+    setSavingRemark(true);
+    try {
+      await onAddRemark(lead.id, newRemark.trim());
+      setNewRemark("");
+    } finally {
+      setSavingRemark(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-start sm:items-center justify-center p-3 sm:p-6 overflow-y-auto" onClick={onClose}>
+      <div
+        className="bg-paper rounded-3xl w-full max-w-2xl shadow-2xl my-6 sm:my-0 border-t-4"
+        style={{ borderTopColor: accent }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="p-5 sm:p-6 flex items-start justify-between gap-3 border-b border-ink/5">
+          <div className="flex-1 grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Name</label>
+              <input className="field-input !py-2 text-sm font-semibold" value={form.name} onChange={(e) => set("name", e.target.value)} />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Phone</label>
+              <input className="field-input !py-2 text-sm" value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+            </div>
           </div>
-        )}
+          <button onClick={onClose} className="shrink-0 w-8 h-8 rounded-full bg-ink/5 flex items-center justify-center hover:bg-ink/10">
+            <X size={16} className="text-ink/60" />
+          </button>
+        </div>
 
-        <input
-          className="field-input !py-2.5 text-sm"
-          placeholder="Add a remark…"
-          value={newRemark}
-          onChange={(e) => setNewRemark(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleAddRemark()}
-        />
-        <button
-          onClick={handleAddRemark}
-          disabled={savingRemark || !newRemark.trim()}
-          className="btn-whatsapp w-full !py-2.5 text-sm"
-        >
-          {savingRemark ? "Saving…" : "Save Remark"}
-        </button>
+        <div className="p-5 sm:p-6 space-y-6 max-h-[65vh] overflow-y-auto">
+          {/* Pipeline controls */}
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">Pipeline</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Status</label>
+                <select className="field-input !py-2 text-sm" value={form.status} onChange={(e) => set("status", e.target.value)}>
+                  {STATUSES.map((s) => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Next follow-up</label>
+                <input type="date" className="field-input !py-2 text-sm" value={form.followUpDate} onChange={(e) => set("followUpDate", e.target.value)} />
+              </div>
+            </div>
+            <div className="mt-3">
+              <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Priority</label>
+              <StarRating value={form.priority} onChange={(v) => set("priority", v)} size="text-2xl" />
+            </div>
+          </div>
+
+          {/* Submitted details */}
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">Submitted details</p>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {fields.map(([key, label]) => (
+                <div key={key}>
+                  <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">{label}</label>
+                  <input className="field-input !py-2 text-sm" value={form[key]} onChange={(e) => set(key, e.target.value)} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Admin metadata for advanced filtering */}
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">Area &amp; sizing (for advanced filters)</p>
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Area / locality</label>
+                <input className="field-input !py-2 text-sm" placeholder="e.g. Ambattur" value={form.area} onChange={(e) => set("area", e.target.value)} />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Budget (₹)</label>
+                <input type="number" className="field-input !py-2 text-sm" placeholder="e.g. 5000000" value={form.budgetValue} onChange={(e) => set("budgetValue", e.target.value)} />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Size (sqft)</label>
+                <input type="number" className="field-input !py-2 text-sm" placeholder="e.g. 1200" value={form.sqft} onChange={(e) => set("sqft", e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          {/* Remarks history */}
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">
+              Remarks history {remarksLog.length > 0 && `(${remarksLog.length})`}
+            </p>
+            {remarksLog.length === 0 ? (
+              <p className="text-xs text-ink/40 italic mb-2">No remarks logged yet.</p>
+            ) : (
+              <div className="max-h-40 overflow-y-auto space-y-2 pr-1 mb-2">
+                {remarksLog.map((r, i) => (
+                  <div key={i} className="border-l-[3px] rounded-lg bg-white/70 px-3 py-2" style={{ borderLeftColor: accent }}>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-ink/45 mb-1">
+                      <span className="inline-flex items-center gap-1">
+                        <Clock size={11} strokeWidth={2.25} />
+                        {formatRemarkDateTime(r.at)}
+                      </span>
+                      {r.by && (
+                        <span className="inline-flex items-center gap-1 font-semibold" style={{ color: accent }}>
+                          <User size={11} strokeWidth={2.25} />
+                          {r.by}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-ink/80 leading-snug">{r.text}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-1.5">
+              <input
+                className="field-input !py-2 text-sm flex-1"
+                placeholder="Add a remark…"
+                value={newRemark}
+                onChange={(e) => setNewRemark(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddRemark()}
+              />
+              <button onClick={handleAddRemark} disabled={savingRemark || !newRemark.trim()} className="btn-whatsapp !py-2 !px-4 text-sm whitespace-nowrap">
+                {savingRemark ? "…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-5 sm:p-6 border-t border-ink/5 flex items-center gap-3">
+          <button onClick={handleSave} disabled={saving} className="btn-primary flex-1 !py-3">
+            {saving ? "Saving…" : saved ? "Saved ✓" : "Save changes"}
+          </button>
+          <button onClick={onClose} className="btn-ghost !py-3 !px-5">Close</button>
+        </div>
       </div>
     </div>
   );
 }
+
+// ---------- Advanced filter panel ----------
+
+function AdvancedFilters({ areas, selectedAreas, onToggleArea, budgetMin, budgetMax, setBudgetMin, setBudgetMax, sqftMin, sqftMax, setSqftMin, setSqftMax, onClear }) {
+  return (
+    <div className="card-ledger p-4 space-y-4">
+      {areas.length > 0 && (
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold mb-1.5">Area / locality</p>
+          <div className="flex flex-wrap gap-1.5">
+            {areas.map((a) => (
+              <button
+                key={a}
+                onClick={() => onToggleArea(a)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold border ${
+                  selectedAreas.includes(a) ? "bg-ink text-paper border-ink" : "bg-white/60 text-ink/60 border-ink/10"
+                }`}
+              >
+                {a}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold mb-1.5">Budget range (₹)</p>
+          <div className="flex items-center gap-2">
+            <input type="number" placeholder="Min" className="field-input !py-2 text-xs" value={budgetMin} onChange={(e) => setBudgetMin(e.target.value)} />
+            <span className="text-ink/30 text-xs">–</span>
+            <input type="number" placeholder="Max" className="field-input !py-2 text-xs" value={budgetMax} onChange={(e) => setBudgetMax(e.target.value)} />
+          </div>
+        </div>
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold mb-1.5">Size range (sqft)</p>
+          <div className="flex items-center gap-2">
+            <input type="number" placeholder="Min" className="field-input !py-2 text-xs" value={sqftMin} onChange={(e) => setSqftMin(e.target.value)} />
+            <span className="text-ink/30 text-xs">–</span>
+            <input type="number" placeholder="Max" className="field-input !py-2 text-xs" value={sqftMax} onChange={(e) => setSqftMax(e.target.value)} />
+          </div>
+        </div>
+      </div>
+      <button onClick={onClear} className="text-xs font-semibold text-ink/40 hover:text-ink">Clear advanced filters</button>
+    </div>
+  );
+}
+
+// ---------- Main board ----------
 
 export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, password, adminName }) {
   const [leads, setLeads] = useState(null);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [activeStatus, setActiveStatus] = useState("All");
+  const [openLeadId, setOpenLeadId] = useState(null);
+
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [selectedAreas, setSelectedAreas] = useState([]);
+  const [budgetMin, setBudgetMin] = useState("");
+  const [budgetMax, setBudgetMax] = useState("");
+  const [sqftMin, setSqftMin] = useState("");
+  const [sqftMax, setSqftMax] = useState("");
 
   function load() {
     fetcher(password)
@@ -265,6 +396,9 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
   useEffect(() => {
     setLeads(null);
     setError("");
+    setOpenLeadId(null);
+    setSelectedAreas([]);
+    setBudgetMin(""); setBudgetMax(""); setSqftMin(""); setSqftMax("");
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
@@ -275,10 +409,19 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
       load();
     },
     addRemark: async (id, text) => {
-      await adminAddRemark(password, sheet, id, text);
+      await adminAddRemark(password, sheet, id, text, adminName);
       load();
     },
   };
+
+  const areaOptions = useMemo(() => {
+    if (!leads) return [];
+    const set = new Set(leads.map((l) => l.area).filter(Boolean));
+    return [...set].sort();
+  }, [leads]);
+
+  const advancedActiveCount =
+    selectedAreas.length + [budgetMin, budgetMax, sqftMin, sqftMax].filter((v) => v !== "").length;
 
   const filtered = useMemo(() => {
     if (!leads) return [];
@@ -286,9 +429,22 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
     return leads.filter((l) => {
       const matchesQuery = !q || l.name?.toLowerCase().includes(q) || String(l.phone || "").includes(q);
       const matchesStatus = activeStatus === "All" || (l.status || "New") === activeStatus;
-      return matchesQuery && matchesStatus;
+      const matchesArea = selectedAreas.length === 0 || selectedAreas.includes(l.area);
+      const budget = Number(l.budgetValue);
+      const matchesBudget =
+        (!budgetMin && !budgetMax) ||
+        (Number.isFinite(budget) &&
+          (!budgetMin || budget >= Number(budgetMin)) &&
+          (!budgetMax || budget <= Number(budgetMax)));
+      const sqft = Number(l.sqft);
+      const matchesSqft =
+        (!sqftMin && !sqftMax) ||
+        (Number.isFinite(sqft) &&
+          (!sqftMin || sqft >= Number(sqftMin)) &&
+          (!sqftMax || sqft <= Number(sqftMax)));
+      return matchesQuery && matchesStatus && matchesArea && matchesBudget && matchesSqft;
     });
-  }, [leads, query, activeStatus]);
+  }, [leads, query, activeStatus, selectedAreas, budgetMin, budgetMax, sqftMin, sqftMax]);
 
   const counts = useMemo(() => {
     const c = { All: leads?.length || 0 };
@@ -297,6 +453,17 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
     });
     return c;
   }, [leads]);
+
+  const openLead = openLeadId ? leads?.find((l) => l.id === openLeadId) : null;
+
+  function toggleArea(a) {
+    setSelectedAreas((prev) => (prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]));
+  }
+
+  function clearAdvanced() {
+    setSelectedAreas([]);
+    setBudgetMin(""); setBudgetMax(""); setSqftMin(""); setSqftMax("");
+  }
 
   function handleDownload() {
     downloadReport({
@@ -352,7 +519,30 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
         })}
       </div>
 
-      <input className="field-input" placeholder="Search by name or phone…" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <div className="flex gap-2">
+        <input className="field-input flex-1" placeholder="Search by name or phone…" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <button
+          onClick={() => setShowAdvanced((v) => !v)}
+          className={`shrink-0 flex items-center gap-1.5 px-4 rounded-xl text-xs font-semibold border ${
+            showAdvanced || advancedActiveCount > 0 ? "bg-ink text-paper border-ink" : "bg-white/60 text-ink/60 border-ink/10"
+          }`}
+        >
+          <SlidersHorizontal size={13} />
+          Advanced
+          {advancedActiveCount > 0 && <span className="opacity-70">({advancedActiveCount})</span>}
+        </button>
+      </div>
+
+      {showAdvanced && (
+        <AdvancedFilters
+          areas={areaOptions}
+          selectedAreas={selectedAreas}
+          onToggleArea={toggleArea}
+          budgetMin={budgetMin} budgetMax={budgetMax} setBudgetMin={setBudgetMin} setBudgetMax={setBudgetMax}
+          sqftMin={sqftMin} sqftMax={sqftMax} setSqftMin={setSqftMin} setSqftMax={setSqftMax}
+          onClear={clearAdvanced}
+        />
+      )}
 
       {leads === null && <p className="text-ink/50 text-sm">Loading…</p>}
       {leads !== null && filtered.length === 0 && (
@@ -360,9 +550,20 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
       )}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map((lead) => (
-          <LeadCard key={lead.id} lead={lead} fields={fields} accent={accent} onChanged={onChanged} adminName={adminName} />
+          <LeadCard key={lead.id} lead={lead} accent={accent} onOpen={() => setOpenLeadId(lead.id)} />
         ))}
       </div>
+
+      {openLead && (
+        <LeadDetailModal
+          lead={openLead}
+          fields={fields}
+          accent={accent}
+          onClose={() => setOpenLeadId(null)}
+          onSaveDetails={onChanged.updateMeta}
+          onAddRemark={onChanged.addRemark}
+        />
+      )}
     </div>
   );
 }

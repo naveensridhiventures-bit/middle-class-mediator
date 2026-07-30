@@ -16,9 +16,9 @@
  */
 
 const SHEETS = {
-  Mediators: ["id", "timestamp", "name", "phone", "profession", "workingArea", "propertyCategory", "experience", "dealType", "genuineLeads", "status", "priority", "followUpDate", "remarksLog"],
-  Sellers: ["id", "timestamp", "name", "phone", "propertyType", "propertyLocation", "propertyStatus", "expectedPrice", "ownership", "timeline", "status", "priority", "followUpDate", "remarksLog"],
-  Buyers: ["id", "timestamp", "name", "phone", "propertyType", "purpose", "budget", "preferredLocation", "loanRequirement", "timeline", "status", "priority", "followUpDate", "remarksLog"],
+  Mediators: ["id", "timestamp", "name", "phone", "profession", "workingArea", "propertyCategory", "experience", "dealType", "genuineLeads", "status", "priority", "followUpDate", "area", "remarksLog"],
+  Sellers: ["id", "timestamp", "name", "phone", "propertyType", "propertyLocation", "propertyStatus", "expectedPrice", "ownership", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "remarksLog"],
+  Buyers: ["id", "timestamp", "name", "phone", "propertyType", "purpose", "budget", "preferredLocation", "loanRequirement", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "remarksLog"],
   Properties: ["id", "timestamp", "title", "type", "location", "price", "description", "imageUrl", "contactPhone"],
 };
 
@@ -84,15 +84,14 @@ function doPost(e) {
         result = readSheet("Buyers");
         break;
 
-      // Updates status / priority / follow-up date only. Does NOT touch
-      // remarksLog — use "addRemark" for that so history is never overwritten.
+      // Updates any editable field on a lead — original submitted details
+      // (name, phone, property type, etc.), status, priority, follow-up
+      // date, and the admin-set area/budget/size metadata. Never touches
+      // id, timestamp, or remarksLog (use "addRemark" for remarks so
+      // history is additive and never overwritten).
       case "updateLead":
         checkPassword(p.password);
-        result = updateRow(p.sheet, p.id, {
-          status: p.status,
-          priority: p.priority,
-          followUpDate: p.followUpDate,
-        });
+        result = updateRow(p.sheet, p.id, sanitizePatch(p.patch));
         break;
 
       // Appends a single dated remark to the lead's remarksLog (stored as a
@@ -208,6 +207,20 @@ function findRowIndexById(sheet, id) {
     if (values[i][0] === id) return i + 1; // 1-indexed sheet row
   }
   return -1;
+}
+
+// Strips protected fields out of a patch object before it reaches
+// updateRow, so the generic "updateLead" action can never clobber a
+// record's id, timestamp, or remarks history.
+function sanitizePatch(patch) {
+  var clean = {};
+  var protectedKeys = { id: true, timestamp: true, remarksLog: true };
+  Object.keys(patch || {}).forEach(function (key) {
+    if (!protectedKeys[key] && patch[key] !== undefined) {
+      clean[key] = patch[key];
+    }
+  });
+  return clean;
 }
 
 function updateRow(sheetName, id, patch) {
