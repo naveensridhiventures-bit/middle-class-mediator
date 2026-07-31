@@ -7,8 +7,10 @@
 export const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwmJYl1G8_DIbBIXrO9NXwPszUc1GSIMu2i69oodlDLZ1UNg75uyn13jAmilBLKDNgn/exec";
 
 // 2. Cloudinary — create a free account at cloudinary.com
-export const CLOUDINARY_CLOUD_NAME = "PASTE_YOUR_CLOUDINARY_CLOUD_NAME";
-export const CLOUDINARY_UPLOAD_PRESET = "PASTE_YOUR_UNSIGNED_UPLOAD_PRESET";
+export const CLOUDINARY_CLOUD_NAME = "exy3m7iy  ";
+
+exy3m7iy";
+export const CLOUDINARY_UPLOAD_PRESET = "mcm_unsigned";
 
 // 3. Admin / your WhatsApp number in international format, no + or spaces
 //    e.g. 919876543210 for an Indian number
