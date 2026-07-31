@@ -7,7 +7,7 @@
 export const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwmJYl1G8_DIbBIXrO9NXwPszUc1GSIMu2i69oodlDLZ1UNg75uyn13jAmilBLKDNgn/exec";
 
 // 2. Cloudinary — create a free account at cloudinary.com
-export const CLOUDINARY_CLOUD_NAME = "exy3m7iy  ";
+export const CLOUDINARY_CLOUD_NAME = "exy3m7iy";
 
 
 export const CLOUDINARY_UPLOAD_PRESET = "mcm_unsigned";
