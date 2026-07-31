@@ -224,7 +224,7 @@ function LeadCard({ lead, accent, onOpen }) {
 
 // ---------- Full detail / edit modal ----------
 
-function LeadDetailModal({ lead, fields, accent, onClose, onSaveDetails, onAddRemark }) {
+function LeadDetailModal({ lead, fields, accent, sheet, onClose, onSaveDetails, onAddRemark, onAddPhoto }) {
   const [form, setForm] = useState(() => ({
     name: lead.name || "",
     phone: lead.phone || "",
@@ -245,8 +245,29 @@ function LeadDetailModal({ lead, fields, accent, onClose, onSaveDetails, onAddRe
   const [customFields, setCustomFields] = useState(() => parseCustomFields(lead));
   const [newFieldName, setNewFieldName] = useState("");
   const [newFieldValue, setNewFieldValue] = useState("");
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState("");
 
   const remarksLog = useMemo(() => parseRemarksLog(lead), [lead]);
+  const visitLog = useMemo(() => parseVisitLog(lead), [lead]);
+  const latestPhoto = visitLog.find((v) => v.photoUrl);
+  const supportsPhoto = sheet === "Sellers";
+
+  async function handlePhotoFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoError("");
+    setPhotoUploading(true);
+    try {
+      const photoUrl = await uploadImage(file);
+      await onAddPhoto(lead.id, { photoUrl, lat: "", lng: "", address: "" });
+    } catch (err) {
+      setPhotoError(err.message || "Couldn't upload that photo.");
+    } finally {
+      setPhotoUploading(false);
+      e.target.value = "";
+    }
+  }
 
   function set(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -329,6 +350,43 @@ function LeadDetailModal({ lead, fields, accent, onClose, onSaveDetails, onAddRe
         </div>
 
         <div className="p-5 sm:p-6 space-y-6 max-h-[65vh] overflow-y-auto">
+          {/* Lead photo — attractive display, admin can add/change it on any seller lead */}
+          {supportsPhoto && (
+            <div>
+              {latestPhoto?.photoUrl ? (
+                <div className="group relative rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+                  <img src={latestPhoto.photoUrl} alt="Lead" className="w-full aspect-video object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-transparent to-transparent" />
+                  <div className="absolute bottom-3 left-4 right-4 text-white">
+                    <p className="text-xs font-semibold flex items-center gap-1">
+                      <Clock size={11} strokeWidth={2.25} />
+                      {formatRemarkDateTime(latestPhoto.at)}
+                    </p>
+                    {latestPhoto.address && (
+                      <p className="text-[11px] text-white/80 flex items-center gap-1 mt-0.5 truncate">
+                        <MapPin size={10} className="shrink-0" />
+                        {latestPhoto.address}
+                      </p>
+                    )}
+                  </div>
+                  <label className="absolute top-3 right-3 btn-ghost !bg-white/90 !py-1.5 !px-3 text-xs cursor-pointer opacity-0 group-hover:opacity-100 transition">
+                    {photoUploading ? "Uploading…" : "Change photo"}
+                    <input type="file" accept="image/*" className="hidden" onChange={handlePhotoFile} disabled={photoUploading} />
+                  </label>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center gap-2 rounded-3xl border-2 border-dashed border-ink/15 py-8 cursor-pointer hover:border-ink/30 hover:bg-ink/[0.02] transition">
+                  <Camera size={22} className="text-ink/30" strokeWidth={1.5} />
+                  <span className="text-xs font-semibold text-ink/50">
+                    {photoUploading ? "Uploading…" : "Add a photo for this lead"}
+                  </span>
+                  <input type="file" accept="image/*" className="hidden" onChange={handlePhotoFile} disabled={photoUploading} />
+                </label>
+              )}
+              {photoError && <p className="text-xs text-buyer mt-2">{photoError}</p>}
+            </div>
+          )}
+
           {/* Pipeline controls */}
           <div>
             <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">Pipeline</p>
@@ -983,9 +1041,11 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
           lead={openLead}
           fields={fields}
           accent={accent}
+          sheet={sheet}
           onClose={() => setOpenLeadId(null)}
           onSaveDetails={onChanged.updateMeta}
           onAddRemark={onChanged.addRemark}
+          onAddPhoto={onChanged.addVisit}
         />
       )}
 
