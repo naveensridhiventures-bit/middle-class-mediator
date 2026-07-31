@@ -224,7 +224,7 @@ function LeadCard({ lead, accent, onOpen }) {
 
 // ---------- Full detail / edit modal ----------
 
-function LeadDetailModal({ lead, fields, accent, sheet, onClose, onSaveDetails, onAddRemark, onAddVisit }) {
+function LeadDetailModal({ lead, fields, accent, onClose, onSaveDetails, onAddRemark }) {
   const [form, setForm] = useState(() => ({
     name: lead.name || "",
     phone: lead.phone || "",
@@ -246,18 +246,7 @@ function LeadDetailModal({ lead, fields, accent, sheet, onClose, onSaveDetails, 
   const [newFieldName, setNewFieldName] = useState("");
   const [newFieldValue, setNewFieldValue] = useState("");
 
-  // Site visit capture (camera + GPS + reverse-geocoded address) — sellers only
-  const [visitPhoto, setVisitPhoto] = useState(null);
-  const [visitPhotoPreview, setVisitPhotoPreview] = useState("");
-  const [visitCoords, setVisitCoords] = useState(null); // { lat, lng }
-  const [visitAddress, setVisitAddress] = useState("");
-  const [visitLocating, setVisitLocating] = useState(false);
-  const [visitSaving, setVisitSaving] = useState(false);
-  const [visitError, setVisitError] = useState("");
-
   const remarksLog = useMemo(() => parseRemarksLog(lead), [lead]);
-  const visitLog = useMemo(() => parseVisitLog(lead), [lead]);
-  const supportsVisits = sheet === "Sellers";
 
   function set(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -315,64 +304,6 @@ function LeadDetailModal({ lead, fields, accent, sheet, onClose, onSaveDetails, 
     }
   }
 
-  function handleVisitPhotoChange(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setVisitPhoto(file);
-    setVisitPhotoPreview(URL.createObjectURL(file));
-    setVisitError("");
-  }
-
-  async function handleCaptureVisitLocation() {
-    setVisitLocating(true);
-    setVisitError("");
-    try {
-      const loc = await getCurrentLocation();
-      setVisitCoords(loc);
-      try {
-        const auto = await reverseGeocode(loc.lat, loc.lng);
-        if (auto) setVisitAddress(auto);
-      } catch {
-        // reverse geocoding failed — coords are still captured, admin can type the address manually
-      }
-    } catch (err) {
-      setVisitError(err.message || "Couldn't get your location.");
-    } finally {
-      setVisitLocating(false);
-    }
-  }
-
-  async function handleLogVisit() {
-    if (!visitPhoto) {
-      setVisitError("Take a photo first.");
-      return;
-    }
-    if (!visitAddress.trim() && !visitCoords) {
-      setVisitError("Capture your live location or type the address manually.");
-      return;
-    }
-    setVisitError("");
-    setVisitSaving(true);
-    try {
-      const photoUrl = await uploadImage(visitPhoto);
-      await onAddVisit(lead.id, {
-        photoUrl,
-        lat: visitCoords?.lat || "",
-        lng: visitCoords?.lng || "",
-        address: visitAddress.trim(),
-      });
-
-      setVisitPhoto(null);
-      setVisitPhotoPreview("");
-      setVisitCoords(null);
-      setVisitAddress("");
-    } catch (err) {
-      setVisitError(err.message || "Couldn't log this visit.");
-    } finally {
-      setVisitSaving(false);
-    }
-  }
-
   return (
     <div className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-start sm:items-center justify-center p-3 sm:p-6 overflow-y-auto" onClick={onClose}>
       <div
@@ -398,88 +329,6 @@ function LeadDetailModal({ lead, fields, accent, sheet, onClose, onSaveDetails, 
         </div>
 
         <div className="p-5 sm:p-6 space-y-6 max-h-[65vh] overflow-y-auto">
-          {/* Site visits — camera + GPS + address, shown at the top per request. Sellers only. */}
-          {supportsVisits && (
-            <div className="rounded-2xl bg-ink/[0.03] p-4 -mt-1">
-              <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">
-                Site visits {visitLog.length > 0 && `(${visitLog.length})`}
-              </p>
-
-              {visitLog.length === 0 ? (
-                <p className="text-xs text-ink/40 italic mb-3">No visits logged yet.</p>
-              ) : (
-                <div className="space-y-2 mb-3 max-h-56 overflow-y-auto pr-1">
-                  {visitLog.map((v, i) => (
-                    <div key={i} className="flex gap-3 bg-white/70 rounded-xl p-2.5">
-                      {v.photoUrl ? (
-                        <img src={v.photoUrl} alt="Site visit" className="w-16 h-16 rounded-lg object-cover shrink-0" />
-                      ) : (
-                        <div className="w-16 h-16 rounded-lg bg-ink/10 flex items-center justify-center shrink-0">
-                          <Camera size={18} className="text-ink/30" />
-                        </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 text-[11px] text-ink/45 mb-0.5">
-                          <Clock size={11} strokeWidth={2.25} />
-                          {formatRemarkDateTime(v.at)}
-                          {v.by && <span className="font-semibold" style={{ color: accent }}>· {v.by}</span>}
-                        </div>
-                        {v.address ? (
-                          <p className="text-xs text-ink/70 leading-snug flex items-start gap-1">
-                            <MapPin size={12} className="shrink-0 mt-0.5" />
-                            <span>{v.address}</span>
-                          </p>
-                        ) : (
-                          <p className="text-xs text-ink/50">
-                            {v.lat}, {v.lng}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex items-center gap-2 mb-2">
-                <label className="btn-ghost !py-2 !px-3 text-xs cursor-pointer flex items-center gap-1.5 shrink-0">
-                  <Camera size={13} strokeWidth={2.25} />
-                  {visitPhoto ? "Retake" : "Take photo"}
-                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleVisitPhotoChange} />
-                </label>
-                {visitPhotoPreview && (
-                  <img src={visitPhotoPreview} alt="Preview" className="w-9 h-9 rounded-lg object-cover shrink-0" />
-                )}
-                <button
-                  onClick={handleCaptureVisitLocation}
-                  disabled={visitLocating}
-                  className="btn-ghost !py-2 !px-3 text-xs flex-1 flex items-center justify-center gap-1.5 whitespace-nowrap"
-                >
-                  <MapPin size={13} strokeWidth={2.25} />
-                  {visitLocating ? "Locating…" : visitCoords ? "Re-capture" : "Capture live location"}
-                </button>
-              </div>
-              {visitCoords && (
-                <p className="text-[11px] text-ink/40 mb-1.5">
-                  📍 Captured: {visitCoords.lat.toFixed(5)}, {visitCoords.lng.toFixed(5)}
-                </p>
-              )}
-              <input
-                className="field-input !py-2 text-xs mb-2"
-                placeholder="Address (auto-filled after capture, or type manually)"
-                value={visitAddress}
-                onChange={(e) => setVisitAddress(e.target.value)}
-              />
-              <button
-                onClick={handleLogVisit}
-                disabled={!visitPhoto || visitSaving}
-                className="btn-primary w-full !py-2 text-xs"
-              >
-                {visitSaving ? "Saving…" : "Log this visit"}
-              </button>
-              {visitError && <p className="text-xs text-buyer mt-2">{visitError}</p>}
-            </div>
-          )}
-
           {/* Pipeline controls */}
           <div>
             <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">Pipeline</p>
@@ -1134,11 +983,9 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
           lead={openLead}
           fields={fields}
           accent={accent}
-          sheet={sheet}
           onClose={() => setOpenLeadId(null)}
           onSaveDetails={onChanged.updateMeta}
           onAddRemark={onChanged.addRemark}
-          onAddVisit={onChanged.addVisit}
         />
       )}
 
