@@ -8,6 +8,7 @@ import { whatsappLink } from "../lib/whatsapp";
 import { ADMIN_WHATSAPP_NUMBER } from "../lib/config";
 import { optimizedImageUrl } from "../lib/cloudinary";
 import Carousel from "../components/Carousel";
+import SoldOutStamp from "../components/SoldOutStamp";
 import { downloadBrochure } from "../lib/report";
 
 function parseAttributes(p) {
@@ -80,16 +81,7 @@ function PropertyCard({ p, index }) {
             {p.price}
           </span>
         )}
-        {soldOut && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-            <span
-              className="font-display font-extrabold text-white text-xl tracking-[0.2em] px-10 py-2 border-4 border-white shadow-xl"
-              style={{ transform: "rotate(-10deg)", backgroundColor: "rgba(181,83,60,0.92)" }}
-            >
-              SOLD OUT
-            </span>
-          </div>
-        )}
+        {soldOut && <SoldOutStamp size="lg" />}
       </div>
       <div className="p-5 space-y-2">
         {p.type && (

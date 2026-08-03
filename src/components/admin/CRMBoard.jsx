@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Clock, User, X, SlidersHorizontal, Pencil, Camera, MapPin } from "lucide-react";
 import Carousel from "../Carousel";
+import SoldOutStamp from "../SoldOutStamp";
 import { adminUpdateLead, adminAddRemark, adminAddVisit, addSellerLead, adminAddProperty, adminUpdateProperty } from "../../lib/api";
 import { whatsappLink, callLink } from "../../lib/whatsapp";
 import { downloadReport } from "../../lib/report";
@@ -168,16 +169,7 @@ function LeadCard({ lead, accent, onOpen }) {
             </p>
             {latestVisit?.address && <p className="text-[10px] text-white/80 truncate">{latestVisit.address}</p>}
           </div>
-          {soldOut && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-              <span
-                className="font-display font-extrabold text-white text-sm tracking-[0.15em] px-5 py-1.5 border-2 border-white shadow-lg"
-                style={{ transform: "rotate(-10deg)", backgroundColor: "rgba(181,83,60,0.92)" }}
-              >
-                SOLD OUT
-              </span>
-            </div>
-          )}
+          {soldOut && <SoldOutStamp size="sm" />}
         </div>
       )}
       <div className="px-4 space-y-3" style={{ paddingTop: photos.length > 0 ? 0 : 16, paddingBottom: 16 }}>
