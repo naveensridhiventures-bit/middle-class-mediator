@@ -4,7 +4,7 @@
 
 // 1. Google Apps Script Web App URL (acts as your Google Sheets API).
 //    Deploy apps-script/Code.gs as a Web App and paste the /exec URL here.
-export const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwaK5OtgDFF0vPA4ZKx9r3XMde5MnzqI5S4PpCjPplJny-scVuGulQlvVAO9MpQjsfG/exec";
+export const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhpFuVy9L1y_UpPvRUkNEntf59avNMmMVac9i_b0UbpI5dK17XPv-WVcjC3L3clTIs/exec";
 
 // 2. Cloudinary — create a free account at cloudinary.com
 export const CLOUDINARY_CLOUD_NAME = "exy3m7iy";
