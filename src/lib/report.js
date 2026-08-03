@@ -84,6 +84,13 @@ function parsePhotos(lead) {
 // Turns an internal field name like "galleryId" into "Gallery ID" for
 // display — jsPDF's core fonts can only render plain Latin text reliably,
 // so keep this ASCII-only too.
+// jsPDF's core fonts can't render ₹ (or emoji/stars — see other fixes in
+// this file); swap it for plain "Rs." wherever price text might appear.
+function pdfSafe(text) {
+  if (text === null || text === undefined) return text;
+  return String(text).replace(/₹/g, "Rs. ").replace(/\s+/g, " ").trim();
+}
+
 function prettifyKey(key) {
   const spaced = key.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/_/g, " ");
   return spaced
@@ -150,14 +157,14 @@ export async function downloadBrochure(property) {
   doc.setTextColor(255, 255, 255);
   doc.text("MCM", margin + 15, 33, { align: "center" });
   doc.setFontSize(19);
-  doc.text(property.title || "Property", margin + 40, 32, { maxWidth: pageWidth - margin * 2 - 40 });
+  doc.text(pdfSafe(property.title) || "Property", margin + 40, 32, { maxWidth: pageWidth - margin * 2 - 40 });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.text("MIDDLE CLASS MEDIATOR  ·  PROPERTY BROCHURE", margin + 40, 50);
   if (property.price) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(13);
-    doc.text(property.price, margin + 40, 68);
+    doc.text(pdfSafe(property.price), margin + 40, 68);
   }
 
   let y = 104;
@@ -194,12 +201,14 @@ export async function downloadBrochure(property) {
     }
     y += heroH + 10;
 
-    // Thumbnail filmstrip for any additional photos
+    // Thumbnail filmstrip for any additional photos — fixed size per
+    // thumbnail so a single extra photo doesn't stretch into a distorted
+    // full-width strip; left-aligned rather than stretched to fill the row
     if (photoDatas.length > 1) {
       const thumbs = photoDatas.slice(1);
       const gap = 8;
-      const thumbW = (heroW - gap * (thumbs.length - 1)) / thumbs.length;
-      const thumbH = 74;
+      const thumbW = 110;
+      const thumbH = 82;
       thumbs.forEach((d, i) => {
         const x = margin + i * (thumbW + gap);
         try {
@@ -229,10 +238,10 @@ export async function downloadBrochure(property) {
 
   // Key facts, cleanly aligned two-column table
   const facts = [];
-  if (property.type) facts.push(["Property type", property.type]);
-  if (property.location) facts.push(["Area", property.location]);
+  if (property.type) facts.push(["Property type", pdfSafe(property.type)]);
+  if (property.location) facts.push(["Area", pdfSafe(property.location)]);
   if (property.sqft) facts.push(["Size", `${Number(property.sqft).toLocaleString()} sqft`]);
-  if (property.description) facts.push(["Status", property.description]);
+  if (property.description) facts.push(["Status", pdfSafe(property.description)]);
 
   let attributes = {};
   if (property.attributes) {
@@ -244,7 +253,7 @@ export async function downloadBrochure(property) {
     }
   }
   Object.entries(attributes).forEach(([k, v]) => {
-    if (v) facts.push([prettifyKey(k), String(v)]);
+    if (v) facts.push([prettifyKey(k), pdfSafe(v)]);
   });
 
   if (facts.length) {
@@ -419,7 +428,7 @@ export async function downloadReport({ roleLabel, accent, fields, leads, filterL
     doc.setFont("helvetica", "bold");
     doc.setFontSize(13);
     doc.setTextColor(20, 20, 30);
-    doc.text(lead.name || "(no name)", textX, cardTop + 16);
+    doc.text(pdfSafe(lead.name) || "(no name)", textX, cardTop + 16);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
@@ -503,18 +512,18 @@ export async function downloadReport({ roleLabel, accent, fields, leads, filterL
 
     const detailRows = fields
       .filter(([key]) => lead[key])
-      .map(([key, label]) => [label, String(lead[key])]);
-    if (lead.area) detailRows.push(["Area / locality", lead.area]);
+      .map(([key, label]) => [label, pdfSafe(lead[key])]);
+    if (lead.area) detailRows.push(["Area / locality", pdfSafe(lead.area)]);
     const visitAddress = visitLog.find((v) => v.address)?.address;
     const exactAddress = lead.exactAddress || visitAddress;
     const alreadyShownAsLocation = fields.some(([key]) => key === "propertyLocation") && lead.propertyLocation === exactAddress;
-    if (exactAddress && !alreadyShownAsLocation) detailRows.push(["Exact address", exactAddress]);
-    if (lead.budgetValue) detailRows.push(["Budget (₹)", Number(lead.budgetValue).toLocaleString()]);
+    if (exactAddress && !alreadyShownAsLocation) detailRows.push(["Exact address", pdfSafe(exactAddress)]);
+    if (lead.budgetValue) detailRows.push(["Budget (Rs.)", Number(lead.budgetValue).toLocaleString()]);
     if (lead.sqft) detailRows.push(["Size (sqft)", Number(lead.sqft).toLocaleString()]);
     if (lead.followUpDate) detailRows.push(["Next follow-up", formatDate(lead.followUpDate)]);
     Object.entries(parseCustomFields(lead)).forEach(([key, value]) => {
       if (key === "galleryId") return; // internal linkage, not useful in a lead report
-      if (value) detailRows.push([prettifyKey(key), String(value)]);
+      if (value) detailRows.push([prettifyKey(key), pdfSafe(value)]);
     });
 
     if (detailRows.length) {
@@ -533,7 +542,7 @@ export async function downloadReport({ roleLabel, accent, fields, leads, filterL
 
     const remarksLog = parseRemarksLog(lead);
     const remarkRows = remarksLog.length
-      ? remarksLog.map((rm) => [formatDateTime(rm.at), rm.by || "—", rm.text])
+      ? remarksLog.map((rm) => [formatDateTime(rm.at), pdfSafe(rm.by) || "—", pdfSafe(rm.text)])
       : [["—", "—", "No remarks logged yet."]];
 
     autoTable(doc, {

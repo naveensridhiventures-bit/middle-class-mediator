@@ -24,7 +24,7 @@ const SHEETS = {
   Mediators: ["id", "timestamp", "name", "phone", "profession", "workingArea", "propertyCategory", "experience", "dealType", "genuineLeads", "status", "priority", "followUpDate", "area", "customFields", "remarksLog"],
   Sellers: ["id", "timestamp", "name", "phone", "propertyType", "propertyLocation", "propertyStatus", "expectedPrice", "ownership", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "photos", "exactAddress", "mapLink", "visitLog", "remarksLog"],
   Buyers: ["id", "timestamp", "name", "phone", "propertyType", "purpose", "budget", "preferredLocation", "loanRequirement", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "remarksLog"],
-  Properties: ["id", "timestamp", "title", "type", "location", "price", "sqft", "description", "imageUrl", "images", "attributes", "contactPhone", "refId"],
+  Properties: ["id", "timestamp", "title", "type", "location", "price", "sqft", "description", "imageUrl", "images", "attributes", "contactPhone", "refId", "soldOut"],
 };
 
 // Actions in this set take the script lock and go through column
@@ -132,14 +132,14 @@ function route(action, p) {
         checkPassword(p.password);
         return addRow("Properties", {
           title: p.title, type: p.type, location: p.location, price: p.price, sqft: p.sqft,
-          description: p.description, imageUrl: p.imageUrl, images: p.images, attributes: p.attributes, contactPhone: p.contactPhone, refId: p.refId,
+          description: p.description, imageUrl: p.imageUrl, images: p.images, attributes: p.attributes, contactPhone: p.contactPhone, refId: p.refId, soldOut: p.soldOut,
         });
 
       case "updateProperty":
         checkPassword(p.password);
         return updateRow("Properties", p.id, {
           title: p.title, type: p.type, location: p.location, price: p.price, sqft: p.sqft,
-          description: p.description, imageUrl: p.imageUrl, images: p.images, attributes: p.attributes, contactPhone: p.contactPhone, refId: p.refId,
+          description: p.description, imageUrl: p.imageUrl, images: p.images, attributes: p.attributes, contactPhone: p.contactPhone, refId: p.refId, soldOut: p.soldOut,
         });
 
     case "deleteProperty":

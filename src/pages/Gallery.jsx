@@ -50,6 +50,7 @@ function PropertyCard({ p, index }) {
   const attributes = parseAttributes(p);
   const attrEntries = Object.entries(attributes).filter(([, v]) => v);
   const [downloading, setDownloading] = useState(false);
+  const soldOut = p.soldOut === "true" || p.soldOut === true;
 
   async function handleDownload() {
     setDownloading(true);
@@ -62,15 +63,27 @@ function PropertyCard({ p, index }) {
 
   return (
     <div
-      className="group rounded-3xl overflow-hidden bg-white shadow-md hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-500 animate-[fadeInUp_0.6s_ease_both]"
+      className={`group rounded-3xl overflow-hidden bg-white shadow-md hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-500 animate-[fadeInUp_0.6s_ease_both] ${soldOut ? "opacity-90" : ""}`}
       style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
     >
       <div className="aspect-[4/3] relative">
-        <Carousel images={images} alt={p.title} showCounter />
-        {p.price && (
+        <div className={soldOut ? "grayscale opacity-70 w-full h-full" : "w-full h-full"}>
+          <Carousel images={images} alt={p.title} showCounter />
+        </div>
+        {p.price && !soldOut && (
           <span className="absolute top-3 left-3 z-10 bg-white/95 text-ink font-display font-bold text-sm px-3 py-1 rounded-full shadow">
             {p.price}
           </span>
+        )}
+        {soldOut && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+            <span
+              className="font-display font-extrabold text-white text-xl tracking-[0.2em] px-10 py-2 border-4 border-white shadow-xl"
+              style={{ transform: "rotate(-10deg)", backgroundColor: "rgba(181,83,60,0.92)" }}
+            >
+              SOLD OUT
+            </span>
+          </div>
         )}
       </div>
       <div className="p-5 space-y-2">
@@ -93,6 +106,7 @@ function PropertyCard({ p, index }) {
               {Number(p.sqft).toLocaleString()} sqft
             </p>
           )}
+          {soldOut && p.price && <p className="text-xs text-ink/40 line-through">{p.price}</p>}
         </div>
         {p.description && <p className="text-xs text-ink/50">{p.description}</p>}
 
@@ -108,17 +122,23 @@ function PropertyCard({ p, index }) {
         )}
 
         <div className="flex gap-2 pt-1">
-          <a
-            href={whatsappLink(
-              ADMIN_WHATSAPP_NUMBER,
-              `Hi, I'm interested in this property: ${p.title}${p.location ? ` (${p.location})` : ""} — ${p.price || ""}${p.refId ? `\n\nProperty ref: ${p.refId}` : ""}\n\nCan you share more details?`
-            )}
-            target="_blank"
-            rel="noreferrer"
-            className="btn-whatsapp flex-1 !py-2.5 text-sm text-center group-hover:scale-[1.02] transition-transform"
-          >
-            Show interest on WhatsApp
-          </a>
+          {soldOut ? (
+            <span className="flex-1 !py-2.5 text-sm text-center rounded-xl bg-ink/10 text-ink/40 font-semibold flex items-center justify-center">
+              No longer available
+            </span>
+          ) : (
+            <a
+              href={whatsappLink(
+                ADMIN_WHATSAPP_NUMBER,
+                `Hi, I'm interested in this property: ${p.title}${p.location ? ` (${p.location})` : ""} — ${p.price || ""}${p.refId ? `\n\nProperty ref: ${p.refId}` : ""}\n\nCan you share more details?`
+              )}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-whatsapp flex-1 !py-2.5 text-sm text-center group-hover:scale-[1.02] transition-transform"
+            >
+              Show interest on WhatsApp
+            </a>
+          )}
           <button
             onClick={handleDownload}
             disabled={downloading}

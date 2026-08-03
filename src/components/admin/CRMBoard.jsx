@@ -197,7 +197,7 @@ function LeadCard({ lead, accent, onOpen }) {
           {lead.area && <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-ink/5 text-ink/60">📍 {lead.area}</span>}
           {lead.budgetValue && <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-ink/5 text-ink/60">₹ {Number(lead.budgetValue).toLocaleString()}</span>}
           {lead.sqft && <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-ink/5 text-ink/60">{Number(lead.sqft).toLocaleString()} sqft</span>}
-          {Object.entries(customFields).map(([k, v]) => (
+          {Object.entries(customFields).filter(([k]) => k !== "galleryId" && k !== "soldOut").map(([k, v]) => (
             <span key={k} className="text-[10px] font-semibold px-2 py-1 rounded-full bg-ink/5 text-ink/60">{k}: {v}</span>
           ))}
         </div>
@@ -264,6 +264,7 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
   const [photoError, setPhotoError] = useState("");
   const [galleryStatus, setGalleryStatus] = useState("idle"); // idle | sharing | shared
   const [galleryError, setGalleryError] = useState("");
+  const [soldOut, setSoldOut] = useState(() => parseCustomFields(lead).soldOut === "true");
 
   const remarksLog = useMemo(() => parseRemarksLog(lead), [lead]);
   const supportsPhoto = sheet === "Sellers";
@@ -366,16 +367,17 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
         imageUrl: photos[0] || "",
         images: JSON.stringify(photos),
         attributes: JSON.stringify(
-          Object.fromEntries(Object.entries(customFields).filter(([k]) => k !== "galleryId"))
+          Object.fromEntries(Object.entries(customFields).filter(([k]) => k !== "galleryId" && k !== "soldOut"))
         ),
         // Deliberately blank — the buyer gallery never shows the owner's number.
         contactPhone: "",
         // The seller lead's own ID — included in the WhatsApp message when a
         // buyer shows interest, so it's instantly searchable in the Seller CRM.
         refId: lead.id,
+        soldOut: soldOut ? "true" : "false",
       };
       const newId = await onShareGallery(customFields.galleryId, payload);
-      const nextCustomFields = { ...customFields, galleryId: newId };
+      const nextCustomFields = { ...customFields, galleryId: newId, soldOut: soldOut ? "true" : "false" };
       setCustomFields(nextCustomFields);
       await onSaveDetails(lead.id, { ...form, customFields: JSON.stringify(nextCustomFields) });
       setGalleryStatus("shared");
@@ -555,14 +557,14 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
           {/* Custom fields — mediator can add any attribute they need; it becomes a filter facet automatically */}
           <div>
             <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">
-              Custom fields {Object.keys(customFields).length > 0 && `(${Object.keys(customFields).length})`}
+              Custom fields {Object.keys(customFields).filter((k) => k !== "galleryId" && k !== "soldOut").length > 0 && `(${Object.keys(customFields).filter((k) => k !== "galleryId" && k !== "soldOut").length})`}
             </p>
             <p className="text-xs text-ink/40 mb-2">
               Add any attribute you need (e.g. "Facing", "Furnishing", "Amenity") — it'll automatically show up as a filter option across all leads.
             </p>
-            {Object.keys(customFields).length > 0 && (
+            {Object.keys(customFields).filter((k) => k !== "galleryId" && k !== "soldOut").length > 0 && (
               <div className="space-y-2 mb-3">
-                {Object.entries(customFields).map(([key, value]) => (
+                {Object.entries(customFields).filter(([key]) => key !== "galleryId" && key !== "soldOut").map(([key, value]) => (
                   <div key={key} className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-ink/60 w-28 shrink-0 truncate">{key}</span>
                     <input
@@ -607,6 +609,20 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
                 Shares the photo, area, property type and price to the public gallery buyers browse
                 — the owner's phone number and exact address are never included.
               </p>
+              <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={soldOut}
+                  onChange={(e) => setSoldOut(e.target.checked)}
+                  className="w-4 h-4 accent-buyer"
+                />
+                <span className="text-sm font-semibold text-ink/70">Mark as Sold Out</span>
+                {soldOut && (
+                  <span className="text-[10px] font-bold uppercase tracking-wide bg-buyer/15 text-buyer px-2 py-0.5 rounded-full">
+                    Sold Out
+                  </span>
+                )}
+              </label>
               <button
                 onClick={handleShareGallery}
                 disabled={galleryStatus === "sharing"}
