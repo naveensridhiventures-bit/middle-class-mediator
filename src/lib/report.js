@@ -5,6 +5,7 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { whatsappLink } from "./whatsapp";
+import { ADMIN_WHATSAPP_NUMBER } from "./config";
 
 const INK = [27, 42, 74];
 const GOLD = [200, 155, 60];
@@ -138,9 +139,9 @@ export async function downloadBrochure(property) {
 
   // Banner
   doc.setFillColor(...accent);
-  doc.rect(0, 0, pageWidth, 90, "F");
+  doc.rect(0, 0, pageWidth, 84, "F");
   doc.setFillColor(...GOLD);
-  doc.rect(0, 90, pageWidth, 2.5, "F");
+  doc.rect(0, 84, pageWidth, 2.5, "F");
   doc.setDrawColor(255, 255, 255);
   doc.setLineWidth(1.1);
   doc.circle(margin + 15, 30, 15, "S");
@@ -148,15 +149,20 @@ export async function downloadBrochure(property) {
   doc.setFontSize(8.5);
   doc.setTextColor(255, 255, 255);
   doc.text("MCM", margin + 15, 33, { align: "center" });
-  doc.setFontSize(18);
+  doc.setFontSize(19);
   doc.text(property.title || "Property", margin + 40, 32, { maxWidth: pageWidth - margin * 2 - 40 });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.text("MIDDLE CLASS MEDIATOR  ·  PROPERTY BROCHURE", margin + 40, 50);
+  if (property.price) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text(property.price, margin + 40, 68);
+  }
 
-  let y = 112;
+  let y = 104;
 
-  // Photos grid (up to 4, 2x2)
+  // Collect + preload images
   let images = [];
   if (property.images) {
     try {
@@ -174,29 +180,57 @@ export async function downloadBrochure(property) {
     if (d) photoDatas.push(d);
   }
 
+  // Big hero photo, full content width
   if (photoDatas.length > 0) {
-    const cellW = (pageWidth - margin * 2 - 8) / 2;
-    const cellH = 130;
-    photoDatas.forEach((d, i) => {
-      const col = i % 2;
-      const row = Math.floor(i / 2);
-      const x = margin + col * (cellW + 8);
-      const py = y + row * (cellH + 8);
-      try {
-        doc.addImage(d, "JPEG", x, py, cellW, cellH, undefined, "FAST");
-      } catch {
-        // unsupported format — skip, rest of brochure still renders
-      }
-    });
-    const rows = Math.ceil(photoDatas.length / 2);
-    y += rows * (cellH + 8) + 12;
+    const heroW = pageWidth - margin * 2;
+    const heroH = 240;
+    try {
+      doc.setDrawColor(230, 225, 215);
+      doc.setLineWidth(0.5);
+      doc.roundedRect(margin, y, heroW, heroH, 6, 6, "S");
+      doc.addImage(photoDatas[0], "JPEG", margin, y, heroW, heroH, undefined, "FAST");
+    } catch {
+      // unsupported format — skip, rest of brochure still renders
+    }
+    y += heroH + 10;
+
+    // Thumbnail filmstrip for any additional photos
+    if (photoDatas.length > 1) {
+      const thumbs = photoDatas.slice(1);
+      const gap = 8;
+      const thumbW = (heroW - gap * (thumbs.length - 1)) / thumbs.length;
+      const thumbH = 74;
+      thumbs.forEach((d, i) => {
+        const x = margin + i * (thumbW + gap);
+        try {
+          doc.setDrawColor(230, 225, 215);
+          doc.setLineWidth(0.5);
+          doc.roundedRect(x, y, thumbW, thumbH, 4, 4, "S");
+          doc.addImage(d, "JPEG", x, y, thumbW, thumbH, undefined, "FAST");
+        } catch {
+          // skip
+        }
+      });
+      y += thumbH + 18;
+    } else {
+      y += 8;
+    }
   }
 
-  // Key facts
+  // "Property Details" section header
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(...accent);
+  doc.text("Property Details", margin, y);
+  doc.setDrawColor(...accent);
+  doc.setLineWidth(1);
+  doc.line(margin, y + 4, margin + doc.getTextWidth("Property Details"), y + 4);
+  y += 18;
+
+  // Key facts, cleanly aligned two-column table
   const facts = [];
   if (property.type) facts.push(["Property type", property.type]);
   if (property.location) facts.push(["Area", property.location]);
-  if (property.price) facts.push(["Price", property.price]);
   if (property.sqft) facts.push(["Size", `${Number(property.sqft).toLocaleString()} sqft`]);
   if (property.description) facts.push(["Status", property.description]);
 
@@ -210,7 +244,7 @@ export async function downloadBrochure(property) {
     }
   }
   Object.entries(attributes).forEach(([k, v]) => {
-    if (v) facts.push([k, String(v)]);
+    if (v) facts.push([prettifyKey(k), String(v)]);
   });
 
   if (facts.length) {
@@ -218,20 +252,36 @@ export async function downloadBrochure(property) {
       startY: y,
       margin: { left: margin, right: margin },
       theme: "striped",
-      styles: { fontSize: 10, cellPadding: 6, textColor: [30, 30, 40] },
+      styles: { fontSize: 10.5, cellPadding: 7, textColor: [30, 30, 40] },
       alternateRowStyles: { fillColor: [250, 246, 239] },
-      columnStyles: { 0: { fontStyle: "bold", textColor: [80, 80, 90], cellWidth: 150 } },
+      columnStyles: { 0: { fontStyle: "bold", textColor: [80, 80, 90], cellWidth: 160 } },
       body: facts,
     });
-    y = doc.lastAutoTable.finalY + 20;
+    y = doc.lastAutoTable.finalY + 24;
   }
 
-  doc.setFont("helvetica", "italic");
-  doc.setFontSize(9);
-  doc.setTextColor(120, 120, 130);
-  doc.text("Contact Middle Class Mediator on WhatsApp to express interest and get in touch about this property.", margin, y, {
-    maxWidth: pageWidth - margin * 2,
-  });
+  // Space check before the WhatsApp CTA button
+  if (y > pageHeight - 100) {
+    doc.addPage();
+    y = 60;
+  }
+
+  // Prominent clickable "Message us on WhatsApp" button
+  const btnH = 40;
+  const btnW = pageWidth - margin * 2;
+  doc.setFillColor(...accent);
+  doc.roundedRect(margin, y, btnW, btnH, 10, 10, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(255, 255, 255);
+  const btnLabel = "Message us on WhatsApp about this property";
+  doc.text(btnLabel, margin + btnW / 2, y + btnH / 2 + 4, { align: "center" });
+  const waUrl = whatsappLink(
+    ADMIN_WHATSAPP_NUMBER,
+    `Hi, I'm interested in this property: ${property.title || ""}${property.location ? ` (${property.location})` : ""} — ${property.price || ""}${property.refId ? `\n\nProperty ref: ${property.refId}` : ""}\n\nCan you share more details?`
+  );
+  doc.link(margin, y, btnW, btnH, { url: waUrl });
+  y += btnH + 16;
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
