@@ -1,5 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { Handshake, MapPin, Home as HomeIcon, Ruler, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Handshake, MapPin, Home as HomeIcon, Ruler, ChevronLeft, ChevronRight,
+  Search, SlidersHorizontal, ArrowUpDown, X,
+} from "lucide-react";
 import { listPublicProperties } from "../lib/api";
 import { whatsappLink } from "../lib/whatsapp";
 import { ADMIN_WHATSAPP_NUMBER } from "../lib/config";
@@ -16,93 +19,215 @@ function parseImages(p) {
   return p.imageUrl ? [p.imageUrl] : [];
 }
 
+// Pulls the first meaningful number out of a free-text price string like
+// "₹50,00,000" or "₹75 Lakhs–₹1 Crore", for sorting purposes only.
+function priceValue(price) {
+  if (!price) return null;
+  const cleaned = String(price).toLowerCase();
+  const num = parseFloat(cleaned.replace(/[^0-9.]/g, ""));
+  if (isNaN(num)) return null;
+  if (cleaned.includes("crore")) return num * 10000000;
+  if (cleaned.includes("lakh")) return num * 100000;
+  return num;
+}
+
+// ---------- Sliding carousel (real translateX slide, not crossfade) ----------
+
 function Carousel({ images, alt }) {
   const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
   const timerRef = useRef(null);
 
   useEffect(() => {
-    if (images.length <= 1) return undefined;
+    if (images.length <= 1 || paused) return undefined;
     timerRef.current = setInterval(() => {
       setIndex((i) => (i + 1) % images.length);
-    }, 3200);
+    }, 2800);
     return () => clearInterval(timerRef.current);
-  }, [images.length]);
+  }, [images.length, paused]);
 
   function go(delta) {
-    clearInterval(timerRef.current);
     setIndex((i) => (i + delta + images.length) % images.length);
   }
 
   if (images.length === 0) {
     return (
-      <div className="w-full h-full flex items-center justify-center">
-        <HomeIcon size={28} className="text-ink/20" strokeWidth={1.5} />
+      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-ink/5 to-ink/10">
+        <HomeIcon size={30} className="text-ink/20" strokeWidth={1.5} />
       </div>
     );
   }
 
   return (
-    <div className="relative w-full h-full overflow-hidden group">
-      {images.map((src, i) => (
-        <img
-          key={i}
-          src={src}
-          alt={`${alt} ${i + 1}`}
-          className="absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out"
-          style={{
-            opacity: i === index ? 1 : 0,
-            transform: i === index ? "scale(1)" : "scale(1.05)",
-          }}
-        />
-      ))}
+    <div
+      className="relative w-full h-full overflow-hidden group"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      <div
+        className="flex h-full transition-transform duration-700 ease-[cubic-bezier(0.65,0,0.35,1)]"
+        style={{ width: `${images.length * 100}%`, transform: `translateX(-${index * (100 / images.length)}%)` }}
+      >
+        {images.map((src, i) => (
+          <div key={i} className="h-full" style={{ width: `${100 / images.length}%` }}>
+            <img src={src} alt={`${alt} ${i + 1}`} className="w-full h-full object-cover" />
+          </div>
+        ))}
+      </div>
 
       {images.length > 1 && (
         <>
+          <div className="absolute inset-0 bg-gradient-to-t from-ink/25 via-transparent to-transparent pointer-events-none" />
           <button
-            onClick={() => go(-1)}
-            className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-ink/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+            onClick={(e) => { e.stopPropagation(); go(-1); }}
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 text-ink flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-md"
           >
-            <ChevronLeft size={15} />
+            <ChevronLeft size={16} />
           </button>
           <button
-            onClick={() => go(1)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-ink/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+            onClick={(e) => { e.stopPropagation(); go(1); }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 text-ink flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-md"
           >
-            <ChevronRight size={15} />
+            <ChevronRight size={16} />
           </button>
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+          <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1.5">
             {images.map((_, i) => (
-              <span
+              <button
                 key={i}
+                onClick={(e) => { e.stopPropagation(); setIndex(i); }}
                 className="h-1.5 rounded-full transition-all duration-300"
                 style={{
-                  width: i === index ? 16 : 6,
-                  backgroundColor: i === index ? "#fff" : "rgba(255,255,255,0.5)",
+                  width: i === index ? 18 : 6,
+                  backgroundColor: i === index ? "#fff" : "rgba(255,255,255,0.55)",
                 }}
               />
             ))}
           </div>
+          <span className="absolute top-2.5 right-2.5 text-[10px] font-bold bg-ink/60 text-white px-2 py-0.5 rounded-full">
+            {index + 1}/{images.length}
+          </span>
         </>
       )}
     </div>
   );
 }
 
+// ---------- Property card ----------
+
+function PropertyCard({ p, index }) {
+  const images = parseImages(p);
+  return (
+    <div
+      className="group rounded-3xl overflow-hidden bg-white shadow-md hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-500 animate-[fadeInUp_0.6s_ease_both]"
+      style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
+    >
+      <div className="aspect-[4/3] relative">
+        <Carousel images={images} alt={p.title} />
+        {p.price && (
+          <span className="absolute top-3 left-3 z-10 bg-white/95 text-ink font-display font-bold text-sm px-3 py-1 rounded-full shadow">
+            {p.price}
+          </span>
+        )}
+      </div>
+      <div className="p-5 space-y-2">
+        {p.type && (
+          <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-seller/10 text-seller">
+            {p.type}
+          </span>
+        )}
+        <h3 className="font-display font-semibold text-lg text-ink leading-snug">{p.title}</h3>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          {p.location && (
+            <p className="text-xs text-ink/50 flex items-center gap-1">
+              <MapPin size={12} className="shrink-0" />
+              {p.location}
+            </p>
+          )}
+          {p.sqft && (
+            <p className="text-xs text-ink/50 flex items-center gap-1">
+              <Ruler size={12} className="shrink-0" />
+              {Number(p.sqft).toLocaleString()} sqft
+            </p>
+          )}
+        </div>
+        {p.description && <p className="text-xs text-ink/50">{p.description}</p>}
+        <a
+          href={whatsappLink(
+            ADMIN_WHATSAPP_NUMBER,
+            `Hi, I'm interested in this property: ${p.title}${p.location ? ` (${p.location})` : ""} — ${p.price || ""}${p.refId ? `\n\nProperty ref: ${p.refId}` : ""}\n\nCan you share more details?`
+          )}
+          target="_blank"
+          rel="noreferrer"
+          className="btn-whatsapp w-full !py-2.5 text-sm block text-center mt-2 group-hover:scale-[1.02] transition-transform"
+        >
+          Show interest on WhatsApp
+        </a>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Main gallery ----------
+
+const SORT_OPTIONS = [
+  { key: "newest", label: "Newest first" },
+  { key: "price-low", label: "Price: Low to High" },
+  { key: "price-high", label: "Price: High to Low" },
+];
+
 export default function Gallery() {
   const [properties, setProperties] = useState(null);
   const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [activeType, setActiveType] = useState("All");
+  const [sort, setSort] = useState("newest");
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     listPublicProperties()
-      .then(setProperties)
+      .then((data) => setProperties([...data].reverse()))
       .catch((err) => setError(err.message));
   }, []);
 
+  const types = useMemo(() => {
+    if (!properties) return [];
+    return [...new Set(properties.map((p) => p.type).filter(Boolean))].sort();
+  }, [properties]);
+
+  const filtered = useMemo(() => {
+    if (!properties) return [];
+    const q = query.trim().toLowerCase();
+    let list = properties.filter((p) => {
+      const matchesQuery =
+        !q ||
+        p.title?.toLowerCase().includes(q) ||
+        p.location?.toLowerCase().includes(q) ||
+        p.type?.toLowerCase().includes(q);
+      const matchesType = activeType === "All" || p.type === activeType;
+      return matchesQuery && matchesType;
+    });
+
+    if (sort === "price-low" || sort === "price-high") {
+      list = [...list].sort((a, b) => {
+        const av = priceValue(a.price);
+        const bv = priceValue(b.price);
+        if (av === null && bv === null) return 0;
+        if (av === null) return 1;
+        if (bv === null) return -1;
+        return sort === "price-low" ? av - bv : bv - av;
+      });
+    }
+    return list;
+  }, [properties, query, activeType, sort]);
+
   return (
     <div className="min-h-screen bg-paper">
+      <style>{`@keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+
       {/* Header */}
-      <div className="bg-ink text-paper">
-        <div className="max-w-6xl mx-auto px-5 py-10 sm:py-14 text-center">
+      <div className="bg-ink text-paper relative overflow-hidden">
+        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "radial-gradient(circle at 20% 30%, white 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
+        <div className="max-w-6xl mx-auto px-5 py-10 sm:py-14 text-center relative">
           <div className="relative w-14 h-14 mx-auto mb-4">
             <div className="w-14 h-14 rounded-full border-2 border-gold flex items-center justify-center">
               <span className="font-display font-bold text-gold text-sm tracking-wide">MCM</span>
@@ -119,6 +244,65 @@ export default function Gallery() {
         </div>
       </div>
 
+      {/* Sticky filter bar */}
+      <div className="sticky top-0 z-20 bg-paper/95 backdrop-blur-sm border-b border-ink/5 shadow-sm">
+        <div className="max-w-6xl mx-auto px-5 py-3 flex flex-wrap items-center gap-2.5">
+          <div className="relative flex-1 min-w-[180px]">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink/30" />
+            <input
+              className="field-input !pl-9 !py-2.5 text-sm w-full"
+              placeholder="Search by title, area, or type…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+
+          <div className="relative">
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              className="field-input !py-2.5 !pl-8 text-sm appearance-none cursor-pointer"
+            >
+              {SORT_OPTIONS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+            </select>
+            <ArrowUpDown size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink/30 pointer-events-none" />
+          </div>
+
+          {types.length > 0 && (
+            <button
+              onClick={() => setShowFilters((v) => !v)}
+              className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold border transition ${
+                showFilters || activeType !== "All" ? "bg-ink text-paper border-ink" : "bg-white/60 text-ink/60 border-ink/10"
+              }`}
+            >
+              <SlidersHorizontal size={14} />
+              Type {activeType !== "All" && <span className="opacity-70">· {activeType}</span>}
+            </button>
+          )}
+        </div>
+
+        {showFilters && types.length > 0 && (
+          <div className="max-w-6xl mx-auto px-5 pb-3 flex flex-wrap gap-1.5">
+            {["All", ...types].map((t) => (
+              <button
+                key={t}
+                onClick={() => setActiveType(t)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
+                  activeType === t ? "bg-ink text-paper border-ink" : "bg-white/60 text-ink/60 border-ink/10 hover:border-ink/30"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+            {activeType !== "All" && (
+              <button onClick={() => setActiveType("All")} className="px-3 py-1.5 rounded-full text-xs font-semibold text-buyer flex items-center gap-1">
+                <X size={12} /> Clear
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Grid */}
       <div className="max-w-6xl mx-auto px-5 py-10">
         {error && <p className="text-buyer text-sm text-center">{error}</p>}
@@ -126,53 +310,17 @@ export default function Gallery() {
         {properties !== null && properties.length === 0 && (
           <p className="text-ink/50 text-sm text-center">No listings published yet — check back soon.</p>
         )}
+        {properties !== null && properties.length > 0 && (
+          <p className="text-xs text-ink/40 font-semibold mb-4">
+            {filtered.length} listing{filtered.length === 1 ? "" : "s"}
+          </p>
+        )}
+        {properties !== null && properties.length > 0 && filtered.length === 0 && (
+          <p className="text-ink/50 text-sm text-center py-10">No listings match your search — try clearing a filter.</p>
+        )}
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {properties?.map((p) => {
-            const images = parseImages(p);
-            return (
-              <div key={p.id} className="rounded-3xl overflow-hidden bg-white shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
-                <div className="aspect-[4/3] bg-ink/5">
-                  <Carousel images={images} alt={p.title} />
-                </div>
-                <div className="p-5 space-y-2">
-                  {p.type && (
-                    <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-seller/10 text-seller">
-                      {p.type}
-                    </span>
-                  )}
-                  <h3 className="font-display font-semibold text-lg text-ink leading-snug">{p.title}</h3>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    {p.location && (
-                      <p className="text-xs text-ink/50 flex items-center gap-1">
-                        <MapPin size={12} className="shrink-0" />
-                        {p.location}
-                      </p>
-                    )}
-                    {p.sqft && (
-                      <p className="text-xs text-ink/50 flex items-center gap-1">
-                        <Ruler size={12} className="shrink-0" />
-                        {Number(p.sqft).toLocaleString()} sqft
-                      </p>
-                    )}
-                  </div>
-                  {p.description && <p className="text-xs text-ink/50">{p.description}</p>}
-                  {p.price && <p className="font-display font-bold text-ink text-lg pt-1">{p.price}</p>}
-                  <a
-                    href={whatsappLink(
-                      ADMIN_WHATSAPP_NUMBER,
-                      `Hi, I'm interested in this property: ${p.title}${p.location ? ` (${p.location})` : ""} — ${p.price || ""}${p.refId ? `\n\nProperty ref: ${p.refId}` : ""}\n\nCan you share more details?`
-                    )}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn-whatsapp w-full !py-2.5 text-sm block text-center mt-2"
-                  >
-                    Show interest on WhatsApp
-                  </a>
-                </div>
-              </div>
-            );
-          })}
+          {filtered.map((p, i) => <PropertyCard key={p.id} p={p} index={i} />)}
         </div>
       </div>
     </div>
