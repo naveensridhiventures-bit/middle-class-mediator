@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Clock, User, X, SlidersHorizontal, Pencil, Camera, MapPin } from "lucide-react";
-import { adminUpdateLead, adminAddRemark, adminAddVisit, addSellerLead } from "../../lib/api";
+import { adminUpdateLead, adminAddRemark, adminAddVisit, addSellerLead, adminAddProperty, adminUpdateProperty } from "../../lib/api";
 import { whatsappLink, callLink } from "../../lib/whatsapp";
 import { downloadReport } from "../../lib/report";
 import { uploadImage } from "../../lib/cloudinary";
@@ -224,7 +224,7 @@ function LeadCard({ lead, accent, onOpen }) {
 
 // ---------- Full detail / edit modal ----------
 
-function LeadDetailModal({ lead, fields, accent, sheet, onClose, onSaveDetails, onAddRemark, onAddPhoto }) {
+function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSaveDetails, onAddRemark, onAddPhoto, onShareGallery }) {
   const [form, setForm] = useState(() => ({
     name: lead.name || "",
     phone: lead.phone || "",
@@ -247,6 +247,8 @@ function LeadDetailModal({ lead, fields, accent, sheet, onClose, onSaveDetails, 
   const [newFieldValue, setNewFieldValue] = useState("");
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoError, setPhotoError] = useState("");
+  const [galleryStatus, setGalleryStatus] = useState("idle"); // idle | sharing | shared
+  const [galleryError, setGalleryError] = useState("");
 
   const remarksLog = useMemo(() => parseRemarksLog(lead), [lead]);
   const visitLog = useMemo(() => parseVisitLog(lead), [lead]);
@@ -308,6 +310,44 @@ function LeadDetailModal({ lead, fields, accent, sheet, onClose, onSaveDetails, 
       setSaveError(err.message || "Couldn't save changes.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  function handleDownloadSingle() {
+    downloadReport({
+      roleLabel: roleLabel || "Lead",
+      accent,
+      fields,
+      leads: [lead],
+      filterLabel: lead.name || lead.id,
+    });
+  }
+
+  async function handleShareGallery() {
+    setGalleryError("");
+    setGalleryStatus("sharing");
+    try {
+      const payload = {
+        title: `${form.propertyType || "Property"} in ${form.area || form.propertyLocation || "Chennai"}`,
+        type: form.propertyType || "",
+        // Only the general area, never the precise submitted location/address —
+        // buyers browsing the gallery must never see the exact address.
+        location: form.area || form.propertyLocation || "",
+        price: form.expectedPrice || (form.budgetValue ? `₹${Number(form.budgetValue).toLocaleString()}` : ""),
+        description: [form.propertyStatus, form.sqft ? `${form.sqft} sqft` : ""].filter(Boolean).join(" · "),
+        imageUrl: latestPhoto?.photoUrl || "",
+        // Deliberately blank — the buyer gallery never shows the owner's number.
+        contactPhone: "",
+      };
+      const newId = await onShareGallery(customFields.galleryId, payload);
+      const nextCustomFields = { ...customFields, galleryId: newId };
+      setCustomFields(nextCustomFields);
+      await onSaveDetails(lead.id, { ...form, customFields: JSON.stringify(nextCustomFields) });
+      setGalleryStatus("shared");
+      setTimeout(() => setGalleryStatus("idle"), 2500);
+    } catch (err) {
+      setGalleryError(err.message || "Couldn't share this to the gallery.");
+      setGalleryStatus("idle");
     }
   }
 
@@ -412,10 +452,17 @@ function LeadDetailModal({ lead, fields, accent, sheet, onClose, onSaveDetails, 
           <div>
             <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">Submitted details</p>
             <div className="grid sm:grid-cols-2 gap-3">
-              {fields.map(([key, label]) => (
+              {fields.map(([key, label, options]) => (
                 <div key={key}>
                   <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">{label}</label>
-                  <input className="field-input !py-2 text-sm" value={form[key]} onChange={(e) => set(key, e.target.value)} />
+                  {options ? (
+                    <select className="field-input !py-2 text-sm" value={form[key]} onChange={(e) => set(key, e.target.value)}>
+                      <option value="">— not set —</option>
+                      {options.map((o) => <option key={o}>{o}</option>)}
+                    </select>
+                  ) : (
+                    <input className="field-input !py-2 text-sm" value={form[key]} onChange={(e) => set(key, e.target.value)} />
+                  )}
                 </div>
               ))}
             </div>
@@ -485,6 +532,29 @@ function LeadDetailModal({ lead, fields, accent, sheet, onClose, onSaveDetails, 
             </div>
           </div>
 
+          {/* Share on Gallery — publishes a buyer-safe version (no phone, no exact address) */}
+          {supportsPhoto && (
+            <div className="rounded-2xl bg-ink/[0.03] p-4">
+              <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-1">
+                Buyer gallery {customFields.galleryId && <span className="text-emerald-600">· Live</span>}
+              </p>
+              <p className="text-xs text-ink/40 mb-3">
+                Shares the photo, area, property type and price to the public gallery buyers browse
+                — the owner's phone number and exact address are never included.
+              </p>
+              <button
+                onClick={handleShareGallery}
+                disabled={galleryStatus === "sharing"}
+                className="btn-primary w-full !py-2.5 text-sm"
+              >
+                {galleryStatus === "sharing" && "Sharing…"}
+                {galleryStatus === "shared" && "Shared ✓"}
+                {galleryStatus === "idle" && (customFields.galleryId ? "Update on gallery" : "🖼 Share on gallery")}
+              </button>
+              {galleryError && <p className="text-xs text-buyer mt-2">{galleryError}</p>}
+            </div>
+          )}
+
           {/* Remarks history */}
           <div>
             <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">
@@ -532,9 +602,12 @@ function LeadDetailModal({ lead, fields, accent, sheet, onClose, onSaveDetails, 
         {/* Footer */}
         <div className="p-5 sm:p-6 border-t border-ink/5">
           {saveError && <p className="text-xs text-buyer mb-2">{saveError}</p>}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
           <button onClick={handleSave} disabled={saving} className="btn-primary flex-1 !py-3">
             {saving ? "Saving…" : saved ? "Saved ✓" : "Save changes"}
+          </button>
+          <button onClick={handleDownloadSingle} className="btn-ghost !py-3 !px-4" title="Download this lead as a PDF">
+            📄 PDF
           </button>
           <button onClick={onClose} className="btn-ghost !py-3 !px-5">Close</button>
           </div>
@@ -811,6 +884,14 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
       await adminAddVisit(password, sheet, id, visit, adminName);
       load();
     },
+    shareToGallery: async (propertyId, payload) => {
+      if (propertyId) {
+        await adminUpdateProperty(password, propertyId, payload);
+        return propertyId;
+      }
+      const { id } = await adminAddProperty(password, payload);
+      return id;
+    },
   };
 
   const areaOptions = useMemo(() => {
@@ -1042,10 +1123,12 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
           fields={fields}
           accent={accent}
           sheet={sheet}
+          roleLabel={label}
           onClose={() => setOpenLeadId(null)}
           onSaveDetails={onChanged.updateMeta}
           onAddRemark={onChanged.addRemark}
           onAddPhoto={onChanged.addVisit}
+          onShareGallery={onChanged.shareToGallery}
         />
       )}
 

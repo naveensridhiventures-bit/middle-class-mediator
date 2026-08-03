@@ -149,6 +149,27 @@ that's the link customers, mediators, and sellers use.
   visit) now show directly in the panel instead of failing silently — if
   something's wrong (e.g. the Apps Script deployment needs redeploying, or
   its "Who has access" isn't set to "Anyone"), you'll see a clear message.
+- **Admin edits use the same dropdown options as the public forms** — no
+  more free-text drift from what a seller/buyer/mediator could actually
+  submit.
+- **PDF downloads**: the bulk "Download report" button already exports
+  whatever's currently filtered (search, status, area, budget, sqft, any
+  facet) as one PDF; each lead's detail panel now also has its own **"📄
+  PDF"** button for a single-lead report.
+- **Hidden field-visit page** (`/control/field-visit`, linked from the
+  Command Center header) — a focused, mobile-first page for capturing a
+  new lead entirely on-site: property owner name, phone, area, a camera
+  photo, and live GPS location with an editable reverse-geocoded address.
+  Submitting shows a success popup with the exact date/time, then the new
+  lead appears in the Seller CRM with its photo, pipeline, and remarks
+  ready to go.
+- **Hidden buyer gallery** (`/gallery`, linked from the Command Center
+  header) — an e-commerce-style public grid of listings. From any seller
+  lead's detail panel, click **"Share on gallery"** to publish a
+  buyer-safe version (photo, property type, area, price) — the owner's
+  phone number and exact address are deliberately never included. Editing
+  the lead and clicking "Update on gallery" again keeps the same listing
+  in sync rather than duplicating it.
 
 Since every submission is saved instantly to your Google Sheet, you always
 have the full record even before you check WhatsApp — this is what answers
