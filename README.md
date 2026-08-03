@@ -241,3 +241,15 @@ src/
 apps-script/
   Code.gs            — paste into Google Sheets → Extensions → Apps Script
 ```
+
+## Performance
+
+The backend now skips two things it used to do on every single request:
+locking and column-migration checks were running even for read-only actions
+like logging in or loading the lead list. Now only actions that actually
+write to a sheet (adding/updating a lead, remarks, etc.) take the lock and
+pay that cost — logging in and loading lists should feel noticeably
+faster. One honest caveat: Google Apps Script itself has a "cold start" of
+a few seconds after it's been idle for a while, which no amount of
+code-level optimization removes — if the very first request after a gap
+feels slow but everything after it is snappy, that's this, not a bug.

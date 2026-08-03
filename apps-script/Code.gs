@@ -9,10 +9,15 @@
  *
  * NOTE ON UPGRADES: if you already had this sheet running before priority /
  * follow-up / remarks-history existed, you don't need to do anything special —
- * the first time each sheet is read or written after you redeploy this file,
- * ensureColumns() below will automatically add any missing columns
- * (priority, followUpDate, remarksLog) to the end of that sheet's header row
- * without touching your existing data.
+ * the first time each sheet is written to after you redeploy this file,
+ * prepareSheet() below will automatically add any missing columns to the end
+ * of that sheet's header row without touching your existing data.
+ *
+ * PERFORMANCE NOTE: only actions that write to a sheet take the script lock
+ * and pay the cost of checking/migrating columns. Read-only actions (the
+ * "list..." actions and admin login) skip both, since they can safely run
+ * concurrently and don't need column migration — this is what makes loading
+ * the CRM and logging in noticeably faster than earlier versions.
  */
 
 const SHEETS = {
@@ -22,125 +27,127 @@ const SHEETS = {
   Properties: ["id", "timestamp", "title", "type", "location", "price", "sqft", "description", "imageUrl", "images", "contactPhone", "refId"],
 };
 
+// Actions in this set take the script lock and go through column
+// migration (prepareSheet). Everything else is treated as read-only and
+// skips both for speed.
+const WRITE_ACTIONS = {
+  addMediator: true, addSeller: true, addBuyer: true,
+  updateLead: true, addRemark: true, addVisit: true,
+  addProperty: true, updateProperty: true, deleteProperty: true,
+};
+
 function doGet() {
   return jsonResponse({ ok: true, data: "Middle Class Mediator API is running." });
 }
 
 function doPost(e) {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(10000);
+  var req = JSON.parse(e.postData.contents);
+  var action = req.action;
+  var p = req.payload || {};
+
+  var isWrite = !!WRITE_ACTIONS[action];
+  var lock = null;
+  if (isWrite) {
+    lock = LockService.getScriptLock();
+    lock.waitLock(10000);
+  }
+
   try {
-    var req = JSON.parse(e.postData.contents);
-    var action = req.action;
-    var p = req.payload || {};
-    var result;
-
-    switch (action) {
-      case "addMediator":
-        result = addRow("Mediators", {
-          name: p.name, phone: p.phone, profession: p.profession, workingArea: p.workingArea,
-          propertyCategory: p.propertyCategory, experience: p.experience, dealType: p.dealType,
-          genuineLeads: p.genuineLeads, status: "New", priority: 3, followUpDate: "", customFields: "{}", remarksLog: "[]",
-        });
-        break;
-
-      case "addSeller":
-        result = addRow("Sellers", {
-          name: p.name, phone: p.phone, propertyType: p.propertyType, propertyLocation: p.propertyLocation,
-          propertyStatus: p.propertyStatus, expectedPrice: p.expectedPrice, ownership: p.ownership,
-          timeline: p.timeline, status: "New", priority: 3, followUpDate: "", customFields: "{}", photos: "[]", visitLog: "[]", remarksLog: "[]",
-        });
-        break;
-
-      case "addBuyer":
-        result = addRow("Buyers", {
-          name: p.name, phone: p.phone, propertyType: p.propertyType, purpose: p.purpose,
-          budget: p.budget, preferredLocation: p.preferredLocation, loanRequirement: p.loanRequirement,
-          timeline: p.timeline, status: "New", priority: 3, followUpDate: "", customFields: "{}", remarksLog: "[]",
-        });
-        break;
-
-      case "listProperties":
-        result = readSheet("Properties");
-        break;
-
-      case "adminLogin":
-        checkPassword(p.password);
-        result = true;
-        break;
-
-      case "listMediators":
-        checkPassword(p.password);
-        result = readSheet("Mediators");
-        break;
-
-      case "listSellers":
-        checkPassword(p.password);
-        result = readSheet("Sellers");
-        break;
-
-      case "listBuyers":
-        checkPassword(p.password);
-        result = readSheet("Buyers");
-        break;
-
-      // Updates any editable field on a lead — original submitted details
-      // (name, phone, property type, etc.), status, priority, follow-up
-      // date, and the admin-set area/budget/size metadata. Never touches
-      // id, timestamp, or remarksLog (use "addRemark" for remarks so
-      // history is additive and never overwritten).
-      case "updateLead":
-        checkPassword(p.password);
-        result = updateRow(p.sheet, p.id, sanitizePatch(p.patch));
-        break;
-
-      // Appends a single dated remark to the lead's remarksLog (stored as a
-      // JSON array in one cell) instead of overwriting previous notes.
-      case "addRemark":
-        checkPassword(p.password);
-        result = appendRemark(p.sheet, p.id, p.text, p.by);
-        break;
-
-      // Appends a dated site-visit entry (photo URL, GPS coords, reverse-
-      // geocoded address) to a seller lead's visitLog. Additive only —
-      // never overwrites previous visits.
-      case "addVisit":
-        checkPassword(p.password);
-        result = appendVisit(p.sheet, p.id, {
-          photoUrl: p.photoUrl, lat: p.lat, lng: p.lng, address: p.address, by: p.by,
-        });
-        break;
-
-      case "addProperty":
-        checkPassword(p.password);
-        result = addRow("Properties", {
-          title: p.title, type: p.type, location: p.location, price: p.price, sqft: p.sqft,
-          description: p.description, imageUrl: p.imageUrl, images: p.images, contactPhone: p.contactPhone, refId: p.refId,
-        });
-        break;
-
-      case "updateProperty":
-        checkPassword(p.password);
-        result = updateRow("Properties", p.id, {
-          title: p.title, type: p.type, location: p.location, price: p.price, sqft: p.sqft,
-          description: p.description, imageUrl: p.imageUrl, images: p.images, contactPhone: p.contactPhone, refId: p.refId,
-        });
-        break;
-
-      case "deleteProperty":
-        checkPassword(p.password);
-        result = deleteRow("Properties", p.id);
-        break;
-
-      default:
-        throw new Error("Unknown action: " + action);
-    }
-
+    var result = route(action, p);
     return jsonResponse({ ok: true, data: result });
   } catch (err) {
     return jsonResponse({ ok: false, error: String(err.message || err) });
   } finally {
-    lock.releaseLock();
+    if (lock) lock.releaseLock();
+  }
+}
+
+function route(action, p) {
+  switch (action) {
+    case "addMediator":
+      return addRow("Mediators", {
+        name: p.name, phone: p.phone, profession: p.profession, workingArea: p.workingArea,
+        propertyCategory: p.propertyCategory, experience: p.experience, dealType: p.dealType,
+        genuineLeads: p.genuineLeads, status: "New", priority: 3, followUpDate: "", customFields: "{}", remarksLog: "[]",
+      });
+
+    case "addSeller":
+      return addRow("Sellers", {
+        name: p.name, phone: p.phone, propertyType: p.propertyType, propertyLocation: p.propertyLocation,
+        propertyStatus: p.propertyStatus, expectedPrice: p.expectedPrice, ownership: p.ownership,
+        timeline: p.timeline, status: "New", priority: 3, followUpDate: "", customFields: "{}", photos: "[]", visitLog: "[]", remarksLog: "[]",
+      });
+
+    case "addBuyer":
+      return addRow("Buyers", {
+        name: p.name, phone: p.phone, propertyType: p.propertyType, purpose: p.purpose,
+        budget: p.budget, preferredLocation: p.preferredLocation, loanRequirement: p.loanRequirement,
+        timeline: p.timeline, status: "New", priority: 3, followUpDate: "", customFields: "{}", remarksLog: "[]",
+      });
+
+    case "listProperties":
+      return readSheet("Properties");
+
+    case "adminLogin":
+      checkPassword(p.password);
+      return true;
+
+    case "listMediators":
+      checkPassword(p.password);
+      return readSheet("Mediators");
+
+    case "listSellers":
+      checkPassword(p.password);
+      return readSheet("Sellers");
+
+    case "listBuyers":
+      checkPassword(p.password);
+      return readSheet("Buyers");
+
+    // Updates any editable field on a lead — original submitted details
+    // (name, phone, property type, etc.), status, priority, follow-up
+    // date, and the admin-set area/budget/size metadata. Never touches
+    // id, timestamp, or remarksLog (use "addRemark" for that so history
+    // is additive and never overwritten).
+    case "updateLead":
+      checkPassword(p.password);
+      return updateRow(p.sheet, p.id, sanitizePatch(p.patch));
+
+    // Appends a single dated remark to the lead's remarksLog (stored as a
+    // JSON array in one cell) instead of overwriting previous notes.
+    case "addRemark":
+      checkPassword(p.password);
+      return appendRemark(p.sheet, p.id, p.text, p.by);
+
+    // Appends a dated site-visit entry (photo URL, GPS coords, reverse-
+    // geocoded address) to a seller lead's visitLog. Additive only —
+    // never overwrites previous visits.
+    case "addVisit":
+      checkPassword(p.password);
+      return appendVisit(p.sheet, p.id, {
+        photoUrl: p.photoUrl, lat: p.lat, lng: p.lng, address: p.address, by: p.by,
+      });
+
+    case "addProperty":
+      checkPassword(p.password);
+      return addRow("Properties", {
+        title: p.title, type: p.type, location: p.location, price: p.price, sqft: p.sqft,
+        description: p.description, imageUrl: p.imageUrl, images: p.images, contactPhone: p.contactPhone, refId: p.refId,
+      });
+
+    case "updateProperty":
+      checkPassword(p.password);
+      return updateRow("Properties", p.id, {
+        title: p.title, type: p.type, location: p.location, price: p.price, sqft: p.sqft,
+        description: p.description, imageUrl: p.imageUrl, images: p.images, contactPhone: p.contactPhone, refId: p.refId,
+      });
+
+    case "deleteProperty":
+      checkPassword(p.password);
+      return deleteRow("Properties", p.id);
+
+    default:
+      throw new Error("Unknown action: " + action);
   }
 }
 
@@ -152,12 +159,34 @@ function getHeaders(sheet) {
   return sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 }
 
-// Adds any headers from SHEETS[name] that are missing from the sheet's
-// current header row, appending them as new columns at the end. Safe to
-// call every time — a no-op once the sheet is already up to date.
-function ensureColumns(sheet, name) {
-  var required = SHEETS[name];
-  if (!required) return;
+// Fetches a sheet WITHOUT checking/migrating columns — for read paths,
+// where a slightly-out-of-date header row is fine (a missing column just
+// reads as undefined) and the extra round trip isn't worth paying for on
+// every single list request. Only creates the sheet if it's genuinely
+// missing (rare after first run), in which case it defers to prepareSheet.
+function getSheetFast(name) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) return prepareSheet(name).sheet;
+  return sheet;
+}
+
+// Fetches a sheet AND makes sure every column this app now expects exists,
+// adding any missing ones to the end of the header row in a single write.
+// Returns both the sheet and its up-to-date header row so callers don't
+// need to re-read headers immediately afterward. Used only by write paths.
+function prepareSheet(name) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(name);
+  var required = SHEETS[name] || [];
+
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    sheet.appendRow(required);
+    sheet.setFrozenRows(1);
+    return { sheet: sheet, headers: required.slice() };
+  }
+
   var headers = getHeaders(sheet);
   var missing = required.filter(function (h) {
     return headers.indexOf(h) === -1;
@@ -165,38 +194,31 @@ function ensureColumns(sheet, name) {
   if (missing.length > 0) {
     var startCol = headers.length + 1;
     sheet.getRange(1, startCol, 1, missing.length).setValues([missing]);
+    headers = headers.concat(missing);
   }
+  return { sheet: sheet, headers: headers };
 }
 
+// Back-compat alias used by setup().
 function getSheet(name) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName(name);
-  if (!sheet) {
-    sheet = ss.insertSheet(name);
-    sheet.appendRow(SHEETS[name]);
-    sheet.setFrozenRows(1);
-  } else {
-    ensureColumns(sheet, name);
-  }
-  return sheet;
+  return prepareSheet(name).sheet;
 }
 
 function addRow(sheetName, data) {
-  var sheet = getSheet(sheetName);
-  var headers = getHeaders(sheet);
+  var prepared = prepareSheet(sheetName);
   var id = sheetName.substring(0, 3).toUpperCase() + "-" + Utilities.getUuid().slice(0, 6).toUpperCase();
-  var row = headers.map(function (h) {
+  var row = prepared.headers.map(function (h) {
     if (h === "id") return id;
     if (h === "timestamp") return new Date().toISOString();
     if (h === "remarksLog" && data[h] === undefined) return "[]";
     return data[h] !== undefined ? data[h] : "";
   });
-  sheet.appendRow(row);
+  prepared.sheet.appendRow(row);
   return { id: id };
 }
 
 function readSheet(sheetName) {
-  var sheet = getSheet(sheetName);
+  var sheet = getSheetFast(sheetName);
   var values = sheet.getDataRange().getValues();
   if (values.length < 2) return [];
   var headers = values[0];
@@ -234,30 +256,27 @@ function sanitizePatch(patch) {
 }
 
 function updateRow(sheetName, id, patch) {
-  var sheet = getSheet(sheetName);
-  var headers = getHeaders(sheet);
-  var rowIndex = findRowIndexById(sheet, id);
+  var prepared = prepareSheet(sheetName);
+  var rowIndex = findRowIndexById(prepared.sheet, id);
   if (rowIndex === -1) throw new Error("Record not found: " + id);
   Object.keys(patch).forEach(function (key) {
-    var colIndex = headers.indexOf(key);
+    var colIndex = prepared.headers.indexOf(key);
     if (colIndex !== -1 && patch[key] !== undefined) {
-      sheet.getRange(rowIndex, colIndex + 1).setValue(patch[key]);
+      prepared.sheet.getRange(rowIndex, colIndex + 1).setValue(patch[key]);
     }
   });
   return { id: id };
 }
 
-// Reads the existing remarksLog JSON array for a lead, pushes a new
-// { text, at } entry onto it (never removing previous entries), and saves
-// it back as a JSON string in the same cell.
+// Appends a dated site-visit entry to a lead's visitLog (JSON array in one
+// cell) instead of overwriting previous visits.
 function appendVisit(sheetName, id, visit) {
-  var sheet = getSheet(sheetName);
-  var headers = getHeaders(sheet);
-  var rowIndex = findRowIndexById(sheet, id);
+  var prepared = prepareSheet(sheetName);
+  var rowIndex = findRowIndexById(prepared.sheet, id);
   if (rowIndex === -1) throw new Error("Record not found: " + id);
-  var colIndex = headers.indexOf("visitLog");
+  var colIndex = prepared.headers.indexOf("visitLog");
   if (colIndex === -1) throw new Error("visitLog column missing — redeploy Code.gs and try again.");
-  var cell = sheet.getRange(rowIndex, colIndex + 1);
+  var cell = prepared.sheet.getRange(rowIndex, colIndex + 1);
   var existing = cell.getValue();
   var log = [];
   if (existing) {
@@ -280,15 +299,16 @@ function appendVisit(sheetName, id, visit) {
   return { id: id, visitLog: log };
 }
 
+// Appends a dated remark to a lead's remarksLog (JSON array in one cell)
+// instead of overwriting previous notes.
 function appendRemark(sheetName, id, text, by) {
   if (!text || !String(text).trim()) throw new Error("Remark text is required.");
-  var sheet = getSheet(sheetName);
-  var headers = getHeaders(sheet);
-  var rowIndex = findRowIndexById(sheet, id);
+  var prepared = prepareSheet(sheetName);
+  var rowIndex = findRowIndexById(prepared.sheet, id);
   if (rowIndex === -1) throw new Error("Record not found: " + id);
-  var colIndex = headers.indexOf("remarksLog");
+  var colIndex = prepared.headers.indexOf("remarksLog");
   if (colIndex === -1) throw new Error("remarksLog column missing — redeploy Code.gs and try again.");
-  var cell = sheet.getRange(rowIndex, colIndex + 1);
+  var cell = prepared.sheet.getRange(rowIndex, colIndex + 1);
   var existing = cell.getValue();
   var log = [];
   if (existing) {
@@ -305,10 +325,10 @@ function appendRemark(sheetName, id, text, by) {
 }
 
 function deleteRow(sheetName, id) {
-  var sheet = getSheet(sheetName);
-  var rowIndex = findRowIndexById(sheet, id);
+  var prepared = prepareSheet(sheetName);
+  var rowIndex = findRowIndexById(prepared.sheet, id);
   if (rowIndex === -1) throw new Error("Record not found: " + id);
-  sheet.deleteRow(rowIndex);
+  prepared.sheet.deleteRow(rowIndex);
   return { id: id };
 }
 
