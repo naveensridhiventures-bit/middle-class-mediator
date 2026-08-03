@@ -338,6 +338,9 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
         imageUrl: latestPhoto?.photoUrl || "",
         // Deliberately blank — the buyer gallery never shows the owner's number.
         contactPhone: "",
+        // The seller lead's own ID — included in the WhatsApp message when a
+        // buyer shows interest, so it's instantly searchable in the Seller CRM.
+        refId: lead.id,
       };
       const newId = await onShareGallery(customFields.galleryId, payload);
       const nextCustomFields = { ...customFields, galleryId: newId };
@@ -952,7 +955,11 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
     if (!leads) return [];
     const q = query.trim().toLowerCase();
     return leads.filter((l) => {
-      const matchesQuery = !q || l.name?.toLowerCase().includes(q) || String(l.phone || "").includes(q);
+      const matchesQuery =
+        !q ||
+        l.name?.toLowerCase().includes(q) ||
+        String(l.phone || "").includes(q) ||
+        l.id?.toLowerCase().includes(q);
       const matchesStatus = activeStatus === "All" || (l.status || "New") === activeStatus;
       const matchesArea = selectedAreas.length === 0 || selectedAreas.includes(l.area);
       const budget = Number(l.budgetValue);
@@ -1080,7 +1087,7 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
       </div>
 
       <div className="flex gap-2">
-        <input className="field-input flex-1" placeholder="Search by name or phone…" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <input className="field-input flex-1" placeholder="Search by name, phone, or lead ID…" value={query} onChange={(e) => setQuery(e.target.value)} />
         <button
           onClick={() => setShowAdvanced((v) => !v)}
           className={`shrink-0 flex items-center gap-1.5 px-4 rounded-xl text-xs font-semibold border ${

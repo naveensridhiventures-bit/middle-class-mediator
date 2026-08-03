@@ -19,7 +19,7 @@ const SHEETS = {
   Mediators: ["id", "timestamp", "name", "phone", "profession", "workingArea", "propertyCategory", "experience", "dealType", "genuineLeads", "status", "priority", "followUpDate", "area", "customFields", "remarksLog"],
   Sellers: ["id", "timestamp", "name", "phone", "propertyType", "propertyLocation", "propertyStatus", "expectedPrice", "ownership", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "visitLog", "remarksLog"],
   Buyers: ["id", "timestamp", "name", "phone", "propertyType", "purpose", "budget", "preferredLocation", "loanRequirement", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "remarksLog"],
-  Properties: ["id", "timestamp", "title", "type", "location", "price", "description", "imageUrl", "contactPhone"],
+  Properties: ["id", "timestamp", "title", "type", "location", "price", "description", "imageUrl", "contactPhone", "refId"],
 };
 
 function doGet() {
@@ -115,7 +115,7 @@ function doPost(e) {
         checkPassword(p.password);
         result = addRow("Properties", {
           title: p.title, type: p.type, location: p.location, price: p.price,
-          description: p.description, imageUrl: p.imageUrl, contactPhone: p.contactPhone,
+          description: p.description, imageUrl: p.imageUrl, contactPhone: p.contactPhone, refId: p.refId,
         });
         break;
 
@@ -123,7 +123,7 @@ function doPost(e) {
         checkPassword(p.password);
         result = updateRow("Properties", p.id, {
           title: p.title, type: p.type, location: p.location, price: p.price,
-          description: p.description, imageUrl: p.imageUrl, contactPhone: p.contactPhone,
+          description: p.description, imageUrl: p.imageUrl, contactPhone: p.contactPhone, refId: p.refId,
         });
         break;
 

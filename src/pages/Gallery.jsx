@@ -73,7 +73,7 @@ export default function Gallery() {
                 <a
                   href={whatsappLink(
                     ADMIN_WHATSAPP_NUMBER,
-                    `Hi, I'm interested in this property: ${p.title}${p.location ? ` (${p.location})` : ""} — ${p.price || ""}\n\nCan you share more details?`
+                    `Hi, I'm interested in this property: ${p.title}${p.location ? ` (${p.location})` : ""} — ${p.price || ""}${p.refId ? `\n\nProperty ref: ${p.refId}` : ""}\n\nCan you share more details?`
                   )}
                   target="_blank"
                   rel="noreferrer"
