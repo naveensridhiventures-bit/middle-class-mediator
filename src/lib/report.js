@@ -80,6 +80,17 @@ function parsePhotos(lead) {
   }
 }
 
+// Turns an internal field name like "galleryId" into "Gallery ID" for
+// display — jsPDF's core fonts can only render plain Latin text reliably,
+// so keep this ASCII-only too.
+function prettifyKey(key) {
+  const spaced = key.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/_/g, " ");
+  return spaced
+    .split(" ")
+    .map((w) => (w.toLowerCase() === "id" ? "ID" : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join(" ");
+}
+
 // Prefers a manually pasted Google Maps link; then exact GPS coordinates
 // from the most recent site visit; then a text-based map search on the
 // address, then the general area.
@@ -263,13 +274,22 @@ export async function downloadReport({ roleLabel, accent, fields, leads, filterL
     doc.setTextColor(255, 255, 255);
     doc.text(statusLabel, pillX + pillW / 2, cardTop + 18, { align: "center" });
 
-    // Priority stars
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(...GOLD);
-    doc.text("\u2605".repeat(priority) + "", pageWidth - margin - 55, cardTop + 18);
-    doc.setTextColor(210, 205, 195);
-    doc.text("\u2605".repeat(5 - priority), pageWidth - margin - 55 + doc.getTextWidth("\u2605".repeat(priority)), cardTop + 18);
+    // Priority — drawn as filled/outline circle pips, not star glyphs (jsPDF's
+    // core fonts can't render ★/☆ or emoji reliably; vector shapes always work)
+    const pipR = 3;
+    const pipGap = 9;
+    let pipX = pageWidth - margin - pipR - (5 - 1) * pipGap;
+    for (let i = 0; i < 5; i++) {
+      if (i < priority) {
+        doc.setFillColor(...GOLD);
+        doc.circle(pipX, cardTop + 16, pipR, "F");
+      } else {
+        doc.setDrawColor(210, 205, 195);
+        doc.setLineWidth(0.7);
+        doc.circle(pipX, cardTop + 16, pipR, "S");
+      }
+      pipX += pipGap;
+    }
 
     y = cardTop + 34 + 10;
 
@@ -278,7 +298,7 @@ export async function downloadReport({ roleLabel, accent, fields, leads, filterL
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
       doc.setTextColor(r, g, b);
-      const phoneLabel = `\u{1F4F1} ${lead.phone} — message on WhatsApp`;
+      const phoneLabel = `${lead.phone} — Message on WhatsApp`;
       doc.textWithLink(phoneLabel, textX, y, { url: whatsappLink(lead.phone, `Hi ${lead.name || ""}, following up on your property`) });
       const phoneW = doc.getTextWidth(phoneLabel);
       doc.setDrawColor(r, g, b);
@@ -291,7 +311,7 @@ export async function downloadReport({ roleLabel, accent, fields, leads, filterL
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
       doc.setTextColor(r, g, b);
-      const mapLabel = "\u{1F4CD} View exact location on map";
+      const mapLabel = "View exact location on map";
       const mapX = pageWidth - margin - doc.getTextWidth(mapLabel);
       doc.textWithLink(mapLabel, mapX, y, { url: mapUrl });
       doc.setDrawColor(r, g, b);
@@ -324,12 +344,14 @@ export async function downloadReport({ roleLabel, accent, fields, leads, filterL
     if (lead.area) detailRows.push(["Area / locality", lead.area]);
     const visitAddress = visitLog.find((v) => v.address)?.address;
     const exactAddress = lead.exactAddress || visitAddress;
-    if (exactAddress) detailRows.push(["Exact address", exactAddress]);
+    const alreadyShownAsLocation = fields.some(([key]) => key === "propertyLocation") && lead.propertyLocation === exactAddress;
+    if (exactAddress && !alreadyShownAsLocation) detailRows.push(["Exact address", exactAddress]);
     if (lead.budgetValue) detailRows.push(["Budget (₹)", Number(lead.budgetValue).toLocaleString()]);
     if (lead.sqft) detailRows.push(["Size (sqft)", Number(lead.sqft).toLocaleString()]);
     if (lead.followUpDate) detailRows.push(["Next follow-up", formatDate(lead.followUpDate)]);
     Object.entries(parseCustomFields(lead)).forEach(([key, value]) => {
-      if (value) detailRows.push([key, String(value)]);
+      if (key === "galleryId") return; // internal linkage, not useful in a lead report
+      if (value) detailRows.push([prettifyKey(key), String(value)]);
     });
 
     if (detailRows.length) {
