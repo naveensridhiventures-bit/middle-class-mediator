@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { Handshake, MapPin, Home as HomeIcon } from "lucide-react";
 import { listPublicProperties } from "../lib/api";
+import { whatsappLink } from "../lib/whatsapp";
+import { ADMIN_WHATSAPP_NUMBER } from "../lib/config";
 
 export default function Gallery() {
   const [properties, setProperties] = useState(null);
@@ -69,9 +70,17 @@ export default function Gallery() {
                 )}
                 {p.description && <p className="text-xs text-ink/50">{p.description}</p>}
                 {p.price && <p className="font-display font-bold text-ink text-lg pt-1">{p.price}</p>}
-                <Link to="/buyer" className="btn-primary w-full !py-2.5 text-sm block text-center mt-2">
-                  Interested — register as buyer
-                </Link>
+                <a
+                  href={whatsappLink(
+                    ADMIN_WHATSAPP_NUMBER,
+                    `Hi, I'm interested in this property: ${p.title}${p.location ? ` (${p.location})` : ""} — ${p.price || ""}\n\nCan you share more details?`
+                  )}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-whatsapp w-full !py-2.5 text-sm block text-center mt-2"
+                >
+                  Show interest on WhatsApp
+                </a>
               </div>
             </div>
           ))}
