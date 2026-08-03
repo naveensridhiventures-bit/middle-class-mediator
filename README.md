@@ -170,6 +170,23 @@ that's the link customers, mediators, and sellers use.
   phone number and exact address are deliberately never included. Editing
   the lead and clicking "Update on gallery" again keeps the same listing
   in sync rather than duplicating it.
+- **Property photos (up to 4 per seller lead)** — the detail panel shows a
+  4-slot photo grid instead of a single photo. Add or remove any of the
+  four independently; the first one is used as the cover image everywhere
+  (gallery card, PDF).
+- **Gallery carousel with motion** — property cards on `/gallery` auto-rotate
+  through all of a listing's photos every few seconds with a smooth
+  cross-fade, dot indicators, and hover arrows to flip through manually.
+  Size (sqft) now shows alongside area and price. Still never shows the
+  owner's name, phone, or exact address/map — only what "Share on gallery"
+  explicitly published.
+- **Seller PDF now includes**: all of that lead's photos embedded directly
+  in the report, the owner's phone number as a **clickable link that opens
+  WhatsApp**, and — when a site visit captured GPS coordinates or an
+  address — a **clickable "View exact location on map"** link plus the
+  address as plain text, so the full picture (photos, contact, exact
+  location) is in the report even though none of it appears on the public
+  gallery.
 
 Since every submission is saved instantly to your Google Sheet, you always
 have the full record even before you check WhatsApp — this is what answers

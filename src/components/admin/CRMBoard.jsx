@@ -64,6 +64,16 @@ function parseCustomFields(lead) {
   }
 }
 
+function parsePhotos(lead) {
+  if (!lead.photos) return [];
+  try {
+    const parsed = JSON.parse(lead.photos);
+    return Array.isArray(parsed) ? parsed.filter(Boolean).slice(0, 4) : [];
+  } catch {
+    return [];
+  }
+}
+
 function parseVisitLog(lead) {
   if (!lead.visitLog) return [];
   try {
@@ -224,7 +234,7 @@ function LeadCard({ lead, accent, onOpen }) {
 
 // ---------- Full detail / edit modal ----------
 
-function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSaveDetails, onAddRemark, onAddPhoto, onShareGallery }) {
+function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSaveDetails, onAddRemark, onShareGallery }) {
   const [form, setForm] = useState(() => ({
     name: lead.name || "",
     phone: lead.phone || "",
@@ -245,29 +255,42 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
   const [customFields, setCustomFields] = useState(() => parseCustomFields(lead));
   const [newFieldName, setNewFieldName] = useState("");
   const [newFieldValue, setNewFieldValue] = useState("");
+  const [photos, setPhotos] = useState(() => parsePhotos(lead));
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoError, setPhotoError] = useState("");
   const [galleryStatus, setGalleryStatus] = useState("idle"); // idle | sharing | shared
   const [galleryError, setGalleryError] = useState("");
 
   const remarksLog = useMemo(() => parseRemarksLog(lead), [lead]);
-  const visitLog = useMemo(() => parseVisitLog(lead), [lead]);
-  const latestPhoto = visitLog.find((v) => v.photoUrl);
   const supportsPhoto = sheet === "Sellers";
 
-  async function handlePhotoFile(e) {
+  async function persistPhotos(next) {
+    setPhotos(next);
+    await onSaveDetails(lead.id, { photos: JSON.stringify(next) });
+  }
+
+  async function handleAddPhotoSlot(e) {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || photos.length >= 4) return;
     setPhotoError("");
     setPhotoUploading(true);
     try {
-      const photoUrl = await uploadImage(file);
-      await onAddPhoto(lead.id, { photoUrl, lat: "", lng: "", address: "" });
+      const url = await uploadImage(file);
+      await persistPhotos([...photos, url]);
     } catch (err) {
       setPhotoError(err.message || "Couldn't upload that photo.");
     } finally {
       setPhotoUploading(false);
       e.target.value = "";
+    }
+  }
+
+  async function handleRemovePhoto(index) {
+    setPhotoError("");
+    try {
+      await persistPhotos(photos.filter((_, i) => i !== index));
+    } catch (err) {
+      setPhotoError(err.message || "Couldn't remove that photo.");
     }
   }
 
@@ -334,8 +357,10 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
         // buyers browsing the gallery must never see the exact address.
         location: form.area || form.propertyLocation || "",
         price: form.expectedPrice || (form.budgetValue ? `₹${Number(form.budgetValue).toLocaleString()}` : ""),
-        description: [form.propertyStatus, form.sqft ? `${form.sqft} sqft` : ""].filter(Boolean).join(" · "),
-        imageUrl: latestPhoto?.photoUrl || "",
+        sqft: form.sqft || "",
+        description: form.propertyStatus || "",
+        imageUrl: photos[0] || "",
+        images: JSON.stringify(photos),
         // Deliberately blank — the buyer gallery never shows the owner's number.
         contactPhone: "",
         // The seller lead's own ID — included in the WhatsApp message when a
@@ -393,39 +418,39 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
         </div>
 
         <div className="p-5 sm:p-6 space-y-6 max-h-[65vh] overflow-y-auto">
-          {/* Lead photo — attractive display, admin can add/change it on any seller lead */}
+          {/* Property photos — up to 4, admin can add/remove on any seller lead */}
           {supportsPhoto && (
             <div>
-              {latestPhoto?.photoUrl ? (
-                <div className="group relative rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
-                  <img src={latestPhoto.photoUrl} alt="Lead" className="w-full aspect-video object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-transparent to-transparent" />
-                  <div className="absolute bottom-3 left-4 right-4 text-white">
-                    <p className="text-xs font-semibold flex items-center gap-1">
-                      <Clock size={11} strokeWidth={2.25} />
-                      {formatRemarkDateTime(latestPhoto.at)}
-                    </p>
-                    {latestPhoto.address && (
-                      <p className="text-[11px] text-white/80 flex items-center gap-1 mt-0.5 truncate">
-                        <MapPin size={10} className="shrink-0" />
-                        {latestPhoto.address}
-                      </p>
+              <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">
+                Property photos {photos.length > 0 && `(${photos.length}/4)`}
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {photos.map((url, i) => (
+                  <div key={i} className="group relative rounded-2xl overflow-hidden shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 aspect-square">
+                    <img src={url} alt={`Property ${i + 1}`} className="w-full h-full object-cover" />
+                    {i === 0 && (
+                      <span className="absolute top-1.5 left-1.5 text-[9px] font-bold uppercase tracking-wide bg-ink/80 text-white px-1.5 py-0.5 rounded">
+                        Cover
+                      </span>
                     )}
+                    <button
+                      onClick={() => handleRemovePhoto(i)}
+                      className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-ink/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                    >
+                      <X size={12} />
+                    </button>
                   </div>
-                  <label className="absolute top-3 right-3 btn-ghost !bg-white/90 !py-1.5 !px-3 text-xs cursor-pointer opacity-0 group-hover:opacity-100 transition">
-                    {photoUploading ? "Uploading…" : "Change photo"}
-                    <input type="file" accept="image/*" className="hidden" onChange={handlePhotoFile} disabled={photoUploading} />
+                ))}
+                {photos.length < 4 && (
+                  <label className="flex flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-ink/15 aspect-square cursor-pointer hover:border-ink/30 hover:bg-ink/[0.02] transition">
+                    <Camera size={18} className="text-ink/30" strokeWidth={1.5} />
+                    <span className="text-[10px] font-semibold text-ink/50 text-center px-2">
+                      {photoUploading ? "Uploading…" : "Add photo"}
+                    </span>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleAddPhotoSlot} disabled={photoUploading} />
                   </label>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center gap-2 rounded-3xl border-2 border-dashed border-ink/15 py-8 cursor-pointer hover:border-ink/30 hover:bg-ink/[0.02] transition">
-                  <Camera size={22} className="text-ink/30" strokeWidth={1.5} />
-                  <span className="text-xs font-semibold text-ink/50">
-                    {photoUploading ? "Uploading…" : "Add a photo for this lead"}
-                  </span>
-                  <input type="file" accept="image/*" className="hidden" onChange={handlePhotoFile} disabled={photoUploading} />
-                </label>
-              )}
+                )}
+              </div>
               {photoError && <p className="text-xs text-buyer mt-2">{photoError}</p>}
             </div>
           )}
@@ -1134,7 +1159,6 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
           onClose={() => setOpenLeadId(null)}
           onSaveDetails={onChanged.updateMeta}
           onAddRemark={onChanged.addRemark}
-          onAddPhoto={onChanged.addVisit}
           onShareGallery={onChanged.shareToGallery}
         />
       )}

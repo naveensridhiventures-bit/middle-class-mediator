@@ -17,9 +17,9 @@
 
 const SHEETS = {
   Mediators: ["id", "timestamp", "name", "phone", "profession", "workingArea", "propertyCategory", "experience", "dealType", "genuineLeads", "status", "priority", "followUpDate", "area", "customFields", "remarksLog"],
-  Sellers: ["id", "timestamp", "name", "phone", "propertyType", "propertyLocation", "propertyStatus", "expectedPrice", "ownership", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "visitLog", "remarksLog"],
+  Sellers: ["id", "timestamp", "name", "phone", "propertyType", "propertyLocation", "propertyStatus", "expectedPrice", "ownership", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "photos", "visitLog", "remarksLog"],
   Buyers: ["id", "timestamp", "name", "phone", "propertyType", "purpose", "budget", "preferredLocation", "loanRequirement", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "remarksLog"],
-  Properties: ["id", "timestamp", "title", "type", "location", "price", "description", "imageUrl", "contactPhone", "refId"],
+  Properties: ["id", "timestamp", "title", "type", "location", "price", "sqft", "description", "imageUrl", "images", "contactPhone", "refId"],
 };
 
 function doGet() {
@@ -48,7 +48,7 @@ function doPost(e) {
         result = addRow("Sellers", {
           name: p.name, phone: p.phone, propertyType: p.propertyType, propertyLocation: p.propertyLocation,
           propertyStatus: p.propertyStatus, expectedPrice: p.expectedPrice, ownership: p.ownership,
-          timeline: p.timeline, status: "New", priority: 3, followUpDate: "", customFields: "{}", visitLog: "[]", remarksLog: "[]",
+          timeline: p.timeline, status: "New", priority: 3, followUpDate: "", customFields: "{}", photos: "[]", visitLog: "[]", remarksLog: "[]",
         });
         break;
 
@@ -114,16 +114,16 @@ function doPost(e) {
       case "addProperty":
         checkPassword(p.password);
         result = addRow("Properties", {
-          title: p.title, type: p.type, location: p.location, price: p.price,
-          description: p.description, imageUrl: p.imageUrl, contactPhone: p.contactPhone, refId: p.refId,
+          title: p.title, type: p.type, location: p.location, price: p.price, sqft: p.sqft,
+          description: p.description, imageUrl: p.imageUrl, images: p.images, contactPhone: p.contactPhone, refId: p.refId,
         });
         break;
 
       case "updateProperty":
         checkPassword(p.password);
         result = updateRow("Properties", p.id, {
-          title: p.title, type: p.type, location: p.location, price: p.price,
-          description: p.description, imageUrl: p.imageUrl, contactPhone: p.contactPhone, refId: p.refId,
+          title: p.title, type: p.type, location: p.location, price: p.price, sqft: p.sqft,
+          description: p.description, imageUrl: p.imageUrl, images: p.images, contactPhone: p.contactPhone, refId: p.refId,
         });
         break;
 

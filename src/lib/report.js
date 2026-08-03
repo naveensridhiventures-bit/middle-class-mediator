@@ -4,6 +4,7 @@
 
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { whatsappLink } from "./whatsapp";
 
 const INK = [27, 42, 74];
 const GOLD = [200, 155, 60];
@@ -67,6 +68,27 @@ function parseCustomFields(lead) {
   } catch {
     return {};
   }
+}
+
+function parsePhotos(lead) {
+  if (!lead.photos) return [];
+  try {
+    const parsed = JSON.parse(lead.photos);
+    return Array.isArray(parsed) ? parsed.filter(Boolean).slice(0, 4) : [];
+  } catch {
+    return [];
+  }
+}
+
+// Prefers exact GPS coordinates from the most recent site visit; falls back
+// to a text-based map search on the address, then the general area.
+function buildMapUrl(lead, visitLog) {
+  const withCoords = visitLog.find((v) => v.lat && v.lng);
+  if (withCoords) return `https://www.google.com/maps?q=${withCoords.lat},${withCoords.lng}`;
+  const withAddress = visitLog.find((v) => v.address);
+  const query = withAddress?.address || lead.propertyLocation || lead.area;
+  if (!query) return null;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
 const STATUS_COLOR = {
@@ -188,12 +210,18 @@ export async function downloadReport({ roleLabel, accent, fields, leads, filterL
 
   for (const lead of leads) {
     const visitLog = parseVisitLog(lead);
-    const photoUrl = visitLog.find((v) => v.photoUrl)?.photoUrl;
-    const photoData = photoUrl ? await toDataUrl(photoUrl) : null;
-    const cardPhotoH = photoData ? 64 : 0;
+    const photoUrls = parsePhotos(lead).length ? parsePhotos(lead) : (visitLog.find((v) => v.photoUrl)?.photoUrl ? [visitLog.find((v) => v.photoUrl).photoUrl] : []);
+    const photoDatas = [];
+    for (const url of photoUrls) {
+      const d = await toDataUrl(url);
+      if (d) photoDatas.push(d);
+    }
+    const hasPhotos = photoDatas.length > 0;
+    const thumbSize = 62;
+    const photoRowH = hasPhotos ? thumbSize + 12 : 0;
 
     // Rough space check before starting a new lead card
-    if (y > pageHeight - 190) {
+    if (y > pageHeight - 190 - photoRowH) {
       doc.addPage();
       drawBanner();
       y = 128;
@@ -210,15 +238,7 @@ export async function downloadReport({ roleLabel, accent, fields, leads, filterL
     doc.setFillColor(r, g, b);
     doc.rect(margin, cardTop, 4, 34, "F");
 
-    const textX = margin + 14 + (photoData ? cardPhotoH + 10 : 0);
-
-    if (photoData) {
-      try {
-        doc.addImage(photoData, "JPEG", margin + 12, cardTop + 6, cardPhotoH - 12, cardPhotoH - 12, undefined, "FAST");
-      } catch {
-        // unsupported image format — skip silently, text content still renders
-      }
-    }
+    const textX = margin + 14;
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(13);
@@ -228,7 +248,7 @@ export async function downloadReport({ roleLabel, accent, fields, leads, filterL
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(110, 110, 120);
-    doc.text(`#${lead.id}  ·  ${lead.phone || ""}`, textX, cardTop + 28);
+    doc.text(`#${lead.id}`, textX, cardTop + 28);
 
     // Status pill
     const statusLabel = status;
@@ -249,12 +269,59 @@ export async function downloadReport({ roleLabel, accent, fields, leads, filterL
     doc.setTextColor(210, 205, 195);
     doc.text("\u2605".repeat(5 - priority), pageWidth - margin - 55 + doc.getTextWidth("\u2605".repeat(priority)), cardTop + 18);
 
-    y = cardTop + Math.max(34, cardPhotoH + 6) + 8;
+    y = cardTop + 34 + 10;
+
+    // Clickable owner phone (→ WhatsApp) and map location links
+    if (lead.phone) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(r, g, b);
+      const phoneLabel = `\u{1F4F1} ${lead.phone} — message on WhatsApp`;
+      doc.textWithLink(phoneLabel, textX, y, { url: whatsappLink(lead.phone, `Hi ${lead.name || ""}, following up on your property`) });
+      const phoneW = doc.getTextWidth(phoneLabel);
+      doc.setDrawColor(r, g, b);
+      doc.setLineWidth(0.6);
+      doc.line(textX, y + 2, textX + phoneW, y + 2);
+    }
+
+    const mapUrl = buildMapUrl(lead, visitLog);
+    if (mapUrl) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(r, g, b);
+      const mapLabel = "\u{1F4CD} View exact location on map";
+      const mapX = pageWidth - margin - doc.getTextWidth(mapLabel);
+      doc.textWithLink(mapLabel, mapX, y, { url: mapUrl });
+      doc.setDrawColor(r, g, b);
+      doc.setLineWidth(0.6);
+      doc.line(mapX, y + 2, mapX + doc.getTextWidth(mapLabel), y + 2);
+    }
+
+    if (lead.phone || mapUrl) y += 16;
+
+    // Photo strip (up to 4)
+    if (hasPhotos) {
+      let px = textX;
+      photoDatas.forEach((d) => {
+        try {
+          doc.setDrawColor(230, 225, 215);
+          doc.setLineWidth(0.5);
+          doc.roundedRect(px, y, thumbSize, thumbSize, 4, 4, "S");
+          doc.addImage(d, "JPEG", px + 1, y + 1, thumbSize - 2, thumbSize - 2, undefined, "FAST");
+        } catch {
+          // unsupported image format — skip silently, rest of the report still renders
+        }
+        px += thumbSize + 8;
+      });
+      y += thumbSize + 12;
+    }
 
     const detailRows = fields
       .filter(([key]) => lead[key])
       .map(([key, label]) => [label, String(lead[key])]);
     if (lead.area) detailRows.push(["Area / locality", lead.area]);
+    const visitAddress = visitLog.find((v) => v.address)?.address;
+    if (visitAddress) detailRows.push(["Exact address", visitAddress]);
     if (lead.budgetValue) detailRows.push(["Budget (₹)", Number(lead.budgetValue).toLocaleString()]);
     if (lead.sqft) detailRows.push(["Size (sqft)", Number(lead.sqft).toLocaleString()]);
     if (lead.followUpDate) detailRows.push(["Next follow-up", formatDate(lead.followUpDate)]);
