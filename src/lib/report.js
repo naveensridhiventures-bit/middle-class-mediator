@@ -129,6 +129,119 @@ async function toDataUrl(url) {
   }
 }
 
+export async function downloadBrochure(property) {
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 40;
+  const accent = [31, 111, 92]; // seller green — brand accent for buyer-facing docs
+
+  // Banner
+  doc.setFillColor(...accent);
+  doc.rect(0, 0, pageWidth, 90, "F");
+  doc.setFillColor(...GOLD);
+  doc.rect(0, 90, pageWidth, 2.5, "F");
+  doc.setDrawColor(255, 255, 255);
+  doc.setLineWidth(1.1);
+  doc.circle(margin + 15, 30, 15, "S");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text("MCM", margin + 15, 33, { align: "center" });
+  doc.setFontSize(18);
+  doc.text(property.title || "Property", margin + 40, 32, { maxWidth: pageWidth - margin * 2 - 40 });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text("MIDDLE CLASS MEDIATOR  ·  PROPERTY BROCHURE", margin + 40, 50);
+
+  let y = 112;
+
+  // Photos grid (up to 4, 2x2)
+  let images = [];
+  if (property.images) {
+    try {
+      const parsed = JSON.parse(property.images);
+      if (Array.isArray(parsed)) images = parsed.filter(Boolean);
+    } catch {
+      // fall through
+    }
+  }
+  if (images.length === 0 && property.imageUrl) images = [property.imageUrl];
+
+  const photoDatas = [];
+  for (const url of images.slice(0, 4)) {
+    const d = await toDataUrl(url);
+    if (d) photoDatas.push(d);
+  }
+
+  if (photoDatas.length > 0) {
+    const cellW = (pageWidth - margin * 2 - 8) / 2;
+    const cellH = 130;
+    photoDatas.forEach((d, i) => {
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      const x = margin + col * (cellW + 8);
+      const py = y + row * (cellH + 8);
+      try {
+        doc.addImage(d, "JPEG", x, py, cellW, cellH, undefined, "FAST");
+      } catch {
+        // unsupported format — skip, rest of brochure still renders
+      }
+    });
+    const rows = Math.ceil(photoDatas.length / 2);
+    y += rows * (cellH + 8) + 12;
+  }
+
+  // Key facts
+  const facts = [];
+  if (property.type) facts.push(["Property type", property.type]);
+  if (property.location) facts.push(["Area", property.location]);
+  if (property.price) facts.push(["Price", property.price]);
+  if (property.sqft) facts.push(["Size", `${Number(property.sqft).toLocaleString()} sqft`]);
+  if (property.description) facts.push(["Status", property.description]);
+
+  let attributes = {};
+  if (property.attributes) {
+    try {
+      const parsed = JSON.parse(property.attributes);
+      if (parsed && typeof parsed === "object") attributes = parsed;
+    } catch {
+      // fall through
+    }
+  }
+  Object.entries(attributes).forEach(([k, v]) => {
+    if (v) facts.push([k, String(v)]);
+  });
+
+  if (facts.length) {
+    autoTable(doc, {
+      startY: y,
+      margin: { left: margin, right: margin },
+      theme: "striped",
+      styles: { fontSize: 10, cellPadding: 6, textColor: [30, 30, 40] },
+      alternateRowStyles: { fillColor: [250, 246, 239] },
+      columnStyles: { 0: { fontStyle: "bold", textColor: [80, 80, 90], cellWidth: 150 } },
+      body: facts,
+    });
+    y = doc.lastAutoTable.finalY + 20;
+  }
+
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(9);
+  doc.setTextColor(120, 120, 130);
+  doc.text("Contact Middle Class Mediator on WhatsApp to express interest and get in touch about this property.", margin, y, {
+    maxWidth: pageWidth - margin * 2,
+  });
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(150, 150, 160);
+  doc.text("Middle Class Mediator", margin, pageHeight - 20);
+
+  const safeTitle = (property.title || "property").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);
+  doc.save(`${safeTitle}-brochure.pdf`);
+}
+
 export async function downloadReport({ roleLabel, accent, fields, leads, filterLabel }) {
   const [r, g, b] = hexToRgb(accent);
   const doc = new jsPDF({ unit: "pt", format: "a4" });

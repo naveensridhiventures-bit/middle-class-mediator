@@ -365,6 +365,9 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
         description: form.propertyStatus || "",
         imageUrl: photos[0] || "",
         images: JSON.stringify(photos),
+        attributes: JSON.stringify(
+          Object.fromEntries(Object.entries(customFields).filter(([k]) => k !== "galleryId"))
+        ),
         // Deliberately blank — the buyer gallery never shows the owner's number.
         contactPhone: "",
         // The seller lead's own ID — included in the WhatsApp message when a

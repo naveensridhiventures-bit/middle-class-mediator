@@ -1,12 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Handshake, MapPin, Ruler,
+  Handshake, MapPin, Ruler, Download,
   Search, SlidersHorizontal, ArrowUpDown, X,
 } from "lucide-react";
 import { listPublicProperties } from "../lib/api";
 import { whatsappLink } from "../lib/whatsapp";
 import { ADMIN_WHATSAPP_NUMBER } from "../lib/config";
 import Carousel from "../components/Carousel";
+import { downloadBrochure } from "../lib/report";
+
+function parseAttributes(p) {
+  if (!p.attributes) return {};
+  try {
+    const parsed = JSON.parse(p.attributes);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
 
 function parseImages(p) {
   if (p.images) {
@@ -36,6 +47,19 @@ function priceValue(price) {
 
 function PropertyCard({ p, index }) {
   const images = parseImages(p);
+  const attributes = parseAttributes(p);
+  const attrEntries = Object.entries(attributes).filter(([, v]) => v);
+  const [downloading, setDownloading] = useState(false);
+
+  async function handleDownload() {
+    setDownloading(true);
+    try {
+      await downloadBrochure(p);
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <div
       className="group rounded-3xl overflow-hidden bg-white shadow-md hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-500 animate-[fadeInUp_0.6s_ease_both]"
@@ -71,17 +95,39 @@ function PropertyCard({ p, index }) {
           )}
         </div>
         {p.description && <p className="text-xs text-ink/50">{p.description}</p>}
-        <a
-          href={whatsappLink(
-            ADMIN_WHATSAPP_NUMBER,
-            `Hi, I'm interested in this property: ${p.title}${p.location ? ` (${p.location})` : ""} — ${p.price || ""}${p.refId ? `\n\nProperty ref: ${p.refId}` : ""}\n\nCan you share more details?`
-          )}
-          target="_blank"
-          rel="noreferrer"
-          className="btn-whatsapp w-full !py-2.5 text-sm block text-center mt-2 group-hover:scale-[1.02] transition-transform"
-        >
-          Show interest on WhatsApp
-        </a>
+
+        {attrEntries.length > 0 && (
+          <div className="grid grid-cols-2 gap-1.5 pt-1">
+            {attrEntries.map(([k, v]) => (
+              <div key={k} className="bg-ink/[0.035] rounded-lg px-2.5 py-1.5">
+                <p className="text-[9px] uppercase tracking-wide text-ink/35 font-bold leading-none mb-0.5">{k}</p>
+                <p className="text-xs text-ink/70 font-medium truncate">{v}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex gap-2 pt-1">
+          <a
+            href={whatsappLink(
+              ADMIN_WHATSAPP_NUMBER,
+              `Hi, I'm interested in this property: ${p.title}${p.location ? ` (${p.location})` : ""} — ${p.price || ""}${p.refId ? `\n\nProperty ref: ${p.refId}` : ""}\n\nCan you share more details?`
+            )}
+            target="_blank"
+            rel="noreferrer"
+            className="btn-whatsapp flex-1 !py-2.5 text-sm text-center group-hover:scale-[1.02] transition-transform"
+          >
+            Show interest on WhatsApp
+          </a>
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            title="Download brochure"
+            className="btn-ghost !px-3.5 flex items-center justify-center shrink-0"
+          >
+            <Download size={16} className={downloading ? "animate-pulse" : ""} />
+          </button>
+        </div>
       </div>
     </div>
   );

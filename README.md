@@ -1,5 +1,22 @@
 # Middle Class Mediator
 
+## Recent redesign
+
+- **No more site-wide nav on any page** — the header (How It Works / Categories
+  / Contact / Get Started) and bottom nav bar are gone everywhere. Every page
+  already has its own in-page branding, so this was redundant chrome.
+- **Seller/Buyer/Mediator forms redesigned** — each field is now a
+  numbered step with its own icon per option (property type, location,
+  status, etc.), and the name/phone inputs have leading icons too, matching
+  a cleaner, more premium look.
+- **Gallery attributes** — any custom field you tag on a seller lead
+  (Facing, Furnishing, Amenity, etc.) now gets included when you "Share on
+  gallery" and displays as a small attribute grid on the public listing —
+  still never the owner's phone or exact address.
+- **Download brochure** — each gallery card has a download icon that
+  generates a buyer-safe PDF brochure (photos, type, area, price, sqft,
+  attributes) — no phone number, no exact address, ever.
+
 A PWA for your Instagram property-video workflow: **Mediator**, **Seller**, and
 **Buyer** each fill their own form; everything is stored in a Google Sheet;
 you (admin) manage it all from a hidden dashboard and follow up over WhatsApp.
