@@ -14,7 +14,7 @@ export const CLOUDINARY_UPLOAD_PRESET = "mcm_unsigned";
 
 // 3. Admin / your WhatsApp number in international format, no + or spaces
 //    e.g. 919876543210 for an Indian number
-export const ADMIN_WHATSAPP_NUMBER = "91XXXXXXXXXX";
+export const ADMIN_WHATSAPP_NUMBER = "918838660663";
 
 // 4. Mediator's WhatsApp / contact number — this is the number a SELLER's
 //    "Message the mediator" button sends to. International format, no
