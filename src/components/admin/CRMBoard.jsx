@@ -4,7 +4,7 @@ import Carousel from "../Carousel";
 import { adminUpdateLead, adminAddRemark, adminAddVisit, addSellerLead, adminAddProperty, adminUpdateProperty } from "../../lib/api";
 import { whatsappLink, callLink } from "../../lib/whatsapp";
 import { downloadReport } from "../../lib/report";
-import { uploadImage } from "../../lib/cloudinary";
+import { uploadImage, optimizedImageUrl } from "../../lib/cloudinary";
 
 const STATUSES = ["New", "Contacted", "In progress", "Closed", "Dropped"];
 
@@ -152,7 +152,9 @@ function LeadCard({ lead, accent, onOpen }) {
   const latestRemark = remarksLog[0];
   const visitLog = parseVisitLog(lead);
   const latestVisit = visitLog[0];
-  const photos = parsePhotos(lead).length ? parsePhotos(lead) : (latestVisit?.photoUrl ? [latestVisit.photoUrl] : []);
+  const rawPhotos = parsePhotos(lead).length ? parsePhotos(lead) : (latestVisit?.photoUrl ? [latestVisit.photoUrl] : []);
+  const photos = rawPhotos.map((u) => optimizedImageUrl(u, 500));
+  const soldOut = customFields.soldOut === "true";
 
   return (
     <div className="card-ledger overflow-hidden space-y-3 border-l-4" style={{ borderLeftColor: accent }}>
@@ -166,12 +168,29 @@ function LeadCard({ lead, accent, onOpen }) {
             </p>
             {latestVisit?.address && <p className="text-[10px] text-white/80 truncate">{latestVisit.address}</p>}
           </div>
+          {soldOut && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+              <span
+                className="font-display font-extrabold text-white text-sm tracking-[0.15em] px-5 py-1.5 border-2 border-white shadow-lg"
+                style={{ transform: "rotate(-10deg)", backgroundColor: "rgba(181,83,60,0.92)" }}
+              >
+                SOLD OUT
+              </span>
+            </div>
+          )}
         </div>
       )}
       <div className="px-4 space-y-3" style={{ paddingTop: photos.length > 0 ? 0 : 16, paddingBottom: 16 }}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="font-semibold text-ink text-sm truncate">{lead.name}</p>
+          <p className="font-semibold text-ink text-sm truncate flex items-center gap-1.5">
+            {lead.name}
+            {soldOut && photos.length === 0 && (
+              <span className="text-[9px] font-bold uppercase tracking-wide bg-buyer/15 text-buyer px-1.5 py-0.5 rounded-full shrink-0">
+                Sold Out
+              </span>
+            )}
+          </p>
           <p className="text-[11px] text-ink/40 font-mono mt-0.5">#{lead.id} · {timeAgo(lead.timestamp)}</p>
         </div>
         <span className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${sStyle.bg} ${sStyle.text}`}>
@@ -436,7 +455,7 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 {photos.map((url, i) => (
                   <div key={i} className="group relative rounded-2xl overflow-hidden shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 aspect-square">
-                    <img src={url} alt={`Property ${i + 1}`} className="w-full h-full object-cover" />
+                    <img src={optimizedImageUrl(url, 300)} alt={`Property ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
                     {i === 0 && (
                       <span className="absolute top-1.5 left-1.5 text-[9px] font-bold uppercase tracking-wide bg-ink/80 text-white px-1.5 py-0.5 rounded">
                         Cover

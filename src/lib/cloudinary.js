@@ -1,6 +1,23 @@
 import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET } from "./config";
 
 /**
+ * Rewrites a Cloudinary secure_url to request an optimized, resized
+ * version on the fly (smaller file size, auto format/quality) instead of
+ * the full-resolution original — this is what actually makes the gallery
+ * and CRM load quickly, since photos straight from a phone camera can be
+ * several MB each. Safe no-op if the URL isn't a recognizable Cloudinary
+ * upload URL (e.g. an external or already-transformed link).
+ */
+export function optimizedImageUrl(url, width = 800) {
+  if (!url || typeof url !== "string") return url;
+  const marker = "/image/upload/";
+  const idx = url.indexOf(marker);
+  if (idx === -1) return url;
+  const insertAt = idx + marker.length;
+  return `${url.slice(0, insertAt)}w_${width},q_auto,f_auto,c_limit/${url.slice(insertAt)}`;
+}
+
+/**
  * Uploads a File to Cloudinary using an unsigned upload preset
  * and returns the public secure URL.
  */

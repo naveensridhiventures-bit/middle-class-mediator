@@ -6,6 +6,7 @@ import {
 import { listPublicProperties } from "../lib/api";
 import { whatsappLink } from "../lib/whatsapp";
 import { ADMIN_WHATSAPP_NUMBER } from "../lib/config";
+import { optimizedImageUrl } from "../lib/cloudinary";
 import Carousel from "../components/Carousel";
 import { downloadBrochure } from "../lib/report";
 
@@ -20,15 +21,19 @@ function parseAttributes(p) {
 }
 
 function parseImages(p) {
+  let urls = [];
   if (p.images) {
     try {
       const parsed = JSON.parse(p.images);
-      if (Array.isArray(parsed) && parsed.length) return parsed.filter(Boolean);
+      if (Array.isArray(parsed) && parsed.length) urls = parsed.filter(Boolean);
     } catch {
       // fall through to single imageUrl below
     }
   }
-  return p.imageUrl ? [p.imageUrl] : [];
+  if (urls.length === 0 && p.imageUrl) urls = [p.imageUrl];
+  // Request a resized, optimized version — full-resolution camera photos
+  // are what actually made the gallery slow to load, not the API call.
+  return urls.map((u) => optimizedImageUrl(u, 700));
 }
 
 // Pulls the first meaningful number out of a free-text price string like
@@ -161,8 +166,17 @@ const SORT_OPTIONS = [
   { key: "price-high", label: "Price: High to Low" },
 ];
 
+const CACHE_KEY = "mcm_gallery_cache_v1";
+
 export default function Gallery() {
-  const [properties, setProperties] = useState(null);
+  const [properties, setProperties] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem(CACHE_KEY);
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [activeType, setActiveType] = useState("All");
@@ -171,7 +185,15 @@ export default function Gallery() {
 
   useEffect(() => {
     listPublicProperties()
-      .then((data) => setProperties([...data].reverse()))
+      .then((data) => {
+        const list = [...data].reverse();
+        setProperties(list);
+        try {
+          sessionStorage.setItem(CACHE_KEY, JSON.stringify(list));
+        } catch {
+          // sessionStorage full/unavailable — not worth failing over
+        }
+      })
       .catch((err) => setError(err.message));
   }, []);
 

@@ -45,7 +45,7 @@ export default function Carousel({ images, alt = "Photo", intervalMs = 2800, cla
       >
         {images.map((src, i) => (
           <div key={i} className="h-full" style={{ width: `${100 / images.length}%` }}>
-            <img src={src} alt={`${alt} ${i + 1}`} className="w-full h-full object-cover" />
+            <img src={src} alt={`${alt} ${i + 1}`} className="w-full h-full object-cover" loading="lazy" decoding="async" />
           </div>
         ))}
       </div>
