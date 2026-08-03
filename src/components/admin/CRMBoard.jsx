@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Clock, User, X, SlidersHorizontal, Pencil, Camera, MapPin } from "lucide-react";
+import Carousel from "../Carousel";
 import { adminUpdateLead, adminAddRemark, adminAddVisit, addSellerLead, adminAddProperty, adminUpdateProperty } from "../../lib/api";
 import { whatsappLink, callLink } from "../../lib/whatsapp";
 import { downloadReport } from "../../lib/report";
@@ -151,22 +152,23 @@ function LeadCard({ lead, accent, onOpen }) {
   const latestRemark = remarksLog[0];
   const visitLog = parseVisitLog(lead);
   const latestVisit = visitLog[0];
+  const photos = parsePhotos(lead).length ? parsePhotos(lead) : (latestVisit?.photoUrl ? [latestVisit.photoUrl] : []);
 
   return (
     <div className="card-ledger overflow-hidden space-y-3 border-l-4" style={{ borderLeftColor: accent }}>
-      {latestVisit?.photoUrl && (
-        <div className="relative -mx-4 -mt-4 mb-1">
-          <img src={latestVisit.photoUrl} alt="Field visit" className="w-full h-36 object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/10 to-transparent" />
-          <div className="absolute bottom-2 left-3 right-3 text-white">
+      {photos.length > 0 && (
+        <div className="relative -mx-4 -mt-4 mb-1 h-36">
+          <Carousel images={photos} alt={lead.name} showCounter />
+          <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/10 to-transparent pointer-events-none" />
+          <div className="absolute bottom-2 left-3 right-3 text-white pointer-events-none">
             <p className="text-[11px] font-semibold flex items-center gap-1">
-              📷 Field visit · {formatRemarkDateTime(latestVisit.at)}
+              📷 {latestVisit ? `Field visit · ${formatRemarkDateTime(latestVisit.at)}` : "Property photos"}
             </p>
-            {latestVisit.address && <p className="text-[10px] text-white/80 truncate">{latestVisit.address}</p>}
+            {latestVisit?.address && <p className="text-[10px] text-white/80 truncate">{latestVisit.address}</p>}
           </div>
         </div>
       )}
-      <div className="px-4 space-y-3" style={{ paddingTop: latestVisit?.photoUrl ? 0 : 16, paddingBottom: 16 }}>
+      <div className="px-4 space-y-3" style={{ paddingTop: photos.length > 0 ? 0 : 16, paddingBottom: 16 }}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="font-semibold text-ink text-sm truncate">{lead.name}</p>
@@ -244,6 +246,8 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
     area: lead.area || "",
     budgetValue: lead.budgetValue || "",
     sqft: lead.sqft || "",
+    exactAddress: lead.exactAddress || "",
+    mapLink: lead.mapLink || "",
     ...Object.fromEntries(fields.map(([k]) => [k, lead[k] ?? ""])),
   }));
   const [saving, setSaving] = useState(false);
@@ -514,6 +518,36 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
               </div>
             </div>
           </div>
+
+          {/* Manual location — type an address or paste a Google Maps link directly, no GPS capture needed */}
+          {supportsPhoto && (
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">Location</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Exact address</label>
+                  <textarea
+                    className="field-input !py-2 text-sm min-h-[44px]"
+                    placeholder="Type or paste the full address"
+                    value={form.exactAddress}
+                    onChange={(e) => set("exactAddress", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Google Maps link</label>
+                  <input
+                    className="field-input !py-2 text-sm"
+                    placeholder="Paste a Google Maps link here"
+                    value={form.mapLink}
+                    onChange={(e) => set("mapLink", e.target.value)}
+                  />
+                  <p className="text-[10px] text-ink/35 mt-1">
+                    Open the location in Google Maps, tap Share, copy the link, and paste it here.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Custom fields — mediator can add any attribute they need; it becomes a filter facet automatically */}
           <div>

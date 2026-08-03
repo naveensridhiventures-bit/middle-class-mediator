@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Handshake, MapPin, Home as HomeIcon, Ruler, ChevronLeft, ChevronRight,
+  Handshake, MapPin, Ruler,
   Search, SlidersHorizontal, ArrowUpDown, X,
 } from "lucide-react";
 import { listPublicProperties } from "../lib/api";
 import { whatsappLink } from "../lib/whatsapp";
 import { ADMIN_WHATSAPP_NUMBER } from "../lib/config";
+import Carousel from "../components/Carousel";
 
 function parseImages(p) {
   if (p.images) {
@@ -31,87 +32,6 @@ function priceValue(price) {
   return num;
 }
 
-// ---------- Sliding carousel (real translateX slide, not crossfade) ----------
-
-function Carousel({ images, alt }) {
-  const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const timerRef = useRef(null);
-
-  useEffect(() => {
-    if (images.length <= 1 || paused) return undefined;
-    timerRef.current = setInterval(() => {
-      setIndex((i) => (i + 1) % images.length);
-    }, 2800);
-    return () => clearInterval(timerRef.current);
-  }, [images.length, paused]);
-
-  function go(delta) {
-    setIndex((i) => (i + delta + images.length) % images.length);
-  }
-
-  if (images.length === 0) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-ink/5 to-ink/10">
-        <HomeIcon size={30} className="text-ink/20" strokeWidth={1.5} />
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className="relative w-full h-full overflow-hidden group"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-    >
-      <div
-        className="flex h-full transition-transform duration-700 ease-[cubic-bezier(0.65,0,0.35,1)]"
-        style={{ width: `${images.length * 100}%`, transform: `translateX(-${index * (100 / images.length)}%)` }}
-      >
-        {images.map((src, i) => (
-          <div key={i} className="h-full" style={{ width: `${100 / images.length}%` }}>
-            <img src={src} alt={`${alt} ${i + 1}`} className="w-full h-full object-cover" />
-          </div>
-        ))}
-      </div>
-
-      {images.length > 1 && (
-        <>
-          <div className="absolute inset-0 bg-gradient-to-t from-ink/25 via-transparent to-transparent pointer-events-none" />
-          <button
-            onClick={(e) => { e.stopPropagation(); go(-1); }}
-            className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 text-ink flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-md"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); go(1); }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 text-ink flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-md"
-          >
-            <ChevronRight size={16} />
-          </button>
-          <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1.5">
-            {images.map((_, i) => (
-              <button
-                key={i}
-                onClick={(e) => { e.stopPropagation(); setIndex(i); }}
-                className="h-1.5 rounded-full transition-all duration-300"
-                style={{
-                  width: i === index ? 18 : 6,
-                  backgroundColor: i === index ? "#fff" : "rgba(255,255,255,0.55)",
-                }}
-              />
-            ))}
-          </div>
-          <span className="absolute top-2.5 right-2.5 text-[10px] font-bold bg-ink/60 text-white px-2 py-0.5 rounded-full">
-            {index + 1}/{images.length}
-          </span>
-        </>
-      )}
-    </div>
-  );
-}
-
 // ---------- Property card ----------
 
 function PropertyCard({ p, index }) {
@@ -122,7 +42,7 @@ function PropertyCard({ p, index }) {
       style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
     >
       <div className="aspect-[4/3] relative">
-        <Carousel images={images} alt={p.title} />
+        <Carousel images={images} alt={p.title} showCounter />
         {p.price && (
           <span className="absolute top-3 left-3 z-10 bg-white/95 text-ink font-display font-bold text-sm px-3 py-1 rounded-full shadow">
             {p.price}

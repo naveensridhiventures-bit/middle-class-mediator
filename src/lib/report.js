@@ -80,13 +80,15 @@ function parsePhotos(lead) {
   }
 }
 
-// Prefers exact GPS coordinates from the most recent site visit; falls back
-// to a text-based map search on the address, then the general area.
+// Prefers a manually pasted Google Maps link; then exact GPS coordinates
+// from the most recent site visit; then a text-based map search on the
+// address, then the general area.
 function buildMapUrl(lead, visitLog) {
+  if (lead.mapLink && /^https?:\/\//i.test(lead.mapLink.trim())) return lead.mapLink.trim();
   const withCoords = visitLog.find((v) => v.lat && v.lng);
   if (withCoords) return `https://www.google.com/maps?q=${withCoords.lat},${withCoords.lng}`;
   const withAddress = visitLog.find((v) => v.address);
-  const query = withAddress?.address || lead.propertyLocation || lead.area;
+  const query = lead.exactAddress || withAddress?.address || lead.propertyLocation || lead.area;
   if (!query) return null;
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
@@ -321,7 +323,8 @@ export async function downloadReport({ roleLabel, accent, fields, leads, filterL
       .map(([key, label]) => [label, String(lead[key])]);
     if (lead.area) detailRows.push(["Area / locality", lead.area]);
     const visitAddress = visitLog.find((v) => v.address)?.address;
-    if (visitAddress) detailRows.push(["Exact address", visitAddress]);
+    const exactAddress = lead.exactAddress || visitAddress;
+    if (exactAddress) detailRows.push(["Exact address", exactAddress]);
     if (lead.budgetValue) detailRows.push(["Budget (₹)", Number(lead.budgetValue).toLocaleString()]);
     if (lead.sqft) detailRows.push(["Size (sqft)", Number(lead.sqft).toLocaleString()]);
     if (lead.followUpDate) detailRows.push(["Next follow-up", formatDate(lead.followUpDate)]);

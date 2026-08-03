@@ -253,3 +253,14 @@ faster. One honest caveat: Google Apps Script itself has a "cold start" of
 a few seconds after it's been idle for a while, which no amount of
 code-level optimization removes — if the very first request after a gap
 feels slow but everything after it is snappy, that's this, not a bug.
+
+## Carousel & manual location
+
+- Seller lead cards in the CRM now show the same sliding photo carousel as
+  the public gallery — if a lead has multiple photos, the card auto-advances
+  through them right in the list, not just a single static banner.
+- In a seller lead's detail panel, under "Location," you can type/paste the
+  exact address directly and paste a Google Maps share link, without
+  needing to physically be on-site with GPS. The seller PDF's map link
+  prefers the pasted Maps link first, falling back to GPS coordinates from
+  a site visit, then the typed address.
