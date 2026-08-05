@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Handshake, MapPin, Ruler, Download,
+  Handshake, MapPin, Ruler,
   Search, SlidersHorizontal, ArrowUpDown, X,
 } from "lucide-react";
 import { listPublicProperties } from "../lib/api";
@@ -9,7 +9,7 @@ import { ADMIN_WHATSAPP_NUMBER } from "../lib/config";
 import { optimizedImageUrl } from "../lib/cloudinary";
 import Carousel from "../components/Carousel";
 import SoldOutStamp from "../components/SoldOutStamp";
-import { downloadBrochure } from "../lib/report";
+import ImageLightbox from "../components/ImageLightbox";
 
 function parseAttributes(p) {
   if (!p.attributes) return {};
@@ -55,17 +55,8 @@ function PropertyCard({ p, index }) {
   const images = parseImages(p);
   const attributes = parseAttributes(p);
   const attrEntries = Object.entries(attributes).filter(([, v]) => v);
-  const [downloading, setDownloading] = useState(false);
   const soldOut = p.soldOut === "true" || p.soldOut === true;
-
-  async function handleDownload() {
-    setDownloading(true);
-    try {
-      await downloadBrochure(p);
-    } finally {
-      setDownloading(false);
-    }
-  }
+  const [lightboxIndex, setLightboxIndex] = useState(null);
 
   return (
     <div
@@ -74,7 +65,7 @@ function PropertyCard({ p, index }) {
     >
       <div className="aspect-[4/3] relative">
         <div className={soldOut ? "grayscale opacity-70 w-full h-full" : "w-full h-full"}>
-          <Carousel images={images} alt={p.title} showCounter />
+          <Carousel images={images} alt={p.title} showCounter onImageClick={images.length ? setLightboxIndex : undefined} />
         </div>
         {p.price && !soldOut && (
           <span className="absolute top-3 left-3 z-10 bg-white/95 text-ink font-display font-bold text-sm px-3 py-1 rounded-full shadow">
@@ -118,9 +109,9 @@ function PropertyCard({ p, index }) {
           </div>
         )}
 
-        <div className="flex gap-2 pt-1">
+        <div className="pt-1">
           {soldOut ? (
-            <span className="flex-1 !py-2.5 text-sm text-center rounded-xl bg-ink/10 text-ink/40 font-semibold flex items-center justify-center">
+            <span className="w-full !py-2.5 text-sm text-center rounded-xl bg-ink/10 text-ink/40 font-semibold flex items-center justify-center">
               No longer available
             </span>
           ) : (
@@ -131,21 +122,22 @@ function PropertyCard({ p, index }) {
               )}
               target="_blank"
               rel="noreferrer"
-              className="btn-whatsapp flex-1 !py-2.5 text-sm text-center group-hover:scale-[1.02] transition-transform"
+              className="btn-whatsapp w-full !py-2.5 text-sm text-center block group-hover:scale-[1.02] transition-transform"
             >
               Show interest on WhatsApp
             </a>
           )}
-          <button
-            onClick={handleDownload}
-            disabled={downloading}
-            title="Download brochure"
-            className="btn-ghost !px-3.5 flex items-center justify-center shrink-0"
-          >
-            <Download size={16} className={downloading ? "animate-pulse" : ""} />
-          </button>
         </div>
       </div>
+
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          images={images}
+          initialIndex={lightboxIndex}
+          alt={p.title}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
     </div>
   );
 }

@@ -1,38 +1,31 @@
 /**
- * Shared "SOLD OUT" stamp overlay — used on both the public gallery cards
- * and the admin CRM lead cards, so they look identical. Sized responsively
- * so it stays proportional to its container rather than a fixed pixel size.
+ * Shared "SOLD OUT" corner ribbon — used on both the public gallery cards
+ * and the admin CRM lead cards, so they look identical. A diagonal banner
+ * across the top-right corner, like a classic e-commerce sale tag, with a
+ * stitched-edge look and drop shadow for a more premium feel than a plain
+ * centered stamp.
  */
 export default function SoldOutStamp({ size = "lg" }) {
   const sizes = {
-    sm: {
-      text: "text-base sm:text-lg",
-      pad: "px-6 py-2",
-      border: "border-[3px]",
-      tracking: "tracking-[0.2em]",
-    },
-    lg: {
-      text: "text-2xl sm:text-3xl",
-      pad: "px-10 sm:px-14 py-3 sm:py-3.5",
-      border: "border-4",
-      tracking: "tracking-[0.3em]",
-    },
+    sm: { box: "w-24 h-24", text: "text-[10px] py-1", top: "top-[20%]" },
+    lg: { box: "w-36 h-36 sm:w-44 sm:h-44", text: "text-xs sm:text-sm py-1.5 sm:py-2", top: "top-[22%]" },
   };
   const s = sizes[size] || sizes.lg;
 
   return (
-    <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-      <div className="absolute inset-0 bg-ink/10" />
-      <span
-        className={`relative font-display font-extrabold text-white uppercase ${s.text} ${s.pad} ${s.border} ${s.tracking} border-white/90`}
+    <div className={`absolute top-0 right-0 z-10 overflow-hidden pointer-events-none ${s.box}`}>
+      <div
+        className={`absolute right-[-30%] w-[170%] text-center font-display font-extrabold text-white uppercase tracking-[0.2em] ${s.text} ${s.top}`}
         style={{
-          transform: "rotate(-11deg)",
-          background: "linear-gradient(135deg, #C24A38, #7A2418)",
-          boxShadow: "0 10px 30px -6px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,0,0,0.15)",
+          transform: "rotate(45deg)",
+          background: "linear-gradient(135deg, #D2543F, #7A2418)",
+          boxShadow: "0 6px 16px -2px rgba(0,0,0,0.5)",
+          borderTop: "1px dashed rgba(255,255,255,0.55)",
+          borderBottom: "1px dashed rgba(255,255,255,0.55)",
         }}
       >
         Sold Out
-      </span>
+      </div>
     </div>
   );
 }

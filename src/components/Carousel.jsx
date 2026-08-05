@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight, Home as HomeIcon } from "lucide-react";
  * the public Gallery and the admin CRM lead cards, so both look and move
  * identically.
  */
-export default function Carousel({ images, alt = "Photo", intervalMs = 2800, className = "", showCounter = false }) {
+export default function Carousel({ images, alt = "Photo", intervalMs = 2800, className = "", showCounter = false, onImageClick }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const timerRef = useRef(null);
@@ -40,8 +40,9 @@ export default function Carousel({ images, alt = "Photo", intervalMs = 2800, cla
       onMouseLeave={() => setPaused(false)}
     >
       <div
-        className="flex h-full transition-transform duration-700 ease-[cubic-bezier(0.65,0,0.35,1)]"
+        className={`flex h-full transition-transform duration-700 ease-[cubic-bezier(0.65,0,0.35,1)] ${onImageClick ? "cursor-zoom-in" : ""}`}
         style={{ width: `${images.length * 100}%`, transform: `translateX(-${index * (100 / images.length)}%)` }}
+        onClick={() => onImageClick && onImageClick(index)}
       >
         {images.map((src, i) => (
           <div key={i} className="h-full" style={{ width: `${100 / images.length}%` }}>
