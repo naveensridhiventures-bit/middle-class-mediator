@@ -4,7 +4,7 @@ import Carousel from "../Carousel";
 import SoldOutStamp from "../SoldOutStamp";
 import { adminUpdateLead, adminAddRemark, adminAddVisit, addSellerLead, adminAddProperty, adminUpdateProperty } from "../../lib/api";
 import { whatsappLink, callLink } from "../../lib/whatsapp";
-import { downloadReport } from "../../lib/report";
+import { downloadReport, downloadBrochure } from "../../lib/report";
 import { uploadImage, optimizedImageUrl } from "../../lib/cloudinary";
 
 const STATUSES = ["New", "Contacted", "In progress", "Closed", "Dropped"];
@@ -408,6 +408,31 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
     });
   }
 
+  // Buyer-safe PDF for sharing directly with a customer — reuses the same
+  // privacy rules as "Share on gallery" (respects the field-visibility
+  // checklist), but doesn't require actually publishing to the gallery.
+  // Owner name, real phone, and exact address never appear; the mediator's
+  // own number shows as the contact.
+  function handleDownloadCustomerPDF() {
+    const propertyLike = {
+      title: `${form.propertyType || "Property"} in ${form.area || form.propertyLocation || "Chennai"}`,
+      type: form.propertyType || "",
+      location: form.area || form.propertyLocation || "",
+      price: form.expectedPrice || (form.budgetValue ? `₹${Number(form.budgetValue).toLocaleString()}` : ""),
+      sqft: form.builtUpArea || form.landArea || form.sqft || "",
+      description: form.propertyStatus || "",
+      images: JSON.stringify(photos),
+      attributes: JSON.stringify({
+        ...Object.fromEntries(
+          GALLERY_TOGGLEABLE_FIELDS.filter(([key]) => galleryFields.includes(key) && form[key]).map(([key, label]) => [label, form[key]])
+        ),
+        ...Object.fromEntries(Object.entries(customFields).filter(([k]) => k !== "galleryId" && k !== "soldOut")),
+      }),
+      refId: lead.id,
+    };
+    downloadBrochure(propertyLike);
+  }
+
   async function handleShareGallery() {
     setGalleryError("");
     setGalleryStatus("sharing");
@@ -773,9 +798,14 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
           <button onClick={handleSave} disabled={saving} className="btn-primary flex-1 !py-3">
             {saving ? "Saving…" : saved ? "Saved ✓" : "Save changes"}
           </button>
-          <button onClick={handleDownloadSingle} className="btn-ghost !py-3 !px-4" title="Download this lead as a PDF">
-            📄 PDF
+          <button onClick={handleDownloadSingle} className="btn-ghost !py-3 !px-4" title="Full internal PDF — includes owner name, phone, and exact address">
+            📄 Admin PDF
           </button>
+          {supportsPhoto && (
+            <button onClick={handleDownloadCustomerPDF} className="btn-ghost !py-3 !px-4" title="Buyer-safe PDF to share with a customer — no owner name, phone, or exact address">
+              📤 Customer PDF
+            </button>
+          )}
           <button onClick={onClose} className="btn-ghost !py-3 !px-5">Close</button>
           </div>
         </div>

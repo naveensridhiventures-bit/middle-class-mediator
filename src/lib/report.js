@@ -238,6 +238,12 @@ export async function downloadBrochure(property) {
 
   // Key facts, cleanly aligned two-column table
   const facts = [];
+  const contactDigits = String(ADMIN_WHATSAPP_NUMBER).replace(/\D/g, "");
+  if (contactDigits.length === 12) {
+    facts.push(["Contact number", `+${contactDigits.slice(0, 2)} ${contactDigits.slice(2, 7)} ${contactDigits.slice(7)}`]);
+  } else if (contactDigits) {
+    facts.push(["Contact number", `+${contactDigits}`]);
+  }
   if (property.type) facts.push(["Property type", pdfSafe(property.type)]);
   if (property.location) facts.push(["Area", pdfSafe(property.location)]);
   if (property.sqft) facts.push(["Size", `${Number(property.sqft).toLocaleString()} sqft`]);

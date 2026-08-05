@@ -1,5 +1,22 @@
 # Middle Class Mediator
 
+## Two PDF types + shareable property links
+
+- **Two PDF buttons on every seller lead**: **"📄 Admin PDF"** (the full
+  internal report — owner name, real phone as a clickable WhatsApp link,
+  exact address, map link) and **"📤 Customer PDF"** (buyer-safe — no owner
+  name, no real phone, no exact address; the mediator's own number shows
+  as the contact instead, both as a clickable WhatsApp button and printed
+  as plain text). The Customer PDF respects the same per-field visibility
+  checklist as "Share on gallery," and works without needing to actually
+  publish the listing.
+- **Shareable per-property links** — every gallery card has a share icon;
+  tap it to open your device's share sheet (or copy the link if sharing
+  isn't available) for a direct link to just that one property. Opening
+  the link shows a focused single-property page with the full photo
+  carousel, details, and WhatsApp button; a "← All listings" link (and the
+  browser's own back button) returns to the full gallery.
+
 ## Full property owner details form
 
 - The Seller form now collects a full property questionnaire — owner type,
