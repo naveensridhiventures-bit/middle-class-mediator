@@ -1,5 +1,25 @@
 # Middle Class Mediator
 
+## Full property owner details form
+
+- The Seller form now collects a full property questionnaire — owner type,
+  photos status, property type/age/status, building type, land area,
+  built-up area, frontage, road width, facing, usage, patta/approval,
+  approval status, parking, rental status, loan status, expected price,
+  timeline, and free-text remarks. Only name, phone, owner type, location,
+  property type, status, price, and timeline are required — everything
+  else is optional so the form stays completable.
+- All of these fields are editable in the Seller CRM with the same
+  dropdown options as the public form, and automatically included in the
+  seller's PDF report.
+- **Per-listing gallery visibility control** — when sharing a lead to the
+  gallery, there's a checklist of every detail-field that has a value on
+  that lead ("Property age", "Facing", "Loan status," etc.), each with its
+  own checkbox. Uncheck anything you don't want a buyer to see for that
+  specific listing; the choice is remembered and pre-filled next time you
+  update that listing. Owner name, phone, ownership type, and exact
+  address are never shown on the gallery regardless of this setting.
+
 ## Recent redesign
 
 - **No more site-wide nav on any page** — the header (How It Works / Categories

@@ -22,7 +22,7 @@
 
 const SHEETS = {
   Mediators: ["id", "timestamp", "name", "phone", "profession", "workingArea", "propertyCategory", "experience", "dealType", "genuineLeads", "status", "priority", "followUpDate", "area", "customFields", "remarksLog"],
-  Sellers: ["id", "timestamp", "name", "phone", "propertyType", "propertyLocation", "propertyStatus", "expectedPrice", "ownership", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "photos", "exactAddress", "mapLink", "visitLog", "remarksLog"],
+  Sellers: ["id", "timestamp", "name", "phone", "propertyType", "propertyLocation", "propertyStatus", "expectedPrice", "ownership", "purpose", "propertyAge", "buildingType", "landArea", "builtUpArea", "frontageLength", "frontageBreadth", "roadWidth", "facing", "propertyUsage", "pattaApproval", "approvalStatus", "parking", "rentalStatus", "loanStatus", "photosShared", "sellerRemarks", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "galleryFields", "photos", "exactAddress", "mapLink", "visitLog", "remarksLog"],
   Buyers: ["id", "timestamp", "name", "phone", "propertyType", "purpose", "budget", "preferredLocation", "loanRequirement", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "remarksLog"],
   Properties: ["id", "timestamp", "title", "type", "location", "price", "sqft", "description", "imageUrl", "images", "attributes", "contactPhone", "refId", "soldOut"],
 };
@@ -75,7 +75,12 @@ function route(action, p) {
       return addRow("Sellers", {
         name: p.name, phone: p.phone, propertyType: p.propertyType, propertyLocation: p.propertyLocation,
         propertyStatus: p.propertyStatus, expectedPrice: p.expectedPrice, ownership: p.ownership,
-        timeline: p.timeline, status: "New", priority: 3, followUpDate: "", customFields: "{}", photos: "[]", visitLog: "[]", remarksLog: "[]",
+        purpose: p.purpose, propertyAge: p.propertyAge, buildingType: p.buildingType,
+        landArea: p.landArea, builtUpArea: p.builtUpArea, frontageLength: p.frontageLength, frontageBreadth: p.frontageBreadth,
+        roadWidth: p.roadWidth, facing: p.facing, propertyUsage: p.propertyUsage, pattaApproval: p.pattaApproval,
+        approvalStatus: p.approvalStatus, parking: p.parking, rentalStatus: p.rentalStatus, loanStatus: p.loanStatus,
+        photosShared: p.photosShared, sellerRemarks: p.sellerRemarks,
+        timeline: p.timeline, status: "New", priority: 3, followUpDate: "", customFields: "{}", galleryFields: "[]", photos: "[]", visitLog: "[]", remarksLog: "[]",
       });
 
     case "addBuyer":

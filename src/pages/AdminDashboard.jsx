@@ -8,11 +8,22 @@ import { adminListMediators, adminListSellers, adminListBuyers } from "../lib/ap
 // edits use matching dropdowns instead of free-text and can't drift from
 // what the forms actually offer.
 const PROPERTY_TYPES = ["Home / Independent House", "Apartment / Flat", "Villa", "Plot / Land", "Hotel", "Restaurant", "Saloon", "Shop / Retail", "Office / Commercial Space"];
-const SELLER_LOCATIONS = ["North Chennai", "Central Chennai", "South Chennai", "Other"];
 const PROPERTY_STATUS = ["Brand New", "Resale", "Under Construction"];
 const PRICE_RANGES = ["Below ₹30 Lakhs", "₹30–50 Lakhs", "₹50–75 Lakhs", "₹75 Lakhs–₹1 Crore", "Above ₹1 Crore"];
-const OWNERSHIP = ["Direct Owner", "Authorized Representative", "Builder / Developer"];
+const OWNER_TYPE = ["Direct Owner", "Agent / Broker"];
 const SELL_TIMELINE = ["Immediately", "Within 1 Month", "Within 3 Months", "Just Exploring"];
+const PHOTOS_SHARED = ["Shared", "Will Share Later"];
+const SELLER_PURPOSE = ["Own Use", "Investment"];
+const PROPERTY_AGE = ["Less than 1 Year", "1–5 Years", "5–10 Years", "Above 10 Years"];
+const BUILDING_TYPE = ["Ground Floor", "G+1", "G+2", "G+3 & Above", "Apartment"];
+const ROAD_WIDTH = ["20 Feet", "24 Feet", "30 Feet", "40 Feet & Above"];
+const FACING = ["North", "South", "East", "West"];
+const PROPERTY_USAGE = ["Residential", "Commercial", "Semi-Commercial"];
+const PATTA_APPROVAL = ["Online Patta", "CMDA", "DTCP", "Panchayat", "Not Approved"];
+const APPROVAL_STATUS = ["Land Approved", "Building Approved", "Both Approved"];
+const PARKING = ["Car Parking", "Bike Parking", "Both", "No Parking"];
+const RENTAL_STATUS = ["Rented", "Vacant"];
+const LOAN_STATUS = ["Loan Running", "Loan Closed", "No Loan"];
 
 const PURPOSE = ["Own Use", "Investment"];
 const BUDGET = ["Below ₹30 Lakhs", "₹30–50 Lakhs", "₹50–75 Lakhs", "₹75 Lakhs–₹1 Crore", "Above ₹1 Crore"];
@@ -33,17 +44,40 @@ const CRM_CONFIG = {
     sheet: "Sellers",
     fetcher: adminListSellers,
     fields: [
+      ["ownership", "Owner type", OWNER_TYPE],
+      ["propertyLocation", "Location"],
+      ["photosShared", "Photos & videos", PHOTOS_SHARED],
       ["propertyType", "Property type", PROPERTY_TYPES],
-      ["propertyLocation", "Location", SELLER_LOCATIONS],
+      ["purpose", "Purpose", SELLER_PURPOSE],
       ["propertyStatus", "Status", PROPERTY_STATUS],
+      ["propertyAge", "Property age", PROPERTY_AGE],
+      ["buildingType", "Building type", BUILDING_TYPE],
+      ["landArea", "Land area (sqft)"],
+      ["builtUpArea", "Built-up area (sqft)"],
+      ["frontageLength", "Frontage length (ft)"],
+      ["frontageBreadth", "Frontage breadth (ft)"],
+      ["roadWidth", "Road width", ROAD_WIDTH],
+      ["facing", "Facing", FACING],
+      ["propertyUsage", "Property usage", PROPERTY_USAGE],
+      ["pattaApproval", "Patta / approval", PATTA_APPROVAL],
+      ["approvalStatus", "Approval status", APPROVAL_STATUS],
+      ["parking", "Parking", PARKING],
+      ["rentalStatus", "Rental status", RENTAL_STATUS],
+      ["loanStatus", "Loan status", LOAN_STATUS],
       ["expectedPrice", "Expected price", PRICE_RANGES],
-      ["ownership", "Ownership", OWNERSHIP],
       ["timeline", "Planning to sell", SELL_TIMELINE],
+      ["sellerRemarks", "Seller's remarks"],
     ],
     facetFields: [
       ["propertyType", "Property type"],
       ["propertyStatus", "Property status"],
       ["timeline", "Planning to sell"],
+      ["facing", "Facing"],
+      ["propertyUsage", "Property usage"],
+      ["approvalStatus", "Approval status"],
+      ["parking", "Parking"],
+      ["rentalStatus", "Rental status"],
+      ["loanStatus", "Loan status"],
     ],
   },
   buyer: {

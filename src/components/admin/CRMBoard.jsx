@@ -247,6 +247,40 @@ function LeadCard({ lead, accent, onOpen }) {
 
 // ---------- Full detail / edit modal ----------
 
+// Property-detail fields the admin can individually choose to show or hide
+// on the public gallery for a given listing. Core fields (type, area,
+// price, sqft, photos) always show via their own dedicated Property
+// columns and aren't part of this list; owner-identifying fields (name,
+// phone, ownership, exact address) are never shown regardless.
+const GALLERY_TOGGLEABLE_FIELDS = [
+  ["purpose", "Purpose"],
+  ["propertyAge", "Property age"],
+  ["buildingType", "Building type"],
+  ["landArea", "Land area"],
+  ["builtUpArea", "Built-up area"],
+  ["frontageLength", "Frontage length"],
+  ["frontageBreadth", "Frontage breadth"],
+  ["roadWidth", "Road width"],
+  ["facing", "Facing"],
+  ["propertyUsage", "Property usage"],
+  ["pattaApproval", "Patta / approval"],
+  ["approvalStatus", "Approval status"],
+  ["parking", "Parking"],
+  ["rentalStatus", "Rental status"],
+  ["loanStatus", "Loan status"],
+  ["sellerRemarks", "Seller's remarks"],
+];
+
+function parseGalleryFields(lead) {
+  if (!lead.galleryFields) return null;
+  try {
+    const parsed = JSON.parse(lead.galleryFields);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSaveDetails, onAddRemark, onShareGallery }) {
   const [form, setForm] = useState(() => ({
     name: lead.name || "",
@@ -276,6 +310,18 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
   const [galleryStatus, setGalleryStatus] = useState("idle"); // idle | sharing | shared
   const [galleryError, setGalleryError] = useState("");
   const [soldOut, setSoldOut] = useState(() => parseCustomFields(lead).soldOut === "true");
+  const [galleryFields, setGalleryFields] = useState(() => {
+    const saved = parseGalleryFields(lead);
+    if (saved) return saved;
+    // No saved preference yet — default to showing every toggleable field
+    // that actually has a value, so admin only needs to opt OUT of ones
+    // they want to hide, not opt everything in from scratch.
+    return GALLERY_TOGGLEABLE_FIELDS.filter(([key]) => lead[key]).map(([key]) => key);
+  });
+
+  function toggleGalleryField(key) {
+    setGalleryFields((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+  }
 
   const remarksLog = useMemo(() => parseRemarksLog(lead), [lead]);
   const supportsPhoto = sheet === "Sellers";
@@ -373,13 +419,16 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
         // buyers browsing the gallery must never see the exact address.
         location: form.area || form.propertyLocation || "",
         price: form.expectedPrice || (form.budgetValue ? `₹${Number(form.budgetValue).toLocaleString()}` : ""),
-        sqft: form.sqft || "",
+        sqft: form.builtUpArea || form.landArea || form.sqft || "",
         description: form.propertyStatus || "",
         imageUrl: photos[0] || "",
         images: JSON.stringify(photos),
-        attributes: JSON.stringify(
-          Object.fromEntries(Object.entries(customFields).filter(([k]) => k !== "galleryId" && k !== "soldOut"))
-        ),
+        attributes: JSON.stringify({
+          ...Object.fromEntries(
+            GALLERY_TOGGLEABLE_FIELDS.filter(([key]) => galleryFields.includes(key) && form[key]).map(([key, label]) => [label, form[key]])
+          ),
+          ...Object.fromEntries(Object.entries(customFields).filter(([k]) => k !== "galleryId" && k !== "soldOut")),
+        }),
         // Deliberately blank — the buyer gallery never shows the owner's number.
         contactPhone: "",
         // The seller lead's own ID — included in the WhatsApp message when a
@@ -390,7 +439,11 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
       const newId = await onShareGallery(customFields.galleryId, payload);
       const nextCustomFields = { ...customFields, galleryId: newId, soldOut: soldOut ? "true" : "false" };
       setCustomFields(nextCustomFields);
-      await onSaveDetails(lead.id, { ...form, customFields: JSON.stringify(nextCustomFields) });
+      await onSaveDetails(lead.id, {
+        ...form,
+        customFields: JSON.stringify(nextCustomFields),
+        galleryFields: JSON.stringify(galleryFields),
+      });
       setGalleryStatus("shared");
       setTimeout(() => setGalleryStatus("idle"), 2500);
     } catch (err) {
@@ -634,6 +687,28 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
                   </span>
                 )}
               </label>
+
+              {GALLERY_TOGGLEABLE_FIELDS.some(([key]) => form[key]) && (
+                <div className="mb-3">
+                  <p className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold mb-1.5">
+                    Choose which details to show on the gallery
+                  </p>
+                  <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto pr-1">
+                    {GALLERY_TOGGLEABLE_FIELDS.filter(([key]) => form[key]).map(([key, label]) => (
+                      <label key={key} className="flex items-center gap-1.5 text-xs text-ink/70 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={galleryFields.includes(key)}
+                          onChange={() => toggleGalleryField(key)}
+                          className="w-3.5 h-3.5 accent-seller shrink-0"
+                        />
+                        <span className="truncate">{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <button
                 onClick={handleShareGallery}
                 disabled={galleryStatus === "sharing"}
