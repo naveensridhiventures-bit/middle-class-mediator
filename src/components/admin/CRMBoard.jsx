@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Clock, User, X, SlidersHorizontal, Pencil, Camera, MapPin } from "lucide-react";
+import { Clock, User, X, SlidersHorizontal, Pencil, Camera, MapPin, Check } from "lucide-react";
 import Carousel from "../Carousel";
 import SoldOutStamp from "../SoldOutStamp";
 import { adminUpdateLead, adminAddRemark, adminAddVisit, adminDeleteLead, addSellerLead, adminAddProperty, adminUpdateProperty } from "../../lib/api";
@@ -778,18 +778,31 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, statuses, sta
                   <p className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold mb-1.5">
                     Choose which details to show on the gallery
                   </p>
-                  <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto pr-1">
-                    {GALLERY_TOGGLEABLE_FIELDS.filter(([key]) => form[key]).map(([key, label]) => (
-                      <label key={key} className="flex items-center gap-1.5 text-xs text-ink/70 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={galleryFields.includes(key)}
-                          onChange={() => toggleGalleryField(key)}
-                          className="w-3.5 h-3.5 accent-seller shrink-0"
-                        />
-                        <span className="truncate">{label}</span>
-                      </label>
-                    ))}
+                  <div className="grid grid-cols-2 gap-1.5 max-h-52 overflow-y-auto pr-1">
+                    {GALLERY_TOGGLEABLE_FIELDS.filter(([key]) => form[key]).map(([key, label]) => {
+                      const on = galleryFields.includes(key);
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => toggleGalleryField(key)}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border-2 transition text-left ${
+                            on
+                              ? "bg-seller/10 border-seller text-seller"
+                              : "bg-white/50 border-ink/10 text-ink/40 hover:border-ink/20"
+                          }`}
+                        >
+                          <span
+                            className={`shrink-0 w-4 h-4 rounded-full flex items-center justify-center transition ${
+                              on ? "bg-seller" : "bg-ink/10"
+                            }`}
+                          >
+                            {on && <Check size={11} className="text-white" strokeWidth={3} />}
+                          </span>
+                          <span className="truncate">{label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
