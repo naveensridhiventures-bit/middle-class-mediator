@@ -263,29 +263,13 @@ function LeadCard({ lead, accent, onOpen, statuses, statuses2, status2Label }) {
 
 // ---------- Full detail / edit modal ----------
 
-// Property-detail fields the admin can individually choose to show or hide
-// on the public gallery for a given listing. Core fields (type, area,
-// price, sqft, photos) always show via their own dedicated Property
-// columns and aren't part of this list; owner-identifying fields (name,
-// phone, ownership, exact address) are never shown regardless.
-const GALLERY_TOGGLEABLE_FIELDS = [
-  ["purpose", "Purpose"],
-  ["propertyAge", "Property age"],
-  ["buildingType", "Building type"],
-  ["landArea", "Land area"],
-  ["builtUpArea", "Built-up area"],
-  ["frontageLength", "Frontage length"],
-  ["frontageBreadth", "Frontage breadth"],
-  ["roadWidth", "Road width"],
-  ["facing", "Facing"],
-  ["propertyUsage", "Property usage"],
-  ["pattaApproval", "Patta / approval"],
-  ["approvalStatus", "Approval status"],
-  ["parking", "Parking"],
-  ["rentalStatus", "Rental status"],
-  ["loanStatus", "Loan status"],
-  ["sellerRemarks", "Seller's remarks"],
-];
+// Every field shown in "Submitted details" is individually toggleable for
+// the gallery — admin decides field by field. propertyType, propertyStatus,
+// and propertyLocation get special handling (they map to the Property
+// record's dedicated type/description/location columns) but are still
+// fully toggleable like everything else. Owner name, real phone, and exact
+// address are never part of this list — they're never sent regardless.
+const GALLERY_SPECIAL_KEYS = { propertyType: "type", propertyStatus: "description", propertyLocation: "location" };
 
 function parseGalleryFields(lead) {
   if (!lead.galleryFields) return null;
@@ -337,7 +321,7 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, statuses, sta
     // No saved preference yet — default to showing every toggleable field
     // that actually has a value, so admin only needs to opt OUT of ones
     // they want to hide, not opt everything in from scratch.
-    return GALLERY_TOGGLEABLE_FIELDS.filter(([key]) => lead[key]).map(([key]) => key);
+    return fields.filter(([key]) => lead[key]).map(([key]) => key);
   });
 
   function toggleGalleryField(key) {
@@ -431,28 +415,43 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, statuses, sta
   }
 
   // Buyer-safe PDF for sharing directly with a customer — reuses the same
+  // Builds the buyer-safe payload respecting the per-field visibility
+  // checklist — including propertyType/propertyStatus/propertyLocation,
+  // which map to the Property record's type/description/location columns
+  // but are still individually toggleable like every other field.
+  function buildGalleryPayload() {
+    const isVisible = (key) => galleryFields.includes(key);
+    const type = isVisible("propertyType") ? form.propertyType : "";
+    const description = isVisible("propertyStatus") ? form.propertyStatus : "";
+    const location = form.area || (isVisible("propertyLocation") ? form.propertyLocation : "");
+
+    const attributeFields = fields.filter(
+      ([key]) => !GALLERY_SPECIAL_KEYS[key] && isVisible(key) && form[key]
+    );
+
+    return {
+      title: `${type || "Property"} in ${location || "Chennai"}`,
+      type,
+      location,
+      description,
+      price: form.expectedPrice || (form.budgetValue ? `₹${Number(form.budgetValue).toLocaleString()}` : ""),
+      sqft: form.builtUpArea || form.landArea || form.sqft || "",
+      images: JSON.stringify(photos),
+      attributes: JSON.stringify({
+        ...Object.fromEntries(attributeFields.map(([key, label]) => [label, form[key]])),
+        ...Object.fromEntries(Object.entries(customFields).filter(([k]) => k !== "galleryId" && k !== "soldOut")),
+      }),
+      refId: lead.id,
+    };
+  }
+
+  // Buyer-safe PDF for sharing directly with a customer — reuses the same
   // privacy rules as "Share on gallery" (respects the field-visibility
   // checklist), but doesn't require actually publishing to the gallery.
   // Owner name, real phone, and exact address never appear; the mediator's
   // own number shows as the contact.
   function handleDownloadCustomerPDF() {
-    const propertyLike = {
-      title: `${form.propertyType || "Property"} in ${form.area || form.propertyLocation || "Chennai"}`,
-      type: form.propertyType || "",
-      location: form.area || form.propertyLocation || "",
-      price: form.expectedPrice || (form.budgetValue ? `₹${Number(form.budgetValue).toLocaleString()}` : ""),
-      sqft: form.builtUpArea || form.landArea || form.sqft || "",
-      description: form.propertyStatus || "",
-      images: JSON.stringify(photos),
-      attributes: JSON.stringify({
-        ...Object.fromEntries(
-          GALLERY_TOGGLEABLE_FIELDS.filter(([key]) => galleryFields.includes(key) && form[key]).map(([key, label]) => [label, form[key]])
-        ),
-        ...Object.fromEntries(Object.entries(customFields).filter(([k]) => k !== "galleryId" && k !== "soldOut")),
-      }),
-      refId: lead.id,
-    };
-    downloadBrochure(propertyLike);
+    downloadBrochure(buildGalleryPayload());
   }
 
   async function handleDelete() {
@@ -489,27 +488,10 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, statuses, sta
     setGalleryStatus("sharing");
     try {
       const payload = {
-        title: `${form.propertyType || "Property"} in ${form.area || form.propertyLocation || "Chennai"}`,
-        type: form.propertyType || "",
-        // Only the general area, never the precise submitted location/address —
-        // buyers browsing the gallery must never see the exact address.
-        location: form.area || form.propertyLocation || "",
-        price: form.expectedPrice || (form.budgetValue ? `₹${Number(form.budgetValue).toLocaleString()}` : ""),
-        sqft: form.builtUpArea || form.landArea || form.sqft || "",
-        description: form.propertyStatus || "",
+        ...buildGalleryPayload(),
         imageUrl: photos[0] || "",
-        images: JSON.stringify(photos),
-        attributes: JSON.stringify({
-          ...Object.fromEntries(
-            GALLERY_TOGGLEABLE_FIELDS.filter(([key]) => galleryFields.includes(key) && form[key]).map(([key, label]) => [label, form[key]])
-          ),
-          ...Object.fromEntries(Object.entries(customFields).filter(([k]) => k !== "galleryId" && k !== "soldOut")),
-        }),
         // Deliberately blank — the buyer gallery never shows the owner's number.
         contactPhone: "",
-        // The seller lead's own ID — included in the WhatsApp message when a
-        // buyer shows interest, so it's instantly searchable in the Seller CRM.
-        refId: lead.id,
         soldOut: soldOut ? "true" : "false",
       };
       const newId = await onShareGallery(customFields.galleryId, payload);
@@ -773,13 +755,13 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, statuses, sta
                 )}
               </label>
 
-              {GALLERY_TOGGLEABLE_FIELDS.some(([key]) => form[key]) && (
+              {fields.some(([key]) => form[key]) && (
                 <div className="mb-3">
                   <p className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold mb-1.5">
                     Choose which details to show on the gallery
                   </p>
                   <div className="grid grid-cols-2 gap-1.5 max-h-52 overflow-y-auto pr-1">
-                    {GALLERY_TOGGLEABLE_FIELDS.filter(([key]) => form[key]).map(([key, label]) => {
+                    {fields.filter(([key]) => form[key]).map(([key, label]) => {
                       const on = galleryFields.includes(key);
                       return (
                         <button
