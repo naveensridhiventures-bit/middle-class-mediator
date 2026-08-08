@@ -25,6 +25,30 @@ function getStatusStyle(status, statuses) {
   return STATUS_PALETTE[idx >= 0 ? idx % STATUS_PALETTE.length : STATUS_PALETTE.length - 1];
 }
 
+// Free-text fields (no fixed options) that represent an amount/measurement
+// large enough to benefit from comma formatting as the admin types.
+const NUMERIC_AMOUNT_KEYS = new Set([
+  "landArea", "builtUpArea", "frontageLength", "frontageBreadth", "exactPrice",
+]);
+
+// Formats a raw digit string with Indian-style thousands separators as the
+// admin types (e.g. "10000" -> "10,000", "100000" -> "1,00,000") — matches
+// the Lakhs/Crore convention already used throughout the app.
+function formatThousands(value) {
+  const digits = String(value ?? "").replace(/[^\d]/g, "");
+  if (!digits) return "";
+  const last3 = digits.slice(-3);
+  const other = digits.slice(0, -3);
+  if (!other) return last3;
+  const formattedOther = other.replace(/\B(?=(\d{2})+(?!\d))/g, ",");
+  return `${formattedOther},${last3}`;
+}
+
+// Strips formatting back down to a plain digit string for storage.
+function unformatNumber(value) {
+  return String(value ?? "").replace(/[^\d]/g, "");
+}
+
 function timeAgo(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -628,6 +652,15 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, statuses, sta
                       <option value="">— not set —</option>
                       {options.map((o) => <option key={o}>{o}</option>)}
                     </select>
+                  ) : NUMERIC_AMOUNT_KEYS.has(key) ? (
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      className="field-input !py-2 text-sm"
+                      placeholder="e.g. 10,000"
+                      value={formatThousands(form[key])}
+                      onChange={(e) => set(key, unformatNumber(e.target.value))}
+                    />
                   ) : (
                     <input className="field-input !py-2 text-sm" value={form[key]} onChange={(e) => set(key, e.target.value)} />
                   )}
@@ -646,7 +679,14 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, statuses, sta
               </div>
               <div>
                 <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Budget (₹)</label>
-                <input type="number" className="field-input !py-2 text-sm" placeholder="e.g. 5000000" value={form.budgetValue} onChange={(e) => set("budgetValue", e.target.value)} />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className="field-input !py-2 text-sm"
+                  placeholder="e.g. 50,00,000"
+                  value={formatThousands(form.budgetValue)}
+                  onChange={(e) => set("budgetValue", unformatNumber(e.target.value))}
+                />
               </div>
               <div>
                 <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Size (sqft)</label>

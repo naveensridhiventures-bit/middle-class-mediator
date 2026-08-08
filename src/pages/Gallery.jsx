@@ -239,6 +239,21 @@ export default function Gallery() {
         </div>
       </div>
 
+      {/* Highlighted CTA — funnel gallery visitors into registering */}
+      <div className="bg-gold">
+        <div className="max-w-6xl mx-auto px-5 py-4 flex flex-wrap items-center justify-center sm:justify-between gap-3 text-center sm:text-left">
+          <p className="font-display font-bold text-ink text-sm sm:text-base">
+            Have a property to sell, or looking to buy? Get listed with Middle Class Mediator.
+          </p>
+          <a
+            href="https://middle-class-mediator-murex.vercel.app/"
+            className="shrink-0 bg-ink text-gold font-bold text-sm px-5 py-2.5 rounded-full hover:bg-ink-dark transition shadow-md"
+          >
+            Register now →
+          </a>
+        </div>
+      </div>
+
       {/* Sticky filter bar */}
       <div className="sticky top-0 z-20 bg-paper/95 backdrop-blur-sm border-b border-ink/5 shadow-sm">
         <div className="max-w-6xl mx-auto px-5 py-3 flex flex-wrap items-center gap-2.5">
