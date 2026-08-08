@@ -86,6 +86,9 @@ export const adminUpdateLead = (password, sheet, id, patch) =>
 export const adminAddRemark = (password, sheet, id, text, by) =>
   callApi("addRemark", { password, sheet, id, text, by });
 
+export const adminDeleteLead = (password, sheet, id) =>
+  callApi("deleteLead", { password, sheet, id });
+
 export const adminAddVisit = (password, sheet, id, visit, by) =>
   callApi("addVisit", { password, sheet, id, ...visit, by });
 

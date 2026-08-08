@@ -1,5 +1,25 @@
 # Middle Class Mediator
 
+## Custom pipelines, delete, and admin-only sharing
+
+- **Each role now has its own pipeline** instead of one shared New/Contacted/
+  Closed/Dropped set:
+  - **Seller**: New → Contacted → Direct Owner → Agent
+  - **Buyer**: New → Contacted → 20% to 50% → 50% to 70% → 70% to 100% → Worthless
+  - **Mediator**: has *two* independent pipelines — New → Contacted →
+    Pending → Visited, plus a separate "Lead quality" track (Worth / Ok /
+    Not worth) shown and filtered separately.
+- **Road width** is now free-text instead of fixed options; **Exact price**
+  added as a typeable field alongside the price-range selector.
+- **Delete** — every lead now has a 🗑 Delete button in its detail panel
+  (Seller, Buyer, and Mediator). Click once to arm it ("Confirm delete?"),
+  click again within a few seconds to actually delete — it resets on its
+  own if you don't confirm.
+- **Sharing a property link is admin-only now** — the share button was
+  removed from the public gallery entirely. Instead, once you've shared a
+  seller lead to the gallery, a **"🔗 Copy property link"** button appears
+  in that lead's detail panel so you control who gets sent the link.
+
 ## Two PDF types + shareable property links
 
 - **Two PDF buttons on every seller lead**: **"📄 Admin PDF"** (the full

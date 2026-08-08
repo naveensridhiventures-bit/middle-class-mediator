@@ -112,13 +112,22 @@ function buildMapUrl(lead, visitLog) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
-const STATUS_COLOR = {
-  New: [200, 155, 60],
-  Contacted: [14, 165, 233],
-  "In progress": [139, 92, 246],
-  Closed: [16, 185, 129],
-  Dropped: [148, 163, 184],
-};
+// Status colors are now assigned by position within whatever pipeline the
+// role uses (passed in as `statuses`), since each role has its own custom
+// stage names rather than one shared New/Contacted/Closed set.
+const STATUS_PALETTE = [
+  [200, 155, 60],
+  [14, 165, 233],
+  [139, 92, 246],
+  [16, 185, 129],
+  [181, 83, 60],
+  [148, 163, 184],
+];
+
+function getStatusColor(status, statuses) {
+  const idx = statuses ? statuses.indexOf(status) : -1;
+  return STATUS_PALETTE[idx >= 0 ? idx % STATUS_PALETTE.length : STATUS_PALETTE.length - 1];
+}
 
 // Best-effort image fetch → data URL, for embedding lead photos. Never
 // throws — a failed/blocked image just means the report skips it.
@@ -307,7 +316,7 @@ export async function downloadBrochure(property) {
   doc.save(`${safeTitle}-brochure.pdf`);
 }
 
-export async function downloadReport({ roleLabel, accent, fields, leads, filterLabel }) {
+export async function downloadReport({ roleLabel, accent, fields, leads, filterLabel, statuses }) {
   const [r, g, b] = hexToRgb(accent);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -420,7 +429,7 @@ export async function downloadReport({ roleLabel, accent, fields, leads, filterL
 
     const cardTop = y;
     const status = lead.status || "New";
-    const sColor = STATUS_COLOR[status] || STATUS_COLOR.New;
+    const sColor = getStatusColor(status, statuses);
     const priority = Math.max(0, Math.min(5, Number(lead.priority) || 0));
 
     // Card background + left accent bar

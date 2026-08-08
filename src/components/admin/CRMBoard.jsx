@@ -2,20 +2,28 @@ import { useEffect, useMemo, useState } from "react";
 import { Clock, User, X, SlidersHorizontal, Pencil, Camera, MapPin } from "lucide-react";
 import Carousel from "../Carousel";
 import SoldOutStamp from "../SoldOutStamp";
-import { adminUpdateLead, adminAddRemark, adminAddVisit, addSellerLead, adminAddProperty, adminUpdateProperty } from "../../lib/api";
+import { adminUpdateLead, adminAddRemark, adminAddVisit, adminDeleteLead, addSellerLead, adminAddProperty, adminUpdateProperty } from "../../lib/api";
 import { whatsappLink, callLink } from "../../lib/whatsapp";
 import { downloadReport, downloadBrochure } from "../../lib/report";
 import { uploadImage, optimizedImageUrl } from "../../lib/cloudinary";
 
-const STATUSES = ["New", "Contacted", "In progress", "Closed", "Dropped"];
+// Each role now has its own custom pipeline (set in AdminDashboard.jsx's
+// CRM_CONFIG), so colors are assigned by position in that list rather than
+// by matching specific status names — this works for any status list,
+// including Mediator's second independent pipeline.
+const STATUS_PALETTE = [
+  { dot: "bg-gold", bg: "bg-gold/10", text: "text-gold-dark" },
+  { dot: "bg-sky-500", bg: "bg-sky-500/10", text: "text-sky-700" },
+  { dot: "bg-violet-500", bg: "bg-violet-500/10", text: "text-violet-700" },
+  { dot: "bg-emerald-500", bg: "bg-emerald-500/10", text: "text-emerald-700" },
+  { dot: "bg-buyer", bg: "bg-buyer/10", text: "text-buyer" },
+  { dot: "bg-ink/30", bg: "bg-ink/5", text: "text-ink/50" },
+];
 
-const STATUS_STYLE = {
-  New: { dot: "bg-gold", bg: "bg-gold/10", text: "text-gold-dark" },
-  Contacted: { dot: "bg-sky-500", bg: "bg-sky-500/10", text: "text-sky-700" },
-  "In progress": { dot: "bg-violet-500", bg: "bg-violet-500/10", text: "text-violet-700" },
-  Closed: { dot: "bg-emerald-500", bg: "bg-emerald-500/10", text: "text-emerald-700" },
-  Dropped: { dot: "bg-ink/30", bg: "bg-ink/5", text: "text-ink/50" },
-};
+function getStatusStyle(status, statuses) {
+  const idx = statuses.indexOf(status);
+  return STATUS_PALETTE[idx >= 0 ? idx % STATUS_PALETTE.length : STATUS_PALETTE.length - 1];
+}
 
 function timeAgo(iso) {
   if (!iso) return "";
@@ -143,11 +151,11 @@ function StarRating({ value, onChange, disabled, size = "text-lg" }) {
 
 // ---------- Compact summary card ----------
 
-function LeadCard({ lead, accent, onOpen }) {
-  const status = lead.status || "New";
+function LeadCard({ lead, accent, onOpen, statuses, statuses2, status2Label }) {
+  const status = lead.status || statuses[0];
   const priority = Number(lead.priority) || 0;
   const overdue = isOverdue(lead.followUpDate, status);
-  const sStyle = STATUS_STYLE[status] || STATUS_STYLE.New;
+  const sStyle = getStatusStyle(status, statuses);
   const remarksLog = parseRemarksLog(lead);
   const customFields = parseCustomFields(lead);
   const latestRemark = remarksLog[0];
@@ -185,10 +193,18 @@ function LeadCard({ lead, accent, onOpen }) {
           </p>
           <p className="text-[11px] text-ink/40 font-mono mt-0.5">#{lead.id} · {timeAgo(lead.timestamp)}</p>
         </div>
-        <span className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${sStyle.bg} ${sStyle.text}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${sStyle.dot}`} />
-          {status}
-        </span>
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${sStyle.bg} ${sStyle.text}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${sStyle.dot}`} />
+            {status}
+          </span>
+          {statuses2 && lead.status2 && (
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${getStatusStyle(lead.status2, statuses2).bg} ${getStatusStyle(lead.status2, statuses2).text}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${getStatusStyle(lead.status2, statuses2).dot}`} />
+              {lead.status2}
+            </span>
+          )}
+        </div>
       </div>
 
       <p className="text-sm text-ink/70">{lead.phone}</p>
@@ -281,11 +297,12 @@ function parseGalleryFields(lead) {
   }
 }
 
-function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSaveDetails, onAddRemark, onShareGallery }) {
+function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, statuses, statuses2, status2Label, onClose, onSaveDetails, onAddRemark, onShareGallery, onDeleteLead }) {
   const [form, setForm] = useState(() => ({
     name: lead.name || "",
     phone: lead.phone || "",
-    status: lead.status || "New",
+    status: lead.status || statuses[0],
+    status2: lead.status2 || "",
     priority: Number(lead.priority) || 0,
     followUpDate: lead.followUpDate || "",
     area: lead.area || "",
@@ -309,6 +326,10 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
   const [photoError, setPhotoError] = useState("");
   const [galleryStatus, setGalleryStatus] = useState("idle"); // idle | sharing | shared
   const [galleryError, setGalleryError] = useState("");
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [soldOut, setSoldOut] = useState(() => parseCustomFields(lead).soldOut === "true");
   const [galleryFields, setGalleryFields] = useState(() => {
     const saved = parseGalleryFields(lead);
@@ -405,6 +426,7 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
       fields,
       leads: [lead],
       filterLabel: lead.name || lead.id,
+      statuses,
     });
   }
 
@@ -431,6 +453,35 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
       refId: lead.id,
     };
     downloadBrochure(propertyLike);
+  }
+
+  async function handleDelete() {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      setTimeout(() => setConfirmDelete(false), 4000);
+      return;
+    }
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await onDeleteLead(lead.id);
+      onClose();
+    } catch (err) {
+      setDeleteError(err.message || "Couldn't delete this lead.");
+      setDeleting(false);
+    }
+  }
+
+  async function handleCopyLink() {
+    if (!customFields.galleryId) return;
+    const url = `${window.location.origin}/gallery/${customFields.galleryId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      window.prompt("Copy this link:", url);
+    }
   }
 
   async function handleShareGallery() {
@@ -560,7 +611,7 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
               <div>
                 <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Status</label>
                 <select className="field-input !py-2 text-sm" value={form.status} onChange={(e) => set("status", e.target.value)}>
-                  {STATUSES.map((s) => <option key={s}>{s}</option>)}
+                  {statuses.map((s) => <option key={s}>{s}</option>)}
                 </select>
               </div>
               <div>
@@ -568,6 +619,15 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
                 <input type="date" className="field-input !py-2 text-sm" value={form.followUpDate} onChange={(e) => set("followUpDate", e.target.value)} />
               </div>
             </div>
+            {statuses2 && (
+              <div className="mt-3">
+                <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">{status2Label || "Second pipeline"}</label>
+                <select className="field-input !py-2 text-sm" value={form.status2} onChange={(e) => set("status2", e.target.value)}>
+                  <option value="">— not set —</option>
+                  {statuses2.map((s) => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+            )}
             <div className="mt-3">
               <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Priority</label>
               <StarRating value={form.priority} onChange={(v) => set("priority", v)} size="text-2xl" />
@@ -743,6 +803,14 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
                 {galleryStatus === "shared" && "Shared ✓"}
                 {galleryStatus === "idle" && (customFields.galleryId ? "Update on gallery" : "🖼 Share on gallery")}
               </button>
+              {customFields.galleryId && (
+                <button
+                  onClick={handleCopyLink}
+                  className="btn-ghost w-full !py-2.5 text-sm mt-2"
+                >
+                  {linkCopied ? "Link copied ✓" : "🔗 Copy property link"}
+                </button>
+              )}
               {galleryError && <p className="text-xs text-buyer mt-2">{galleryError}</p>}
             </div>
           )}
@@ -794,6 +862,7 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
         {/* Footer */}
         <div className="p-5 sm:p-6 border-t border-ink/5">
           {saveError && <p className="text-xs text-buyer mb-2">{saveError}</p>}
+          {deleteError && <p className="text-xs text-buyer mb-2">{deleteError}</p>}
           <div className="flex items-center gap-3 flex-wrap">
           <button onClick={handleSave} disabled={saving} className="btn-primary flex-1 !py-3">
             {saving ? "Saving…" : saved ? "Saved ✓" : "Save changes"}
@@ -806,6 +875,15 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, onClose, onSa
               📤 Customer PDF
             </button>
           )}
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className={`!py-3 !px-4 rounded-2xl text-sm font-semibold transition ${
+              confirmDelete ? "bg-buyer text-white" : "btn-ghost text-buyer"
+            }`}
+          >
+            {deleting ? "Deleting…" : confirmDelete ? "Confirm delete?" : "🗑 Delete"}
+          </button>
           <button onClick={onClose} className="btn-ghost !py-3 !px-5">Close</button>
           </div>
         </div>
@@ -1035,11 +1113,12 @@ function AdvancedFilters({ areas, selectedAreas, onToggleArea, budgetMin, budget
 
 // ---------- Main board ----------
 
-export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, facetFields = [], password, adminName }) {
+export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, facetFields = [], statuses, statuses2, status2Label, password, adminName }) {
   const [leads, setLeads] = useState(null);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [activeStatus, setActiveStatus] = useState("All");
+  const [activeStatus2, setActiveStatus2] = useState("All");
   const [openLeadId, setOpenLeadId] = useState(null);
   const [showNewVisit, setShowNewVisit] = useState(false);
 
@@ -1061,6 +1140,8 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
     setLeads(null);
     setError("");
     setOpenLeadId(null);
+    setActiveStatus("All");
+    setActiveStatus2("All");
     setSelectedAreas([]);
     setBudgetMin(""); setBudgetMax(""); setSqftMin(""); setSqftMax("");
     setSelectedFacets({});
@@ -1075,6 +1156,10 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
     },
     addRemark: async (id, text) => {
       await adminAddRemark(password, sheet, id, text, adminName);
+      load();
+    },
+    deleteLead: async (id) => {
+      await adminDeleteLead(password, sheet, id);
       load();
     },
     addVisit: async (id, visit) => {
@@ -1154,7 +1239,8 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
         l.name?.toLowerCase().includes(q) ||
         String(l.phone || "").includes(q) ||
         l.id?.toLowerCase().includes(q);
-      const matchesStatus = activeStatus === "All" || (l.status || "New") === activeStatus;
+      const matchesStatus = activeStatus === "All" || (l.status || statuses[0]) === activeStatus;
+      const matchesStatus2 = !statuses2 || activeStatus2 === "All" || l.status2 === activeStatus2;
       const matchesArea = selectedAreas.length === 0 || selectedAreas.includes(l.area);
       const budget = Number(l.budgetValue);
       const matchesBudget =
@@ -1172,17 +1258,26 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
         if (values.length === 0) return true;
         return values.includes(getFacetValue(l, name));
       });
-      return matchesQuery && matchesStatus && matchesArea && matchesBudget && matchesSqft && matchesFacets;
+      return matchesQuery && matchesStatus && matchesStatus2 && matchesArea && matchesBudget && matchesSqft && matchesFacets;
     });
-  }, [leads, query, activeStatus, selectedAreas, budgetMin, budgetMax, sqftMin, sqftMax, selectedFacets]);
+  }, [leads, query, activeStatus, activeStatus2, selectedAreas, budgetMin, budgetMax, sqftMin, sqftMax, selectedFacets]);
 
   const counts = useMemo(() => {
     const c = { All: leads?.length || 0 };
-    STATUSES.forEach((s) => {
-      c[s] = leads ? leads.filter((l) => (l.status || "New") === s).length : 0;
+    statuses.forEach((s) => {
+      c[s] = leads ? leads.filter((l) => (l.status || statuses[0]) === s).length : 0;
     });
     return c;
-  }, [leads]);
+  }, [leads, statuses]);
+
+  const counts2 = useMemo(() => {
+    if (!statuses2) return {};
+    const c = { All: leads?.length || 0 };
+    statuses2.forEach((s) => {
+      c[s] = leads ? leads.filter((l) => l.status2 === s).length : 0;
+    });
+    return c;
+  }, [leads, statuses2]);
 
   const openLead = openLeadId ? leads?.find((l) => l.id === openLeadId) : null;
 
@@ -1211,6 +1306,7 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
       fields,
       leads: filtered,
       filterLabel: activeStatus === "All" ? "All leads" : activeStatus,
+      statuses,
     });
   }
 
@@ -1262,9 +1358,9 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
       </div>
 
       <div className="flex gap-2 flex-wrap">
-        {["All", ...STATUSES].map((s) => {
+        {["All", ...statuses].map((s) => {
           const isActive = activeStatus === s;
-          const sStyle = STATUS_STYLE[s];
+          const sStyle = s === "All" ? null : getStatusStyle(s, statuses);
           return (
             <button
               key={s}
@@ -1279,6 +1375,30 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
           );
         })}
       </div>
+
+      {statuses2 && (
+        <div className="flex gap-2 flex-wrap">
+          <span className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold self-center pr-1">
+            {status2Label || "Second pipeline"}:
+          </span>
+          {["All", ...statuses2].map((s) => {
+            const isActive = activeStatus2 === s;
+            const sStyle = s === "All" ? null : getStatusStyle(s, statuses2);
+            return (
+              <button
+                key={s}
+                onClick={() => setActiveStatus2(s)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition flex items-center gap-1.5 ${
+                  isActive ? "bg-ink text-paper" : `${sStyle?.bg || "bg-white/60"} ${sStyle?.text || "text-ink/60"} border border-ink/10`
+                }`}
+              >
+                {sStyle && <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-paper" : sStyle.dot}`} />}
+                {s} <span className="opacity-60">({counts2[s] ?? 0})</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="flex gap-2">
         <input className="field-input flex-1" placeholder="Search by name, phone, or lead ID…" value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -1314,7 +1434,7 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
       )}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map((lead) => (
-          <LeadCard key={lead.id} lead={lead} accent={accent} onOpen={() => setOpenLeadId(lead.id)} />
+          <LeadCard key={lead.id} lead={lead} accent={accent} onOpen={() => setOpenLeadId(lead.id)} statuses={statuses} statuses2={statuses2} status2Label={status2Label} />
         ))}
       </div>
 
@@ -1325,10 +1445,14 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
           accent={accent}
           sheet={sheet}
           roleLabel={label}
+          statuses={statuses}
+          statuses2={statuses2}
+          status2Label={status2Label}
           onClose={() => setOpenLeadId(null)}
           onSaveDetails={onChanged.updateMeta}
           onAddRemark={onChanged.addRemark}
           onShareGallery={onChanged.shareToGallery}
+          onDeleteLead={onChanged.deleteLead}
         />
       )}
 

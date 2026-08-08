@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Handshake, MapPin, Ruler, Share2, Check,
+  Handshake, MapPin, Ruler,
   Search, SlidersHorizontal, ArrowUpDown, X,
 } from "lucide-react";
 import { listPublicProperties } from "../lib/api";
@@ -58,27 +58,6 @@ function PropertyCard({ p, index }) {
   const attrEntries = Object.entries(attributes).filter(([, v]) => v);
   const soldOut = p.soldOut === "true" || p.soldOut === true;
   const [lightboxIndex, setLightboxIndex] = useState(null);
-  const [copied, setCopied] = useState(false);
-
-  async function handleShare(e) {
-    e.stopPropagation();
-    const url = `${window.location.origin}/gallery/${p.id}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: p.title, text: `Check out this property: ${p.title}`, url });
-      } catch {
-        // user cancelled the share sheet — not an error
-      }
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // clipboard unavailable — nothing more we can do silently
-    }
-  }
 
   return (
     <div
@@ -94,13 +73,6 @@ function PropertyCard({ p, index }) {
             {p.price}
           </span>
         )}
-        <button
-          onClick={handleShare}
-          title="Share this property"
-          className="absolute bottom-3 right-3 z-10 w-9 h-9 rounded-full bg-white/95 text-ink flex items-center justify-center shadow hover:scale-105 transition"
-        >
-          {copied ? <Check size={15} className="text-seller" /> : <Share2 size={15} />}
-        </button>
         {soldOut && <SoldOutStamp size="lg" />}
       </div>
       <div className="p-5 space-y-2">

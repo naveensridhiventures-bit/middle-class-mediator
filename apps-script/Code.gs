@@ -21,8 +21,8 @@
  */
 
 const SHEETS = {
-  Mediators: ["id", "timestamp", "name", "phone", "profession", "workingArea", "propertyCategory", "experience", "dealType", "genuineLeads", "status", "priority", "followUpDate", "area", "customFields", "remarksLog"],
-  Sellers: ["id", "timestamp", "name", "phone", "propertyType", "propertyLocation", "propertyStatus", "expectedPrice", "ownership", "purpose", "propertyAge", "buildingType", "landArea", "builtUpArea", "frontageLength", "frontageBreadth", "roadWidth", "facing", "propertyUsage", "pattaApproval", "approvalStatus", "parking", "rentalStatus", "loanStatus", "photosShared", "sellerRemarks", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "galleryFields", "photos", "exactAddress", "mapLink", "visitLog", "remarksLog"],
+  Mediators: ["id", "timestamp", "name", "phone", "profession", "workingArea", "propertyCategory", "experience", "dealType", "genuineLeads", "status", "status2", "priority", "followUpDate", "area", "customFields", "remarksLog"],
+  Sellers: ["id", "timestamp", "name", "phone", "propertyType", "propertyLocation", "propertyStatus", "expectedPrice", "exactPrice", "ownership", "purpose", "propertyAge", "buildingType", "landArea", "builtUpArea", "frontageLength", "frontageBreadth", "roadWidth", "facing", "propertyUsage", "pattaApproval", "approvalStatus", "parking", "rentalStatus", "loanStatus", "photosShared", "sellerRemarks", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "galleryFields", "photos", "exactAddress", "mapLink", "visitLog", "remarksLog"],
   Buyers: ["id", "timestamp", "name", "phone", "propertyType", "purpose", "budget", "preferredLocation", "loanRequirement", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "remarksLog"],
   Properties: ["id", "timestamp", "title", "type", "location", "price", "sqft", "description", "imageUrl", "images", "attributes", "contactPhone", "refId", "soldOut"],
 };
@@ -32,7 +32,7 @@ const SHEETS = {
 // skips both for speed.
 const WRITE_ACTIONS = {
   addMediator: true, addSeller: true, addBuyer: true,
-  updateLead: true, addRemark: true, addVisit: true,
+  updateLead: true, addRemark: true, addVisit: true, deleteLead: true,
   addProperty: true, updateProperty: true, deleteProperty: true,
 };
 
@@ -74,7 +74,7 @@ function route(action, p) {
     case "addSeller":
       return addRow("Sellers", {
         name: p.name, phone: p.phone, propertyType: p.propertyType, propertyLocation: p.propertyLocation,
-        propertyStatus: p.propertyStatus, expectedPrice: p.expectedPrice, ownership: p.ownership,
+        propertyStatus: p.propertyStatus, expectedPrice: p.expectedPrice, exactPrice: p.exactPrice, ownership: p.ownership,
         purpose: p.purpose, propertyAge: p.propertyAge, buildingType: p.buildingType,
         landArea: p.landArea, builtUpArea: p.builtUpArea, frontageLength: p.frontageLength, frontageBreadth: p.frontageBreadth,
         roadWidth: p.roadWidth, facing: p.facing, propertyUsage: p.propertyUsage, pattaApproval: p.pattaApproval,
@@ -123,6 +123,11 @@ function route(action, p) {
     case "addRemark":
       checkPassword(p.password);
       return appendRemark(p.sheet, p.id, p.text, p.by);
+
+    // Permanently deletes a lead row from any of the three lead sheets.
+    case "deleteLead":
+      checkPassword(p.password);
+      return deleteRow(p.sheet, p.id);
 
     // Appends a dated site-visit entry (photo URL, GPS coords, reverse-
     // geocoded address) to a seller lead's visitLog. Additive only —

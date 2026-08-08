@@ -37,12 +37,21 @@ const CATEGORIES = ["Residential", "Commercial", "Land", "Rental", "All Categori
 const EXPERIENCE = ["Below 1 Year", "1–3 Years", "3–5 Years", "Above 5 Years"];
 const DEAL_TYPES = ["Sale", "Rental", "Lease", "All"];
 
+// Each role has its own pipeline stages — these aren't the same generic
+// New/Contacted/Closed for everyone, they reflect how each role actually
+// gets worked. Mediator has a second, independent pipeline on top.
+const SELLER_STATUSES = ["New", "Contacted", "Direct Owner", "Agent"];
+const BUYER_STATUSES = ["New", "Contacted", "20% to 50%", "50% to 70%", "70% to 100%", "Worthless"];
+const MEDIATOR_STATUSES = ["New", "Contacted", "Pending", "Visited"];
+const MEDIATOR_STATUSES_2 = ["Worth", "Ok", "Not worth"];
+
 const CRM_CONFIG = {
   seller: {
     label: "Seller",
     accent: "#1F6F5C",
     sheet: "Sellers",
     fetcher: adminListSellers,
+    statuses: SELLER_STATUSES,
     fields: [
       ["ownership", "Owner type", OWNER_TYPE],
       ["propertyLocation", "Location"],
@@ -56,7 +65,7 @@ const CRM_CONFIG = {
       ["builtUpArea", "Built-up area (sqft)"],
       ["frontageLength", "Frontage length (ft)"],
       ["frontageBreadth", "Frontage breadth (ft)"],
-      ["roadWidth", "Road width", ROAD_WIDTH],
+      ["roadWidth", "Road width (ft)"],
       ["facing", "Facing", FACING],
       ["propertyUsage", "Property usage", PROPERTY_USAGE],
       ["pattaApproval", "Patta / approval", PATTA_APPROVAL],
@@ -65,6 +74,7 @@ const CRM_CONFIG = {
       ["rentalStatus", "Rental status", RENTAL_STATUS],
       ["loanStatus", "Loan status", LOAN_STATUS],
       ["expectedPrice", "Expected price", PRICE_RANGES],
+      ["exactPrice", "Exact price (₹)"],
       ["timeline", "Planning to sell", SELL_TIMELINE],
       ["sellerRemarks", "Seller's remarks"],
     ],
@@ -85,6 +95,7 @@ const CRM_CONFIG = {
     accent: "#B5533C",
     sheet: "Buyers",
     fetcher: adminListBuyers,
+    statuses: BUYER_STATUSES,
     fields: [
       ["propertyType", "Property type", PROPERTY_TYPES],
       ["purpose", "Purpose", PURPOSE],
@@ -104,6 +115,9 @@ const CRM_CONFIG = {
     accent: "#2D4373",
     sheet: "Mediators",
     fetcher: adminListMediators,
+    statuses: MEDIATOR_STATUSES,
+    statuses2: MEDIATOR_STATUSES_2,
+    status2Label: "Lead quality",
     fields: [
       ["profession", "Profession", PROFESSIONS],
       ["workingArea", "Working area", MEDIATOR_AREAS],
@@ -233,6 +247,9 @@ export default function AdminDashboard() {
           fetcher={active.fetcher}
           fields={active.fields}
           facetFields={active.facetFields}
+          statuses={active.statuses}
+          statuses2={active.statuses2}
+          status2Label={active.status2Label}
           password={password}
           adminName={adminName}
         />
