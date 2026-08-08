@@ -644,7 +644,7 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, statuses, sta
           <div>
             <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">Submitted details</p>
             <div className="grid sm:grid-cols-2 gap-3">
-              {fields.map(([key, label, options]) => (
+              {fields.filter(([key]) => key !== "sellerRemarks").map(([key, label, options]) => (
                 <div key={key}>
                   <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">{label}</label>
                   {options ? (
@@ -795,13 +795,13 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, statuses, sta
                 )}
               </label>
 
-              {fields.some(([key]) => form[key]) && (
+              {fields.some(([key]) => key !== "sellerRemarks" && form[key]) && (
                 <div className="mb-3">
                   <p className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold mb-1.5">
                     Choose which details to show on the gallery
                   </p>
                   <div className="grid grid-cols-2 gap-1.5 max-h-52 overflow-y-auto pr-1">
-                    {fields.filter(([key]) => form[key]).map(([key, label]) => {
+                    {fields.filter(([key]) => key !== "sellerRemarks" && form[key]).map(([key, label]) => {
                       const on = galleryFields.includes(key);
                       return (
                         <button
@@ -850,7 +850,41 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, statuses, sta
             </div>
           )}
 
-          {/* Remarks history */}
+          {/* Seller's remark — distinct from the admin's internal Remarks history below.
+              This one is what the seller actually said, with its own gallery toggle. */}
+          {supportsPhoto && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold">Seller's remark</p>
+                <button
+                  type="button"
+                  onClick={() => toggleGalleryField("sellerRemarks")}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border-2 transition ${
+                    galleryFields.includes("sellerRemarks")
+                      ? "bg-seller/10 border-seller text-seller"
+                      : "bg-white/50 border-ink/10 text-ink/40"
+                  }`}
+                >
+                  <span
+                    className={`w-3.5 h-3.5 rounded-full flex items-center justify-center ${
+                      galleryFields.includes("sellerRemarks") ? "bg-seller" : "bg-ink/10"
+                    }`}
+                  >
+                    {galleryFields.includes("sellerRemarks") && <Check size={9} className="text-white" strokeWidth={3} />}
+                  </span>
+                  Show on gallery
+                </button>
+              </div>
+              <textarea
+                className="field-input !py-2 text-sm min-h-[60px]"
+                placeholder="What the seller told you — this is separate from your own internal notes below."
+                value={form.sellerRemarks}
+                onChange={(e) => set("sellerRemarks", e.target.value)}
+              />
+            </div>
+          )}
+
+          {/* Remarks history — the admin's own internal notes, never shown on the gallery */}
           <div>
             <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">
               Remarks history {remarksLog.length > 0 && `(${remarksLog.length})`}
