@@ -106,14 +106,6 @@ function PropertyCard({ p, index }) {
         </div>
         {p.description && <p className="text-xs text-ink/50">{p.description}</p>}
 
-        {p.sellerNote && (
-          <div className="relative bg-gradient-to-br from-gold/10 to-seller/5 border-l-4 border-gold rounded-r-xl pl-4 pr-4 py-3 my-1">
-            <Quote size={16} className="text-gold/50 absolute top-2.5 right-3" />
-            <p className="text-[10px] uppercase tracking-wide text-gold-dark font-bold mb-1">Seller's remark</p>
-            <p className="text-sm text-ink/75 italic leading-relaxed pr-5 whitespace-pre-line">{p.sellerNote}</p>
-          </div>
-        )}
-
         {attrEntries.length > 0 && (
           <div className="grid grid-cols-2 gap-1.5 pt-1">
             {attrEntries.map(([k, v]) => (
@@ -122,6 +114,14 @@ function PropertyCard({ p, index }) {
                 <p className="text-xs text-ink/70 font-medium truncate">{v}</p>
               </div>
             ))}
+          </div>
+        )}
+
+        {p.sellerNote && (
+          <div className="relative bg-gradient-to-br from-gold/10 to-seller/5 border-l-4 border-gold rounded-r-xl pl-4 pr-4 py-3 my-1">
+            <Quote size={16} className="text-gold/50 absolute top-2.5 right-3" />
+            <p className="text-[10px] uppercase tracking-wide text-gold-dark font-bold mb-1">Seller's remark</p>
+            <p className="text-sm text-ink/75 italic leading-relaxed pr-5 whitespace-pre-line">{p.sellerNote}</p>
           </div>
         )}
 
