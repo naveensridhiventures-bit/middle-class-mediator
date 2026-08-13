@@ -281,7 +281,42 @@ export async function downloadBrochure(property) {
       columnStyles: { 0: { fontStyle: "bold", textColor: [80, 80, 90], cellWidth: 160 } },
       body: facts,
     });
-    y = doc.lastAutoTable.finalY + 24;
+    y = doc.lastAutoTable.finalY + 20;
+  }
+
+  // Seller's remark — drawn as its own highlighted quote box, separate
+  // from the plain facts table, so it stands out as the seller's own words.
+  if (property.sellerNote) {
+    const noteText = pdfSafe(property.sellerNote);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(10.5);
+    const wrapWidth = pageWidth - margin * 2 - 24;
+    const lines = doc.splitTextToSize(noteText, wrapWidth);
+    const boxH = lines.length * 14 + 34;
+
+    if (y + boxH > pageHeight - 100) {
+      doc.addPage();
+      y = 60;
+    }
+
+    doc.setFillColor(...GOLD);
+    doc.setGState(new doc.GState({ opacity: 0.08 }));
+    doc.roundedRect(margin, y, pageWidth - margin * 2, boxH, 8, 8, "F");
+    doc.setGState(new doc.GState({ opacity: 1 }));
+    doc.setFillColor(...GOLD);
+    doc.rect(margin, y, 4, boxH, "F");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(...accent);
+    doc.text("SELLER'S REMARK", margin + 16, y + 16);
+
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(10.5);
+    doc.setTextColor(60, 60, 70);
+    doc.text(lines, margin + 16, y + 30);
+
+    y += boxH + 20;
   }
 
   // Space check before the WhatsApp CTA button

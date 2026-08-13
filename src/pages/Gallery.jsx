@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Handshake, MapPin, Ruler,
+  Handshake, MapPin, Ruler, Quote,
   Search, SlidersHorizontal, ArrowUpDown, X,
 } from "lucide-react";
 import { listPublicProperties } from "../lib/api";
@@ -81,9 +81,14 @@ function PropertyCard({ p, index }) {
             {p.type}
           </span>
         )}
-        <Link to={`/gallery/${p.id}`} className="font-display font-semibold text-lg text-ink leading-snug hover:underline block">
-          {p.title}
-        </Link>
+        <div>
+          <Link to={`/gallery/${p.id}`} className="group/title inline-block">
+            <h3 className="font-display font-bold text-xl text-ink leading-snug group-hover/title:text-seller transition-colors">
+              {p.title}
+            </h3>
+            <span className="block h-0.5 w-10 rounded-full bg-gold mt-1 group-hover/title:w-16 transition-all" />
+          </Link>
+        </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           {p.location && (
             <p className="text-xs text-ink/50 flex items-center gap-1">
@@ -100,6 +105,13 @@ function PropertyCard({ p, index }) {
           {soldOut && p.price && <p className="text-xs text-ink/40 line-through">{p.price}</p>}
         </div>
         {p.description && <p className="text-xs text-ink/50">{p.description}</p>}
+
+        {p.sellerNote && (
+          <div className="relative bg-gradient-to-br from-gold/10 to-seller/5 border-l-4 border-gold rounded-r-xl pl-4 pr-3 py-2.5 my-1">
+            <Quote size={14} className="text-gold/60 absolute top-2 right-2.5" />
+            <p className="text-xs text-ink/70 italic leading-relaxed pr-4">{p.sellerNote}</p>
+          </div>
+        )}
 
         {attrEntries.length > 0 && (
           <div className="grid grid-cols-2 gap-1.5 pt-1">

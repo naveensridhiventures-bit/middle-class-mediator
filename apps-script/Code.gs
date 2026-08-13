@@ -22,9 +22,9 @@
 
 const SHEETS = {
   Mediators: ["id", "timestamp", "name", "phone", "profession", "workingArea", "propertyCategory", "experience", "dealType", "genuineLeads", "status", "status2", "priority", "followUpDate", "area", "customFields", "remarksLog"],
-  Sellers: ["id", "timestamp", "name", "phone", "propertyType", "propertyLocation", "propertyStatus", "expectedPrice", "exactPrice", "ownership", "purpose", "propertyAge", "buildingType", "landArea", "builtUpArea", "frontageLength", "frontageBreadth", "roadWidth", "facing", "propertyUsage", "pattaApproval", "approvalStatus", "parking", "rentalStatus", "loanStatus", "photosShared", "sellerRemarks", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "galleryFields", "photos", "exactAddress", "mapLink", "visitLog", "remarksLog"],
+  Sellers: ["id", "timestamp", "name", "phone", "propertyType", "propertyLocation", "propertyStatus", "expectedPrice", "exactPrice", "ownership", "purpose", "propertyAge", "buildingType", "landArea", "builtUpArea", "frontageLength", "frontageBreadth", "roadWidth", "facing", "propertyUsage", "pattaApproval", "approvalStatus", "parking", "rentalStatus", "loanStatus", "photosShared", "sellerRemarks", "listingTitle", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "galleryFields", "photos", "exactAddress", "mapLink", "visitLog", "remarksLog"],
   Buyers: ["id", "timestamp", "name", "phone", "propertyType", "purpose", "budget", "preferredLocation", "loanRequirement", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "remarksLog"],
-  Properties: ["id", "timestamp", "title", "type", "location", "price", "sqft", "description", "imageUrl", "images", "attributes", "contactPhone", "refId", "soldOut"],
+  Properties: ["id", "timestamp", "title", "type", "location", "price", "sqft", "description", "imageUrl", "images", "attributes", "sellerNote", "contactPhone", "refId", "soldOut"],
 };
 
 // Actions in this set take the script lock and go through column
@@ -142,14 +142,14 @@ function route(action, p) {
         checkPassword(p.password);
         return addRow("Properties", {
           title: p.title, type: p.type, location: p.location, price: p.price, sqft: p.sqft,
-          description: p.description, imageUrl: p.imageUrl, images: p.images, attributes: p.attributes, contactPhone: p.contactPhone, refId: p.refId, soldOut: p.soldOut,
+          description: p.description, imageUrl: p.imageUrl, images: p.images, attributes: p.attributes, sellerNote: p.sellerNote, contactPhone: p.contactPhone, refId: p.refId, soldOut: p.soldOut,
         });
 
       case "updateProperty":
         checkPassword(p.password);
         return updateRow("Properties", p.id, {
           title: p.title, type: p.type, location: p.location, price: p.price, sqft: p.sqft,
-          description: p.description, imageUrl: p.imageUrl, images: p.images, attributes: p.attributes, contactPhone: p.contactPhone, refId: p.refId, soldOut: p.soldOut,
+          description: p.description, imageUrl: p.imageUrl, images: p.images, attributes: p.attributes, sellerNote: p.sellerNote, contactPhone: p.contactPhone, refId: p.refId, soldOut: p.soldOut,
         });
 
     case "deleteProperty":

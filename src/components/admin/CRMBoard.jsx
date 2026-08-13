@@ -315,6 +315,7 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, statuses, sta
     followUpDate: lead.followUpDate || "",
     area: lead.area || "",
     budgetValue: lead.budgetValue || "",
+    listingTitle: lead.listingTitle || "",
     sqft: lead.sqft || "",
     exactAddress: lead.exactAddress || "",
     mapLink: lead.mapLink || "",
@@ -449,22 +450,37 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, statuses, sta
     const description = isVisible("propertyStatus") ? form.propertyStatus : "";
     const location = form.area || (isVisible("propertyLocation") ? form.propertyLocation : "");
 
+    // Exact price (with proper Indian comma formatting) takes priority over
+    // the admin-only budget figure, which takes priority over the public
+    // form's price-range text.
+    const exactPriceDigits = unformatNumber(form.exactPrice);
+    const price = exactPriceDigits
+      ? `₹${formatThousands(exactPriceDigits)}`
+      : form.budgetValue
+      ? `₹${formatThousands(form.budgetValue)}`
+      : form.expectedPrice || "";
+
     const attributeFields = fields.filter(
-      ([key]) => !GALLERY_SPECIAL_KEYS[key] && isVisible(key) && form[key]
+      ([key]) => !GALLERY_SPECIAL_KEYS[key] && key !== "sellerRemarks" && isVisible(key) && form[key]
     );
 
     return {
-      title: `${type || "Property"} in ${location || "Chennai"}`,
+      // A custom creative title wins if the admin has set one; otherwise
+      // fall back to the auto-generated "Type in Area" style title.
+      title: form.listingTitle?.trim() || `${type || "Property"} in ${location || "Chennai"}`,
       type,
       location,
       description,
-      price: form.expectedPrice || (form.budgetValue ? `₹${Number(form.budgetValue).toLocaleString()}` : ""),
+      price,
       sqft: form.builtUpArea || form.landArea || form.sqft || "",
       images: JSON.stringify(photos),
       attributes: JSON.stringify({
         ...Object.fromEntries(attributeFields.map(([key, label]) => [label, form[key]])),
         ...Object.fromEntries(Object.entries(customFields).filter(([k]) => k !== "galleryId" && k !== "soldOut")),
       }),
+      // Shown as its own styled callout on the gallery, not squeezed into
+      // the small attribute grid — only included if toggled visible.
+      sellerNote: isVisible("sellerRemarks") ? form.sellerRemarks || "" : "",
       refId: lead.id,
     };
   }
@@ -607,6 +623,25 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, statuses, sta
                 )}
               </div>
               {photoError && <p className="text-xs text-buyer mt-2">{photoError}</p>}
+            </div>
+          )}
+
+          {/* Gallery listing title — a custom, creative title admin can set for
+              the public listing, instead of the plain auto-generated one */}
+          {supportsPhoto && (
+            <div>
+              <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">
+                Gallery listing title
+              </label>
+              <input
+                className="field-input !py-2.5 text-sm"
+                placeholder="e.g. Sun-drenched 3BHK with a private terrace garden"
+                value={form.listingTitle}
+                onChange={(e) => set("listingTitle", e.target.value)}
+              />
+              <p className="text-[10px] text-ink/35 mt-1">
+                Optional — make it catchy. Leave blank to use the plain "Type in Area" title.
+              </p>
             </div>
           )}
 

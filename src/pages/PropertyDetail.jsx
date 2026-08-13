@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Handshake, MapPin, Ruler, ArrowLeft } from "lucide-react";
+import { Handshake, MapPin, Ruler, ArrowLeft, Quote } from "lucide-react";
 import { listPublicProperties } from "../lib/api";
 import { whatsappLink } from "../lib/whatsapp";
 import { ADMIN_WHATSAPP_NUMBER } from "../lib/config";
@@ -111,7 +111,10 @@ export default function PropertyDetail() {
               {property.type}
             </span>
           )}
-          <h1 className="font-display font-bold text-2xl sm:text-3xl text-ink leading-snug">{property.title}</h1>
+          <div>
+            <h1 className="font-display font-bold text-2xl sm:text-3xl text-ink leading-snug">{property.title}</h1>
+            <span className="block h-0.5 w-14 rounded-full bg-gold mt-2" />
+          </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             {property.location && (
               <p className="text-sm text-ink/50 flex items-center gap-1.5">
@@ -132,6 +135,14 @@ export default function PropertyDetail() {
             </p>
           )}
           {property.description && <p className="text-sm text-ink/60">{property.description}</p>}
+
+          {property.sellerNote && (
+            <div className="relative bg-gradient-to-br from-gold/10 to-seller/5 border-l-4 border-gold rounded-r-2xl pl-5 pr-4 py-4 my-1">
+              <Quote size={20} className="text-gold/50 absolute top-3 right-3.5" />
+              <p className="text-[10px] uppercase tracking-wide text-gold-dark font-bold mb-1.5">Seller's remark</p>
+              <p className="text-sm text-ink/70 italic leading-relaxed pr-6">{property.sellerNote}</p>
+            </div>
+          )}
 
           {attrEntries.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2">

@@ -1,5 +1,19 @@
 # Middle Class Mediator
 
+## Gallery presentation fixes
+
+- **Exact price on the gallery** — the price badge now prefers the seller's
+  typed-in exact price (properly comma-formatted, e.g. ₹50,00,000) over the
+  admin-only budget figure, which in turn beats the plain price-range text.
+- **Custom gallery title** — a new "Gallery listing title" field on each
+  seller lead lets you write something creative ("Sun-drenched 3BHK with a
+  private terrace garden") instead of the plain auto-generated "Type in
+  Area" title. Leave it blank to keep the auto-generated one.
+- **Seller's remark now shown separately** — instead of being squeezed into
+  the small attribute grid, it gets its own highlighted quote-style callout
+  (gold accent border, italic text, quote icon) on both the gallery card
+  and the single-property page, and its own styled box in the Customer PDF.
+
 ## Custom pipelines, delete, and admin-only sharing
 
 - **Each role now has its own pipeline** instead of one shared New/Contacted/
