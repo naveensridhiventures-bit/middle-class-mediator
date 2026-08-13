@@ -107,9 +107,10 @@ function PropertyCard({ p, index }) {
         {p.description && <p className="text-xs text-ink/50">{p.description}</p>}
 
         {p.sellerNote && (
-          <div className="relative bg-gradient-to-br from-gold/10 to-seller/5 border-l-4 border-gold rounded-r-xl pl-4 pr-3 py-2.5 my-1">
-            <Quote size={14} className="text-gold/60 absolute top-2 right-2.5" />
-            <p className="text-xs text-ink/70 italic leading-relaxed pr-4">{p.sellerNote}</p>
+          <div className="relative bg-gradient-to-br from-gold/10 to-seller/5 border-l-4 border-gold rounded-r-xl pl-4 pr-4 py-3 my-1">
+            <Quote size={16} className="text-gold/50 absolute top-2.5 right-3" />
+            <p className="text-[10px] uppercase tracking-wide text-gold-dark font-bold mb-1">Seller's remark</p>
+            <p className="text-sm text-ink/75 italic leading-relaxed pr-5 whitespace-pre-line">{p.sellerNote}</p>
           </div>
         )}
 
