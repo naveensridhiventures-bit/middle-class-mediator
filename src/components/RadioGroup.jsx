@@ -1,4 +1,4 @@
-export default function RadioGroup({ label, options, value, onChange, accentColor = "#1B2A4A", icons = {}, stepNumber }) {
+export default function RadioGroup({ label, options, value, onChange, accentColor = "#1B2A4A", icons = {}, stepNumber, required = false }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-2.5">
@@ -10,7 +10,10 @@ export default function RadioGroup({ label, options, value, onChange, accentColo
             {stepNumber}
           </span>
         )}
-        <label className="field-label !mb-0">{label}</label>
+        <label className="field-label !mb-0">
+          {label}
+          {required && <span className="text-buyer ml-0.5">*</span>}
+        </label>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {options.map((opt) => {

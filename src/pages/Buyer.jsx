@@ -3,10 +3,11 @@ import {
   User, MessageCircle, Home as HomeIcon, Building2, Building, LandPlot,
   Hotel, UtensilsCrossed, Scissors, Store, Briefcase, MapPin, Wallet,
   TrendingUp, Tag, Landmark, CheckCircle2, XCircle, Zap, CalendarClock,
-  Search, ShieldCheck,
+  Search, ShieldCheck, AlertTriangle,
 } from "lucide-react";
 import Seal from "../components/Seal";
 import RadioGroup from "../components/RadioGroup";
+import BackHome from "../components/BackHome";
 import { addBuyerLead } from "../lib/api";
 
 const ACCENT = "#B5533C";
@@ -92,6 +93,9 @@ export default function Buyer() {
           <a href="/buyer" className="btn-ghost w-full">
             Register another requirement
           </a>
+          <a href="/" className="block mt-3 text-sm text-ink/40 hover:text-ink">
+            Back to home
+          </a>
         </div>
       </div>
     );
@@ -100,6 +104,7 @@ export default function Buyer() {
   return (
     <div className="min-h-screen bg-paper">
       <div className="max-w-lg mx-auto px-5 py-10">
+        <BackHome color={ACCENT} />
         <div className="text-center mb-7">
           <div className="relative w-14 h-14 mx-auto mb-4">
             <div className="w-14 h-14 rounded-full border-2 flex items-center justify-center" style={{ borderColor: ACCENT }}>
@@ -112,37 +117,44 @@ export default function Buyer() {
             <span className="h-px w-8" style={{ backgroundColor: `${ACCENT}40` }} />
           </div>
           <h1 className="font-display font-bold text-3xl text-ink">Buyer registration</h1>
-          <p className="text-ink/50 text-sm mt-1.5">Tell us what you're looking for</p>
+          <p className="text-ink/50 text-sm mt-1.5">
+            Tell us what you're looking for — all fields marked <span className="text-buyer font-semibold">*</span> are required.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="card-ledger p-6 space-y-6 shadow-xl">
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
-              <label className="field-label">Full name</label>
+              <label className="field-label">Full name <span className="text-buyer">*</span></label>
               <div className="relative">
                 <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/30" />
                 <input className="field-input !pl-10" value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Full name" required />
               </div>
             </div>
             <div>
-              <label className="field-label">Mobile number (WhatsApp)</label>
+              <label className="field-label">Mobile number (WhatsApp) <span className="text-buyer">*</span></label>
               <div className="relative">
                 <MessageCircle size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/30" />
-                <input className="field-input !pl-10" value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="10-digit number" required />
+                <input className="field-input !pl-10" type="tel" inputMode="numeric" pattern="[0-9]{10}" maxLength={10} value={form.phone} onChange={(e) => update("phone", e.target.value.replace(/\D/g, ""))} placeholder="10-digit number" required />
               </div>
             </div>
           </div>
 
           <div className="border-t border-ink/5 pt-6 space-y-6">
-            <RadioGroup stepNumber="1" label="Property type" options={PROPERTY_TYPES} value={form.propertyType} onChange={(v) => update("propertyType", v)} accentColor={ACCENT} icons={TYPE_ICONS} />
-            <RadioGroup stepNumber="2" label="Purpose" options={PURPOSE} value={form.purpose} onChange={(v) => update("purpose", v)} accentColor={ACCENT} icons={PURPOSE_ICONS} />
-            <RadioGroup stepNumber="3" label="Budget" options={BUDGET} value={form.budget} onChange={(v) => update("budget", v)} accentColor={ACCENT} icons={BUDGET_ICONS} />
-            <RadioGroup stepNumber="4" label="Preferred location" options={LOCATIONS} value={form.preferredLocation} onChange={(v) => update("preferredLocation", v)} accentColor={ACCENT} icons={LOCATION_ICONS} />
-            <RadioGroup stepNumber="5" label="Loan requirement" options={YES_NO} value={form.loanRequirement} onChange={(v) => update("loanRequirement", v)} accentColor={ACCENT} icons={YES_NO_ICONS} />
-            <RadioGroup stepNumber="6" label="When are you planning to buy?" options={TIMELINE} value={form.timeline} onChange={(v) => update("timeline", v)} accentColor={ACCENT} icons={TIMELINE_ICONS} />
+            <RadioGroup stepNumber="1" label="Property type" required options={PROPERTY_TYPES} value={form.propertyType} onChange={(v) => update("propertyType", v)} accentColor={ACCENT} icons={TYPE_ICONS} />
+            <RadioGroup stepNumber="2" label="Purpose" required options={PURPOSE} value={form.purpose} onChange={(v) => update("purpose", v)} accentColor={ACCENT} icons={PURPOSE_ICONS} />
+            <RadioGroup stepNumber="3" label="Budget" required options={BUDGET} value={form.budget} onChange={(v) => update("budget", v)} accentColor={ACCENT} icons={BUDGET_ICONS} />
+            <RadioGroup stepNumber="4" label="Preferred location" required options={LOCATIONS} value={form.preferredLocation} onChange={(v) => update("preferredLocation", v)} accentColor={ACCENT} icons={LOCATION_ICONS} />
+            <RadioGroup stepNumber="5" label="Loan requirement" required options={YES_NO} value={form.loanRequirement} onChange={(v) => update("loanRequirement", v)} accentColor={ACCENT} icons={YES_NO_ICONS} />
+            <RadioGroup stepNumber="6" label="When are you planning to buy?" required options={TIMELINE} value={form.timeline} onChange={(v) => update("timeline", v)} accentColor={ACCENT} icons={TIMELINE_ICONS} />
           </div>
 
-          {errorMsg && <p className="text-sm text-buyer">{errorMsg}</p>}
+          {errorMsg && (
+            <p className="alert-error">
+              <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+              {errorMsg}
+            </p>
+          )}
 
           <button type="submit" disabled={status === "saving" || !isComplete} className="btn-primary w-full flex items-center justify-center gap-2">
             {status === "saving" ? "Saving…" : (
@@ -152,6 +164,9 @@ export default function Buyer() {
               </>
             )}
           </button>
+          {!isComplete && status === "idle" && (
+            <p className="text-xs text-ink/35 text-center -mt-3">Fill in the required fields marked with * to continue.</p>
+          )}
           <p className="text-xs text-ink/40 leading-relaxed flex items-start gap-1.5">
             <ShieldCheck size={13} className="shrink-0 mt-0.5" />
             This submits your requirements as a report for our team. After reviewing, our team

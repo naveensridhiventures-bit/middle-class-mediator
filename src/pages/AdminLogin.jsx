@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Lock } from "lucide-react";
 import { adminLogin } from "../lib/api";
 
 export default function AdminLogin() {
@@ -24,27 +25,32 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="max-w-sm mx-auto px-5 pt-24">
-      <div className="card-ledger p-7">
-        <p className="field-label mb-1">Admin</p>
-        <h1 className="font-display font-semibold text-2xl text-ink mb-6">Sign in</h1>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="field-label">Password</label>
-            <input
-              type="password"
-              className="field-input"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoFocus
-              required
-            />
-          </div>
-          {error && <p className="text-sm text-buyer">{error}</p>}
-          <button type="submit" disabled={loading} className="btn-primary w-full">
-            {loading ? "Checking…" : "Sign in"}
-          </button>
-        </form>
+    <div className="min-h-screen bg-paper flex items-center justify-center px-5">
+      <div className="max-w-sm w-full">
+        <div className="w-12 h-12 rounded-full border-2 border-ink/15 flex items-center justify-center mx-auto mb-5">
+          <Lock size={18} className="text-ink/50" />
+        </div>
+        <div className="card-ledger p-7 shadow-xl">
+          <p className="field-label mb-1">Admin</p>
+          <h1 className="font-display font-semibold text-2xl text-ink mb-6">Sign in</h1>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="field-label">Password</label>
+              <input
+                type="password"
+                className="field-input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoFocus
+                required
+              />
+            </div>
+            {error && <p className="alert-error">{error}</p>}
+            <button type="submit" disabled={loading} className="btn-primary w-full">
+              {loading ? "Checking…" : "Sign in"}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

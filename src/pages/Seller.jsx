@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import Seal from "../components/Seal";
 import RadioGroup from "../components/RadioGroup";
+import BackHome from "../components/BackHome";
 import { addSellerLead } from "../lib/api";
 import { whatsappLink } from "../lib/whatsapp";
 import { MEDIATOR_WHATSAPP_NUMBER } from "../lib/config";
@@ -121,6 +122,9 @@ export default function Seller() {
           <a href="/seller" className="block mt-4 text-sm text-ink/50 hover:text-ink">
             List another property
           </a>
+          <a href="/" className="block mt-2 text-sm text-ink/40 hover:text-ink">
+            Back to home
+          </a>
         </div>
       </div>
     );
@@ -129,6 +133,7 @@ export default function Seller() {
   return (
     <div className="min-h-screen bg-paper">
       <div className="max-w-lg mx-auto px-5 py-10">
+        <BackHome color={ACCENT} />
         <div className="text-center mb-7">
           <div className="relative w-14 h-14 mx-auto mb-4">
             <div className="w-14 h-14 rounded-full border-2 flex items-center justify-center" style={{ borderColor: ACCENT }}>
@@ -142,32 +147,32 @@ export default function Seller() {
           </div>
           <h1 className="font-display font-bold text-3xl text-ink">Seller registration</h1>
           <p className="text-ink/50 text-sm mt-1.5">
-            Give us as much detail as you can — the starred fields are required, everything else helps us match you faster.
+            Give us as much detail as you can — fields marked <span className="text-buyer font-semibold">*</span> are required, everything else helps us match you faster.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="card-ledger p-6 space-y-6 shadow-xl">
-          <RadioGroup stepNumber="1" label="Are you the property owner?" options={OWNER_TYPE} value={form.ownership} onChange={(v) => update("ownership", v)} accentColor={ACCENT} icons={OWNER_TYPE_ICONS} />
+          <RadioGroup stepNumber="1" label="Are you the property owner?" required options={OWNER_TYPE} value={form.ownership} onChange={(v) => update("ownership", v)} accentColor={ACCENT} icons={OWNER_TYPE_ICONS} />
 
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
-              <label className="field-label">Full name</label>
+              <label className="field-label">Full name <span className="text-buyer">*</span></label>
               <div className="relative">
                 <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/30" />
                 <input className="field-input !pl-10" value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Full name" required />
               </div>
             </div>
             <div>
-              <label className="field-label">Mobile number (WhatsApp)</label>
+              <label className="field-label">Mobile number (WhatsApp) <span className="text-buyer">*</span></label>
               <div className="relative">
                 <MessageCircle size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/30" />
-                <input className="field-input !pl-10" value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="10-digit number" required />
+                <input className="field-input !pl-10" type="tel" inputMode="numeric" pattern="[0-9]{10}" maxLength={10} value={form.phone} onChange={(e) => update("phone", e.target.value.replace(/\D/g, ""))} placeholder="10-digit number" required />
               </div>
             </div>
           </div>
 
           <div>
-            <label className="field-label">Property location</label>
+            <label className="field-label">Property location <span className="text-buyer">*</span></label>
             <div className="relative">
               <MapPin size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/30" />
               <input className="field-input !pl-10" value={form.propertyLocation} onChange={(e) => update("propertyLocation", e.target.value)} placeholder="Area / locality" required />
@@ -176,9 +181,9 @@ export default function Seller() {
 
           <div className="border-t border-ink/5 pt-6 space-y-6">
             <RadioGroup stepNumber="2" label="Photos &amp; videos" options={PHOTOS_SHARED} value={form.photosShared} onChange={(v) => update("photosShared", v)} accentColor={ACCENT} icons={PHOTOS_SHARED_ICONS} />
-            <RadioGroup stepNumber="3" label="Property type" options={PROPERTY_TYPES} value={form.propertyType} onChange={(v) => update("propertyType", v)} accentColor={ACCENT} icons={TYPE_ICONS} />
+            <RadioGroup stepNumber="3" label="Property type" required options={PROPERTY_TYPES} value={form.propertyType} onChange={(v) => update("propertyType", v)} accentColor={ACCENT} icons={TYPE_ICONS} />
             <RadioGroup stepNumber="4" label="Purpose" options={PURPOSE} value={form.purpose} onChange={(v) => update("purpose", v)} accentColor={ACCENT} icons={PURPOSE_ICONS} />
-            <RadioGroup stepNumber="5" label="Property status" options={PROPERTY_STATUS} value={form.propertyStatus} onChange={(v) => update("propertyStatus", v)} accentColor={ACCENT} icons={STATUS_ICONS} />
+            <RadioGroup stepNumber="5" label="Property status" required options={PROPERTY_STATUS} value={form.propertyStatus} onChange={(v) => update("propertyStatus", v)} accentColor={ACCENT} icons={STATUS_ICONS} />
             <RadioGroup stepNumber="6" label="Property age" options={PROPERTY_AGE} value={form.propertyAge} onChange={(v) => update("propertyAge", v)} accentColor={ACCENT} icons={AGE_ICONS} />
             <RadioGroup stepNumber="7" label="Building type" options={BUILDING_TYPE} value={form.buildingType} onChange={(v) => update("buildingType", v)} accentColor={ACCENT} icons={BUILDING_TYPE_ICONS} />
 
@@ -209,8 +214,8 @@ export default function Seller() {
             <RadioGroup stepNumber="16" label="Parking" options={PARKING} value={form.parking} onChange={(v) => update("parking", v)} accentColor={ACCENT} icons={PARKING_ICONS} />
             <RadioGroup stepNumber="17" label="Rental status" options={RENTAL_STATUS} value={form.rentalStatus} onChange={(v) => update("rentalStatus", v)} accentColor={ACCENT} icons={RENTAL_ICONS} />
             <RadioGroup stepNumber="18" label="Loan status" options={LOAN_STATUS} value={form.loanStatus} onChange={(v) => update("loanStatus", v)} accentColor={ACCENT} icons={LOAN_ICONS} />
-            <RadioGroup stepNumber="19" label="Expected selling price" options={PRICE_RANGES} value={form.expectedPrice} onChange={(v) => update("expectedPrice", v)} accentColor={ACCENT} icons={PRICE_ICONS} />
-            <RadioGroup stepNumber="20" label="When are you planning to sell?" options={TIMELINE} value={form.timeline} onChange={(v) => update("timeline", v)} accentColor={ACCENT} icons={TIMELINE_ICONS} />
+            <RadioGroup stepNumber="19" label="Expected selling price" required options={PRICE_RANGES} value={form.expectedPrice} onChange={(v) => update("expectedPrice", v)} accentColor={ACCENT} icons={PRICE_ICONS} />
+            <RadioGroup stepNumber="20" label="When are you planning to sell?" required options={TIMELINE} value={form.timeline} onChange={(v) => update("timeline", v)} accentColor={ACCENT} icons={TIMELINE_ICONS} />
 
             <div>
               <label className="field-label">21. Remarks / additional details</label>
@@ -223,11 +228,19 @@ export default function Seller() {
             </div>
           </div>
 
-          {errorMsg && <p className="text-sm text-buyer">{errorMsg}</p>}
+          {errorMsg && (
+            <p className="alert-error">
+              <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+              {errorMsg}
+            </p>
+          )}
 
           <button type="submit" disabled={status === "saving" || !isComplete} className="btn-primary w-full flex items-center justify-center gap-2">
             {status === "saving" ? "Saving…" : (<>Save &amp; continue to WhatsApp <MessageCircle size={16} /></>)}
           </button>
+          {!isComplete && status === "idle" && (
+            <p className="text-xs text-ink/35 text-center -mt-3">Fill in the required fields marked with * to continue.</p>
+          )}
           <p className="text-xs text-ink/40 leading-relaxed flex items-start gap-1.5">
             <ShieldCheck size={13} className="shrink-0 mt-0.5" />
             After reviewing your property details, our team will contact you directly for the next steps.

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Handshake, MapPin, Ruler, ArrowLeft, Quote } from "lucide-react";
+import { Handshake, MapPin, Ruler, ArrowLeft, Quote, AlertTriangle } from "lucide-react";
 import { listPublicProperties } from "../lib/api";
 import { whatsappLink } from "../lib/whatsapp";
 import { ADMIN_WHATSAPP_NUMBER } from "../lib/config";
@@ -48,15 +48,29 @@ export default function PropertyDetail() {
   if (error) {
     return (
       <div className="min-h-screen bg-paper flex items-center justify-center px-5">
-        <p className="text-buyer text-sm">{error}</p>
+        <p className="alert-error max-w-sm">
+          <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+          {error}
+        </p>
       </div>
     );
   }
 
   if (property === undefined) {
     return (
-      <div className="min-h-screen bg-paper flex items-center justify-center px-5">
-        <p className="text-ink/50 text-sm">Loading…</p>
+      <div className="min-h-screen bg-paper">
+        <div className="bg-ink h-[57px]" />
+        <div className="max-w-3xl mx-auto px-5 py-8">
+          <div className="rounded-3xl overflow-hidden shadow-xl relative aspect-[4/3] sm:aspect-[16/9] skeleton" />
+          <div className="mt-6 space-y-3">
+            <div className="h-5 w-24 rounded-full skeleton" />
+            <div className="h-7 w-2/3 rounded-md skeleton" />
+            <div className="h-4 w-1/3 rounded-md skeleton" />
+            <div className="h-8 w-1/3 rounded-md skeleton" />
+            <div className="h-24 w-full rounded-2xl skeleton mt-4" />
+            <div className="h-12 w-full rounded-xl skeleton mt-4" />
+          </div>
+        </div>
       </div>
     );
   }

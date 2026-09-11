@@ -11,6 +11,8 @@ export default function Carousel({ images, alt = "Photo", intervalMs = 2800, cla
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const timerRef = useRef(null);
+  const touchStartX = useRef(null);
+  const touchDeltaX = useRef(0);
 
   useEffect(() => {
     if (!images || images.length <= 1 || paused) return undefined;
@@ -25,6 +27,27 @@ export default function Carousel({ images, alt = "Photo", intervalMs = 2800, cla
     setIndex((i) => (i + delta + images.length) % images.length);
   }
 
+  // Swipe support — arrows are hover-only on desktop, but touch devices
+  // have no hover state, so without this a mobile visitor had no way to
+  // move through a multi-photo listing besides tapping the tiny dots.
+  function handleTouchStart(e) {
+    touchStartX.current = e.touches[0].clientX;
+    touchDeltaX.current = 0;
+    setPaused(true);
+  }
+  function handleTouchMove(e) {
+    if (touchStartX.current === null) return;
+    touchDeltaX.current = e.touches[0].clientX - touchStartX.current;
+  }
+  function handleTouchEnd() {
+    if (Math.abs(touchDeltaX.current) > 40) {
+      go(touchDeltaX.current < 0 ? 1 : -1);
+    }
+    touchStartX.current = null;
+    touchDeltaX.current = 0;
+    setPaused(false);
+  }
+
   if (!images || images.length === 0) {
     return (
       <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br from-ink/5 to-ink/10 ${className}`}>
@@ -35,9 +58,12 @@ export default function Carousel({ images, alt = "Photo", intervalMs = 2800, cla
 
   return (
     <div
-      className={`relative w-full h-full overflow-hidden group ${className}`}
+      className={`relative w-full h-full overflow-hidden group touch-pan-y ${className}`}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       <div
         className={`flex h-full transition-transform duration-700 ease-[cubic-bezier(0.65,0,0.35,1)] ${onImageClick ? "cursor-zoom-in" : ""}`}
@@ -56,13 +82,15 @@ export default function Carousel({ images, alt = "Photo", intervalMs = 2800, cla
           <div className="absolute inset-0 bg-gradient-to-t from-ink/25 via-transparent to-transparent pointer-events-none" />
           <button
             onClick={(e) => go(-1, e)}
-            className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 text-ink flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-md"
+            aria-label="Previous photo"
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-7 sm:h-7 rounded-full bg-white/90 text-ink flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 transition shadow-md"
           >
             <ChevronLeft size={14} />
           </button>
           <button
             onClick={(e) => go(1, e)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 text-ink flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-md"
+            aria-label="Next photo"
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-7 sm:h-7 rounded-full bg-white/90 text-ink flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 transition shadow-md"
           >
             <ChevronRight size={14} />
           </button>

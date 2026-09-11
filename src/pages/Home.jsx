@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Handshake, User, Search } from "lucide-react";
+import { Handshake, User, Search, Image as ImageIcon } from "lucide-react";
 
 const roles = [
   {
@@ -107,6 +107,22 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* ---------- Footer — surfaces the gallery, otherwise unreachable from here ---------- */}
+      <footer className="bg-ink-dark border-t border-white/5">
+        <div className="max-w-7xl mx-auto px-6 lg:px-10 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+          <p className="text-paper/40 text-xs">
+            © {new Date().getFullYear()} Middle Class Mediator. Trusted mediation for Chennai properties.
+          </p>
+          <Link
+            to="/gallery"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-gold hover:text-gold-light transition"
+          >
+            <ImageIcon size={15} />
+            Browse the property gallery
+          </Link>
+        </div>
+      </footer>
     </div>
   );
 }

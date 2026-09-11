@@ -23,4 +23,3 @@ export const MEDIATOR_WHATSAPP_NUMBER = "918838660663";
 
 // App display name shown across the UI
 export const APP_NAME = "Middle Class Mediator";
-``

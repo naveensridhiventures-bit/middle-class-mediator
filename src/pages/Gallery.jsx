@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Handshake, MapPin, Ruler, Quote,
-  Search, SlidersHorizontal, ArrowUpDown, X,
+  Search, SlidersHorizontal, ArrowUpDown, X, AlertTriangle,
 } from "lucide-react";
 import { listPublicProperties } from "../lib/api";
 import { whatsappLink } from "../lib/whatsapp";
@@ -158,6 +158,22 @@ function PropertyCard({ p, index }) {
   );
 }
 
+// ---------- Loading skeleton ----------
+
+function SkeletonCard({ delay = 0 }) {
+  return (
+    <div className="rounded-3xl overflow-hidden bg-white shadow-md" style={{ animationDelay: `${delay}ms` }}>
+      <div className="aspect-[4/3] skeleton" />
+      <div className="p-5 space-y-3">
+        <div className="h-4 w-20 rounded-full skeleton" />
+        <div className="h-5 w-3/4 rounded-md skeleton" />
+        <div className="h-3 w-1/2 rounded-md skeleton" />
+        <div className="h-10 w-full rounded-xl skeleton mt-2" />
+      </div>
+    </div>
+  );
+}
+
 // ---------- Main gallery ----------
 
 const SORT_OPTIONS = [
@@ -230,20 +246,18 @@ export default function Gallery() {
 
   return (
     <div className="min-h-screen bg-paper">
-      <style>{`@keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }`}</style>
-
       {/* Header */}
       <div className="bg-ink text-paper relative overflow-hidden">
         <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "radial-gradient(circle at 20% 30%, white 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
         <div className="max-w-6xl mx-auto px-5 py-10 sm:py-14 text-center relative">
-          <div className="relative w-14 h-14 mx-auto mb-4">
-            <div className="w-14 h-14 rounded-full border-2 border-gold flex items-center justify-center">
+          <Link to="/" className="relative w-14 h-14 mx-auto mb-4 block" aria-label="Middle Class Mediator home">
+            <div className="w-14 h-14 rounded-full border-2 border-gold flex items-center justify-center hover:bg-white/5 transition">
               <span className="font-display font-bold text-gold text-sm tracking-wide">MCM</span>
             </div>
             <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-gold flex items-center justify-center">
               <Handshake size={11} className="text-ink" strokeWidth={2.5} />
             </div>
-          </div>
+          </Link>
           <h1 className="font-display font-bold text-gold text-3xl sm:text-4xl tracking-tight">Property Gallery</h1>
           <p className="text-paper/70 text-sm mt-2 max-w-md mx-auto">
             Curated listings from our sellers. Like something? Show interest on WhatsApp and our
@@ -328,10 +342,14 @@ export default function Gallery() {
 
       {/* Grid */}
       <div className="max-w-6xl mx-auto px-5 py-10">
-        {error && <p className="text-buyer text-sm text-center">{error}</p>}
-        {properties === null && !error && <p className="text-ink/50 text-sm text-center">Loading…</p>}
-        {properties !== null && properties.length === 0 && (
-          <p className="text-ink/50 text-sm text-center">No listings published yet — check back soon.</p>
+        {error && (
+          <p className="alert-error max-w-md mx-auto mb-6">
+            <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+            {error}
+          </p>
+        )}
+        {properties !== null && properties.length === 0 && !error && (
+          <p className="text-ink/50 text-sm text-center py-10">No listings published yet — check back soon.</p>
         )}
         {properties !== null && properties.length > 0 && (
           <p className="text-xs text-ink/40 font-semibold mb-4">
@@ -342,9 +360,15 @@ export default function Gallery() {
           <p className="text-ink/50 text-sm text-center py-10">No listings match your search — try clearing a filter.</p>
         )}
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map((p, i) => <PropertyCard key={p.id} p={p} index={i} />)}
-        </div>
+        {properties === null && !error ? (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} delay={i * 60} />)}
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filtered.map((p, i) => <PropertyCard key={p.id} p={p} index={i} />)}
+          </div>
+        )}
       </div>
     </div>
   );
