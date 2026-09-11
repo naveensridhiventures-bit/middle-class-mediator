@@ -11,6 +11,7 @@ import { optimizedImageUrl } from "../lib/cloudinary";
 import Carousel from "../components/Carousel";
 import SoldOutStamp from "../components/SoldOutStamp";
 import ImageLightbox from "../components/ImageLightbox";
+import Reveal from "../components/Reveal";
 
 function parseAttributes(p) {
   if (!p.attributes) return {};
@@ -60,10 +61,8 @@ function PropertyCard({ p, index }) {
   const [lightboxIndex, setLightboxIndex] = useState(null);
 
   return (
-    <div
-      className={`group rounded-3xl overflow-hidden bg-white shadow-md hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-500 animate-[fadeInUp_0.6s_ease_both] ${soldOut ? "opacity-90" : ""}`}
-      style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
-    >
+    <Reveal delay={(index % 3) * 90} distance={36}>
+      <div className={`group rounded-3xl overflow-hidden bg-white shadow-md hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-500 ${soldOut ? "opacity-90" : ""}`}>
       <div className="aspect-[4/3] relative">
         <div className={soldOut ? "grayscale opacity-70 w-full h-full" : "w-full h-full"}>
           <Carousel images={images} alt={p.title} showCounter onImageClick={images.length ? setLightboxIndex : undefined} />
@@ -154,7 +153,8 @@ function PropertyCard({ p, index }) {
           onClose={() => setLightboxIndex(null)}
         />
       )}
-    </div>
+      </div>
+    </Reveal>
   );
 }
 
@@ -250,35 +250,37 @@ export default function Gallery() {
       <div className="bg-ink text-paper relative overflow-hidden">
         <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "radial-gradient(circle at 20% 30%, white 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
         <div className="max-w-6xl mx-auto px-5 py-10 sm:py-14 text-center relative">
-          <Link to="/" className="relative w-14 h-14 mx-auto mb-4 block" aria-label="Middle Class Mediator home">
-            <div className="w-14 h-14 rounded-full border-2 border-gold flex items-center justify-center hover:bg-white/5 transition">
-              <span className="font-display font-bold text-gold text-sm tracking-wide">MCM</span>
-            </div>
-            <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-gold flex items-center justify-center">
-              <Handshake size={11} className="text-ink" strokeWidth={2.5} />
-            </div>
-          </Link>
-          <h1 className="font-display font-bold text-gold text-3xl sm:text-4xl tracking-tight">Property Gallery</h1>
-          <p className="text-paper/70 text-sm mt-2 max-w-md mx-auto">
-            Curated listings from our sellers. Like something? Show interest on WhatsApp and our
-            team will reach out with the full details.
-          </p>
+          <Reveal direction="down" distance={16}>
+            <Link to="/" className="relative w-14 h-14 mx-auto mb-4 block" aria-label="Middle Class Mediator home">
+              <div className="w-14 h-14 rounded-full border-2 border-gold flex items-center justify-center hover:bg-white/5 transition">
+                <span className="font-display font-bold text-gold text-sm tracking-wide">MCM</span>
+              </div>
+              <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-gold flex items-center justify-center">
+                <Handshake size={11} className="text-ink" strokeWidth={2.5} />
+              </div>
+            </Link>
+            <h1 className="font-display font-bold text-gold text-3xl sm:text-4xl tracking-tight">Property Gallery</h1>
+            <p className="text-paper/70 text-sm mt-2 max-w-md mx-auto">
+              Curated listings from our sellers. Like something? Show interest on WhatsApp and our
+              team will reach out with the full details.
+            </p>
+          </Reveal>
         </div>
       </div>
 
       {/* Highlighted CTA — funnel gallery visitors into registering */}
       <div className="bg-gold">
-        <div className="max-w-6xl mx-auto px-5 py-4 flex flex-wrap items-center justify-center sm:justify-between gap-3 text-center sm:text-left">
+        <Reveal className="max-w-6xl mx-auto px-5 py-4 flex flex-wrap items-center justify-center sm:justify-between gap-3 text-center sm:text-left" direction="up" distance={14}>
           <p className="font-display font-bold text-ink text-sm sm:text-base">
             Have a property to sell, or looking to buy? Get listed with Middle Class Mediator.
           </p>
           <a
             href="https://middle-class-mediator-murex.vercel.app/"
-            className="shrink-0 bg-ink text-gold font-bold text-sm px-5 py-2.5 rounded-full hover:bg-ink-dark transition shadow-md"
+            className="shrink-0 bg-ink text-gold font-bold text-sm px-5 py-2.5 rounded-full hover:bg-ink-dark hover:scale-105 transition shadow-md"
           >
             Register now →
           </a>
-        </div>
+        </Reveal>
       </div>
 
       {/* Sticky filter bar */}

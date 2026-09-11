@@ -8,6 +8,7 @@ import {
 import Seal from "../components/Seal";
 import RadioGroup from "../components/RadioGroup";
 import BackHome from "../components/BackHome";
+import Reveal from "../components/Reveal";
 import { addBuyerLead } from "../lib/api";
 
 const ACCENT = "#B5533C";
@@ -123,7 +124,7 @@ export default function Buyer() {
         </div>
 
         <form onSubmit={handleSubmit} className="card-ledger p-6 space-y-6 shadow-xl">
-          <div className="grid sm:grid-cols-2 gap-3">
+          <Reveal className="grid sm:grid-cols-2 gap-3">
             <div>
               <label className="field-label">Full name <span className="text-buyer">*</span></label>
               <div className="relative">
@@ -138,15 +139,19 @@ export default function Buyer() {
                 <input className="field-input !pl-10" type="tel" inputMode="numeric" pattern="[0-9]{10}" maxLength={10} value={form.phone} onChange={(e) => update("phone", e.target.value.replace(/\D/g, ""))} placeholder="10-digit number" required />
               </div>
             </div>
-          </div>
+          </Reveal>
 
           <div className="border-t border-ink/5 pt-6 space-y-6">
-            <RadioGroup stepNumber="1" label="Property type" required options={PROPERTY_TYPES} value={form.propertyType} onChange={(v) => update("propertyType", v)} accentColor={ACCENT} icons={TYPE_ICONS} />
-            <RadioGroup stepNumber="2" label="Purpose" required options={PURPOSE} value={form.purpose} onChange={(v) => update("purpose", v)} accentColor={ACCENT} icons={PURPOSE_ICONS} />
-            <RadioGroup stepNumber="3" label="Budget" required options={BUDGET} value={form.budget} onChange={(v) => update("budget", v)} accentColor={ACCENT} icons={BUDGET_ICONS} />
-            <RadioGroup stepNumber="4" label="Preferred location" required options={LOCATIONS} value={form.preferredLocation} onChange={(v) => update("preferredLocation", v)} accentColor={ACCENT} icons={LOCATION_ICONS} />
-            <RadioGroup stepNumber="5" label="Loan requirement" required options={YES_NO} value={form.loanRequirement} onChange={(v) => update("loanRequirement", v)} accentColor={ACCENT} icons={YES_NO_ICONS} />
-            <RadioGroup stepNumber="6" label="When are you planning to buy?" required options={TIMELINE} value={form.timeline} onChange={(v) => update("timeline", v)} accentColor={ACCENT} icons={TIMELINE_ICONS} />
+            <Reveal className="space-y-6">
+              <RadioGroup stepNumber="1" label="Property type" required options={PROPERTY_TYPES} value={form.propertyType} onChange={(v) => update("propertyType", v)} accentColor={ACCENT} icons={TYPE_ICONS} />
+              <RadioGroup stepNumber="2" label="Purpose" required options={PURPOSE} value={form.purpose} onChange={(v) => update("purpose", v)} accentColor={ACCENT} icons={PURPOSE_ICONS} />
+              <RadioGroup stepNumber="3" label="Budget" required options={BUDGET} value={form.budget} onChange={(v) => update("budget", v)} accentColor={ACCENT} icons={BUDGET_ICONS} />
+            </Reveal>
+            <Reveal className="space-y-6">
+              <RadioGroup stepNumber="4" label="Preferred location" required options={LOCATIONS} value={form.preferredLocation} onChange={(v) => update("preferredLocation", v)} accentColor={ACCENT} icons={LOCATION_ICONS} />
+              <RadioGroup stepNumber="5" label="Loan requirement" required options={YES_NO} value={form.loanRequirement} onChange={(v) => update("loanRequirement", v)} accentColor={ACCENT} icons={YES_NO_ICONS} />
+              <RadioGroup stepNumber="6" label="When are you planning to buy?" required options={TIMELINE} value={form.timeline} onChange={(v) => update("timeline", v)} accentColor={ACCENT} icons={TIMELINE_ICONS} />
+            </Reveal>
           </div>
 
           {errorMsg && (

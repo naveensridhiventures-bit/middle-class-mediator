@@ -10,6 +10,7 @@ import {
 import Seal from "../components/Seal";
 import RadioGroup from "../components/RadioGroup";
 import BackHome from "../components/BackHome";
+import Reveal from "../components/Reveal";
 import { addSellerLead } from "../lib/api";
 import { whatsappLink } from "../lib/whatsapp";
 import { MEDIATOR_WHATSAPP_NUMBER } from "../lib/config";
@@ -152,72 +153,89 @@ export default function Seller() {
         </div>
 
         <form onSubmit={handleSubmit} className="card-ledger p-6 space-y-6 shadow-xl">
-          <RadioGroup stepNumber="1" label="Are you the property owner?" required options={OWNER_TYPE} value={form.ownership} onChange={(v) => update("ownership", v)} accentColor={ACCENT} icons={OWNER_TYPE_ICONS} />
+          <Reveal>
+            <RadioGroup stepNumber="1" label="Are you the property owner?" required options={OWNER_TYPE} value={form.ownership} onChange={(v) => update("ownership", v)} accentColor={ACCENT} icons={OWNER_TYPE_ICONS} />
 
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div>
-              <label className="field-label">Full name <span className="text-buyer">*</span></label>
-              <div className="relative">
-                <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/30" />
-                <input className="field-input !pl-10" value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Full name" required />
+            <div className="grid sm:grid-cols-2 gap-3 mt-6">
+              <div>
+                <label className="field-label">Full name <span className="text-buyer">*</span></label>
+                <div className="relative">
+                  <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/30" />
+                  <input className="field-input !pl-10" value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Full name" required />
+                </div>
+              </div>
+              <div>
+                <label className="field-label">Mobile number (WhatsApp) <span className="text-buyer">*</span></label>
+                <div className="relative">
+                  <MessageCircle size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/30" />
+                  <input className="field-input !pl-10" type="tel" inputMode="numeric" pattern="[0-9]{10}" maxLength={10} value={form.phone} onChange={(e) => update("phone", e.target.value.replace(/\D/g, ""))} placeholder="10-digit number" required />
+                </div>
               </div>
             </div>
-            <div>
-              <label className="field-label">Mobile number (WhatsApp) <span className="text-buyer">*</span></label>
+
+            <div className="mt-6">
+              <label className="field-label">Property location <span className="text-buyer">*</span></label>
               <div className="relative">
-                <MessageCircle size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/30" />
-                <input className="field-input !pl-10" type="tel" inputMode="numeric" pattern="[0-9]{10}" maxLength={10} value={form.phone} onChange={(e) => update("phone", e.target.value.replace(/\D/g, ""))} placeholder="10-digit number" required />
+                <MapPin size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/30" />
+                <input className="field-input !pl-10" value={form.propertyLocation} onChange={(e) => update("propertyLocation", e.target.value)} placeholder="Area / locality" required />
               </div>
             </div>
-          </div>
-
-          <div>
-            <label className="field-label">Property location <span className="text-buyer">*</span></label>
-            <div className="relative">
-              <MapPin size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/30" />
-              <input className="field-input !pl-10" value={form.propertyLocation} onChange={(e) => update("propertyLocation", e.target.value)} placeholder="Area / locality" required />
-            </div>
-          </div>
+          </Reveal>
 
           <div className="border-t border-ink/5 pt-6 space-y-6">
-            <RadioGroup stepNumber="2" label="Photos &amp; videos" options={PHOTOS_SHARED} value={form.photosShared} onChange={(v) => update("photosShared", v)} accentColor={ACCENT} icons={PHOTOS_SHARED_ICONS} />
-            <RadioGroup stepNumber="3" label="Property type" required options={PROPERTY_TYPES} value={form.propertyType} onChange={(v) => update("propertyType", v)} accentColor={ACCENT} icons={TYPE_ICONS} />
-            <RadioGroup stepNumber="4" label="Purpose" options={PURPOSE} value={form.purpose} onChange={(v) => update("purpose", v)} accentColor={ACCENT} icons={PURPOSE_ICONS} />
-            <RadioGroup stepNumber="5" label="Property status" required options={PROPERTY_STATUS} value={form.propertyStatus} onChange={(v) => update("propertyStatus", v)} accentColor={ACCENT} icons={STATUS_ICONS} />
-            <RadioGroup stepNumber="6" label="Property age" options={PROPERTY_AGE} value={form.propertyAge} onChange={(v) => update("propertyAge", v)} accentColor={ACCENT} icons={AGE_ICONS} />
-            <RadioGroup stepNumber="7" label="Building type" options={BUILDING_TYPE} value={form.buildingType} onChange={(v) => update("buildingType", v)} accentColor={ACCENT} icons={BUILDING_TYPE_ICONS} />
+            <Reveal className="space-y-6">
+              <RadioGroup stepNumber="2" label="Photos &amp; videos" options={PHOTOS_SHARED} value={form.photosShared} onChange={(v) => update("photosShared", v)} accentColor={ACCENT} icons={PHOTOS_SHARED_ICONS} />
+              <RadioGroup stepNumber="3" label="Property type" required options={PROPERTY_TYPES} value={form.propertyType} onChange={(v) => update("propertyType", v)} accentColor={ACCENT} icons={TYPE_ICONS} />
+              <RadioGroup stepNumber="4" label="Purpose" options={PURPOSE} value={form.purpose} onChange={(v) => update("purpose", v)} accentColor={ACCENT} icons={PURPOSE_ICONS} />
+            </Reveal>
 
-            <div className="grid sm:grid-cols-2 gap-3">
+            <Reveal className="space-y-6">
+              <RadioGroup stepNumber="5" label="Property status" required options={PROPERTY_STATUS} value={form.propertyStatus} onChange={(v) => update("propertyStatus", v)} accentColor={ACCENT} icons={STATUS_ICONS} />
+              <RadioGroup stepNumber="6" label="Property age" options={PROPERTY_AGE} value={form.propertyAge} onChange={(v) => update("propertyAge", v)} accentColor={ACCENT} icons={AGE_ICONS} />
+              <RadioGroup stepNumber="7" label="Building type" options={BUILDING_TYPE} value={form.buildingType} onChange={(v) => update("buildingType", v)} accentColor={ACCENT} icons={BUILDING_TYPE_ICONS} />
+            </Reveal>
+
+            <Reveal className="space-y-6">
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="field-label">8. Land area (sq.ft)</label>
+                  <input type="number" className="field-input" value={form.landArea} onChange={(e) => update("landArea", e.target.value)} placeholder="e.g. 1200" />
+                </div>
+                <div>
+                  <label className="field-label">9. Built-up area (sq.ft)</label>
+                  <input type="number" className="field-input" value={form.builtUpArea} onChange={(e) => update("builtUpArea", e.target.value)} placeholder="e.g. 1800" />
+                </div>
+              </div>
+
               <div>
-                <label className="field-label">8. Land area (sq.ft)</label>
-                <input type="number" className="field-input" value={form.landArea} onChange={(e) => update("landArea", e.target.value)} placeholder="e.g. 1200" />
+                <label className="field-label">10. Frontage / size</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <input type="number" className="field-input" value={form.frontageLength} onChange={(e) => update("frontageLength", e.target.value)} placeholder="Length (ft)" />
+                  <input type="number" className="field-input" value={form.frontageBreadth} onChange={(e) => update("frontageBreadth", e.target.value)} placeholder="Breadth (ft)" />
+                </div>
               </div>
-              <div>
-                <label className="field-label">9. Built-up area (sq.ft)</label>
-                <input type="number" className="field-input" value={form.builtUpArea} onChange={(e) => update("builtUpArea", e.target.value)} placeholder="e.g. 1800" />
-              </div>
-            </div>
+            </Reveal>
 
-            <div>
-              <label className="field-label">10. Frontage / size</label>
-              <div className="grid grid-cols-2 gap-3">
-                <input type="number" className="field-input" value={form.frontageLength} onChange={(e) => update("frontageLength", e.target.value)} placeholder="Length (ft)" />
-                <input type="number" className="field-input" value={form.frontageBreadth} onChange={(e) => update("frontageBreadth", e.target.value)} placeholder="Breadth (ft)" />
-              </div>
-            </div>
+            <Reveal className="space-y-6">
+              <RadioGroup stepNumber="11" label="Road width" options={ROAD_WIDTH} value={form.roadWidth} onChange={(v) => update("roadWidth", v)} accentColor={ACCENT} icons={ROAD_WIDTH_ICONS} />
+              <RadioGroup stepNumber="12" label="Facing" options={FACING} value={form.facing} onChange={(v) => update("facing", v)} accentColor={ACCENT} icons={FACING_ICONS} />
+              <RadioGroup stepNumber="13" label="Property usage" options={PROPERTY_USAGE} value={form.propertyUsage} onChange={(v) => update("propertyUsage", v)} accentColor={ACCENT} icons={USAGE_ICONS} />
+            </Reveal>
 
-            <RadioGroup stepNumber="11" label="Road width" options={ROAD_WIDTH} value={form.roadWidth} onChange={(v) => update("roadWidth", v)} accentColor={ACCENT} icons={ROAD_WIDTH_ICONS} />
-            <RadioGroup stepNumber="12" label="Facing" options={FACING} value={form.facing} onChange={(v) => update("facing", v)} accentColor={ACCENT} icons={FACING_ICONS} />
-            <RadioGroup stepNumber="13" label="Property usage" options={PROPERTY_USAGE} value={form.propertyUsage} onChange={(v) => update("propertyUsage", v)} accentColor={ACCENT} icons={USAGE_ICONS} />
-            <RadioGroup stepNumber="14" label="Patta / approval" options={PATTA_APPROVAL} value={form.pattaApproval} onChange={(v) => update("pattaApproval", v)} accentColor={ACCENT} icons={PATTA_ICONS} />
-            <RadioGroup stepNumber="15" label="Approval status" options={APPROVAL_STATUS} value={form.approvalStatus} onChange={(v) => update("approvalStatus", v)} accentColor={ACCENT} icons={APPROVAL_STATUS_ICONS} />
-            <RadioGroup stepNumber="16" label="Parking" options={PARKING} value={form.parking} onChange={(v) => update("parking", v)} accentColor={ACCENT} icons={PARKING_ICONS} />
-            <RadioGroup stepNumber="17" label="Rental status" options={RENTAL_STATUS} value={form.rentalStatus} onChange={(v) => update("rentalStatus", v)} accentColor={ACCENT} icons={RENTAL_ICONS} />
-            <RadioGroup stepNumber="18" label="Loan status" options={LOAN_STATUS} value={form.loanStatus} onChange={(v) => update("loanStatus", v)} accentColor={ACCENT} icons={LOAN_ICONS} />
-            <RadioGroup stepNumber="19" label="Expected selling price" required options={PRICE_RANGES} value={form.expectedPrice} onChange={(v) => update("expectedPrice", v)} accentColor={ACCENT} icons={PRICE_ICONS} />
-            <RadioGroup stepNumber="20" label="When are you planning to sell?" required options={TIMELINE} value={form.timeline} onChange={(v) => update("timeline", v)} accentColor={ACCENT} icons={TIMELINE_ICONS} />
+            <Reveal className="space-y-6">
+              <RadioGroup stepNumber="14" label="Patta / approval" options={PATTA_APPROVAL} value={form.pattaApproval} onChange={(v) => update("pattaApproval", v)} accentColor={ACCENT} icons={PATTA_ICONS} />
+              <RadioGroup stepNumber="15" label="Approval status" options={APPROVAL_STATUS} value={form.approvalStatus} onChange={(v) => update("approvalStatus", v)} accentColor={ACCENT} icons={APPROVAL_STATUS_ICONS} />
+              <RadioGroup stepNumber="16" label="Parking" options={PARKING} value={form.parking} onChange={(v) => update("parking", v)} accentColor={ACCENT} icons={PARKING_ICONS} />
+            </Reveal>
 
-            <div>
+            <Reveal className="space-y-6">
+              <RadioGroup stepNumber="17" label="Rental status" options={RENTAL_STATUS} value={form.rentalStatus} onChange={(v) => update("rentalStatus", v)} accentColor={ACCENT} icons={RENTAL_ICONS} />
+              <RadioGroup stepNumber="18" label="Loan status" options={LOAN_STATUS} value={form.loanStatus} onChange={(v) => update("loanStatus", v)} accentColor={ACCENT} icons={LOAN_ICONS} />
+              <RadioGroup stepNumber="19" label="Expected selling price" required options={PRICE_RANGES} value={form.expectedPrice} onChange={(v) => update("expectedPrice", v)} accentColor={ACCENT} icons={PRICE_ICONS} />
+              <RadioGroup stepNumber="20" label="When are you planning to sell?" required options={TIMELINE} value={form.timeline} onChange={(v) => update("timeline", v)} accentColor={ACCENT} icons={TIMELINE_ICONS} />
+            </Reveal>
+
+            <Reveal>
               <label className="field-label">21. Remarks / additional details</label>
               <textarea
                 className="field-input min-h-[80px]"
@@ -225,7 +243,7 @@ export default function Seller() {
                 onChange={(e) => update("sellerRemarks", e.target.value)}
                 placeholder="Anything else worth mentioning about the property…"
               />
-            </div>
+            </Reveal>
           </div>
 
           {errorMsg && (

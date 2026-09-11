@@ -8,6 +8,7 @@ import { optimizedImageUrl } from "../lib/cloudinary";
 import Carousel from "../components/Carousel";
 import SoldOutStamp from "../components/SoldOutStamp";
 import ImageLightbox from "../components/ImageLightbox";
+import Reveal from "../components/Reveal";
 
 function parseImages(p) {
   let urls = [];
@@ -112,14 +113,16 @@ export default function PropertyDetail() {
       </div>
 
       <div className="max-w-3xl mx-auto px-5 py-8">
-        <div className="rounded-3xl overflow-hidden shadow-xl relative aspect-[4/3] sm:aspect-[16/9]">
-          <div className={soldOut ? "grayscale opacity-70 w-full h-full" : "w-full h-full"}>
-            <Carousel images={images} alt={property.title} showCounter onImageClick={images.length ? setLightboxIndex : undefined} intervalMs={3500} />
+        <Reveal direction="up" distance={20}>
+          <div className="rounded-3xl overflow-hidden shadow-xl relative aspect-[4/3] sm:aspect-[16/9]">
+            <div className={soldOut ? "grayscale opacity-70 w-full h-full" : "w-full h-full"}>
+              <Carousel images={images} alt={property.title} showCounter onImageClick={images.length ? setLightboxIndex : undefined} intervalMs={3500} />
+            </div>
+            {soldOut && <SoldOutStamp size="lg" />}
           </div>
-          {soldOut && <SoldOutStamp size="lg" />}
-        </div>
+        </Reveal>
 
-        <div className="mt-6 space-y-3">
+        <Reveal direction="up" delay={120} distance={20} className="mt-6 space-y-3">
           {property.type && (
             <span className="inline-block text-[11px] font-bold uppercase tracking-wide px-3 py-1 rounded-full bg-seller/10 text-seller">
               {property.type}
@@ -188,7 +191,7 @@ export default function PropertyDetail() {
               </a>
             )}
           </div>
-        </div>
+        </Reveal>
       </div>
 
       {lightboxIndex !== null && (

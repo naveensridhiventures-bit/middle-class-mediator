@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { Handshake, User, Search, Image as ImageIcon } from "lucide-react";
+import { Handshake, User, Search, Image as ImageIcon, ChevronDown } from "lucide-react";
+import Reveal from "../components/Reveal";
 
 const roles = [
   {
@@ -46,7 +47,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-r from-ink/90 via-ink/55 to-ink/15 sm:to-transparent pointer-events-none" />
 
         <div className="relative max-w-7xl mx-auto px-6 lg:px-10 flex items-center py-10 sm:py-0 sm:h-full">
-          <div className="max-w-sm">
+          <Reveal className="max-w-sm" direction="up" distance={22}>
             <div className="relative w-14 h-14 sm:w-20 sm:h-20 mb-5 sm:mb-9">
               <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-full border-2 border-gold flex items-center justify-center">
                 <span className="font-display font-bold text-gold text-sm sm:text-lg tracking-wide">MCM</span>
@@ -71,7 +72,12 @@ export default function Home() {
               <span className="w-1.5 h-1.5 rotate-45 bg-gold" />
               <span className="h-px w-8 sm:w-10 bg-gold/40" />
             </div>
-          </div>
+          </Reveal>
+        </div>
+
+        {/* Scroll cue — subtle nudge that there's more below the fold */}
+        <div className="hidden sm:flex absolute bottom-5 left-1/2 -translate-x-1/2 flex-col items-center gap-1 text-paper/50 animate-bounce">
+          <ChevronDown size={20} />
         </div>
       </section>
 
@@ -83,26 +89,27 @@ export default function Home() {
         />
         <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-10">
           <div className="grid sm:grid-cols-3 gap-4 sm:gap-6">
-            {roles.map((r) => (
-              <Link
-                key={r.to}
-                to={r.to}
-                className="group rounded-3xl p-6 sm:p-8 flex flex-col items-center text-center gap-2.5 sm:gap-4 shadow-2xl hover:-translate-y-1.5 hover:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6)] transition-all"
-                style={{ background: `linear-gradient(160deg, ${r.from}, ${r.to2})` }}
-              >
-                <span className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white/12 flex items-center justify-center group-hover:bg-white/20 transition">
-                  <r.icon size={20} className="sm:hidden text-white" strokeWidth={1.75} />
-                  <r.icon size={26} className="hidden sm:block text-white" strokeWidth={1.75} />
-                </span>
-                <div>
-                  <p className="font-display font-bold text-white text-xs sm:text-sm tracking-[0.15em]">I'M A</p>
-                  <h2 className="font-display font-bold text-white text-xl sm:text-2xl lg:text-[1.7rem] tracking-tight -mt-0.5">
-                    {r.title}
-                  </h2>
-                </div>
-                <p className="text-white/70 text-xs sm:text-sm leading-relaxed max-w-[240px] sm:max-w-[220px]">{r.desc}</p>
-                <span className="h-0.5 w-10 rounded-full mt-0.5 sm:mt-1" style={{ backgroundColor: r.underline }} />
-              </Link>
+            {roles.map((r, i) => (
+              <Reveal key={r.to} delay={i * 130} direction="up" distance={32}>
+                <Link
+                  to={r.to}
+                  className="group rounded-3xl p-6 sm:p-8 flex flex-col items-center text-center gap-2.5 sm:gap-4 shadow-2xl hover:-translate-y-1.5 hover:scale-[1.02] hover:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6)] transition-all duration-300"
+                  style={{ background: `linear-gradient(160deg, ${r.from}, ${r.to2})` }}
+                >
+                  <span className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white/12 flex items-center justify-center group-hover:bg-white/20 group-hover:rotate-6 transition">
+                    <r.icon size={20} className="sm:hidden text-white" strokeWidth={1.75} />
+                    <r.icon size={26} className="hidden sm:block text-white" strokeWidth={1.75} />
+                  </span>
+                  <div>
+                    <p className="font-display font-bold text-white text-xs sm:text-sm tracking-[0.15em]">I'M A</p>
+                    <h2 className="font-display font-bold text-white text-xl sm:text-2xl lg:text-[1.7rem] tracking-tight -mt-0.5">
+                      {r.title}
+                    </h2>
+                  </div>
+                  <p className="text-white/70 text-xs sm:text-sm leading-relaxed max-w-[240px] sm:max-w-[220px]">{r.desc}</p>
+                  <span className="h-0.5 w-10 rounded-full mt-0.5 sm:mt-1 group-hover:w-16 transition-all duration-300" style={{ backgroundColor: r.underline }} />
+                </Link>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -110,18 +117,18 @@ export default function Home() {
 
       {/* ---------- Footer — surfaces the gallery, otherwise unreachable from here ---------- */}
       <footer className="bg-ink-dark border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+        <Reveal className="max-w-7xl mx-auto px-6 lg:px-10 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left" direction="up" distance={16}>
           <p className="text-paper/40 text-xs">
             © {new Date().getFullYear()} Middle Class Mediator. Trusted mediation for Chennai properties.
           </p>
           <Link
             to="/gallery"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-gold hover:text-gold-light transition"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-gold hover:text-gold-light hover:gap-3 transition-all"
           >
             <ImageIcon size={15} />
             Browse the property gallery
           </Link>
-        </div>
+        </Reveal>
       </footer>
     </div>
   );

@@ -7,6 +7,7 @@ import {
 import Seal from "../components/Seal";
 import RadioGroup from "../components/RadioGroup";
 import BackHome from "../components/BackHome";
+import Reveal from "../components/Reveal";
 import { addMediatorLead } from "../lib/api";
 
 const ACCENT = "#2D4373";
@@ -112,7 +113,7 @@ export default function Mediator() {
         </div>
 
         <form onSubmit={handleSubmit} className="card-ledger p-6 space-y-6 shadow-xl">
-          <div className="grid sm:grid-cols-2 gap-3">
+          <Reveal className="grid sm:grid-cols-2 gap-3">
             <div>
               <label className="field-label">Full name <span className="text-buyer">*</span></label>
               <div className="relative">
@@ -127,15 +128,19 @@ export default function Mediator() {
                 <input className="field-input !pl-10" type="tel" inputMode="numeric" pattern="[0-9]{10}" maxLength={10} value={form.phone} onChange={(e) => update("phone", e.target.value.replace(/\D/g, ""))} placeholder="10-digit number" required />
               </div>
             </div>
-          </div>
+          </Reveal>
 
           <div className="border-t border-ink/5 pt-6 space-y-6">
-            <RadioGroup stepNumber="1" label="Your profession" required options={PROFESSIONS} value={form.profession} onChange={(v) => update("profession", v)} accentColor={ACCENT} icons={PROFESSION_ICONS} />
-            <RadioGroup stepNumber="2" label="Working area" required options={AREAS} value={form.workingArea} onChange={(v) => update("workingArea", v)} accentColor={ACCENT} icons={AREA_ICONS} />
-            <RadioGroup stepNumber="3" label="Property category" required options={CATEGORIES} value={form.propertyCategory} onChange={(v) => update("propertyCategory", v)} accentColor={ACCENT} icons={CATEGORY_ICONS} />
-            <RadioGroup stepNumber="4" label="Experience" required options={EXPERIENCE} value={form.experience} onChange={(v) => update("experience", v)} accentColor={ACCENT} icons={EXPERIENCE_ICONS} />
-            <RadioGroup stepNumber="5" label="Deal type" required options={DEAL_TYPES} value={form.dealType} onChange={(v) => update("dealType", v)} accentColor={ACCENT} icons={DEAL_TYPE_ICONS} />
-            <RadioGroup stepNumber="6" label="Do you share only genuine property leads?" required options={YES_NO} value={form.genuineLeads} onChange={(v) => update("genuineLeads", v)} accentColor={ACCENT} icons={YES_NO_ICONS} />
+            <Reveal className="space-y-6">
+              <RadioGroup stepNumber="1" label="Your profession" required options={PROFESSIONS} value={form.profession} onChange={(v) => update("profession", v)} accentColor={ACCENT} icons={PROFESSION_ICONS} />
+              <RadioGroup stepNumber="2" label="Working area" required options={AREAS} value={form.workingArea} onChange={(v) => update("workingArea", v)} accentColor={ACCENT} icons={AREA_ICONS} />
+              <RadioGroup stepNumber="3" label="Property category" required options={CATEGORIES} value={form.propertyCategory} onChange={(v) => update("propertyCategory", v)} accentColor={ACCENT} icons={CATEGORY_ICONS} />
+            </Reveal>
+            <Reveal className="space-y-6">
+              <RadioGroup stepNumber="4" label="Experience" required options={EXPERIENCE} value={form.experience} onChange={(v) => update("experience", v)} accentColor={ACCENT} icons={EXPERIENCE_ICONS} />
+              <RadioGroup stepNumber="5" label="Deal type" required options={DEAL_TYPES} value={form.dealType} onChange={(v) => update("dealType", v)} accentColor={ACCENT} icons={DEAL_TYPE_ICONS} />
+              <RadioGroup stepNumber="6" label="Do you share only genuine property leads?" required options={YES_NO} value={form.genuineLeads} onChange={(v) => update("genuineLeads", v)} accentColor={ACCENT} icons={YES_NO_ICONS} />
+            </Reveal>
           </div>
 
           {errorMsg && (
