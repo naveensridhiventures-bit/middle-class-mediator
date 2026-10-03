@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { MapPin, Ruler, ArrowLeft, Quote, AlertTriangle } from "lucide-react";
+import { MapPin, Ruler, ArrowLeft, Quote, AlertTriangle, Heart, Share2, Check } from "lucide-react";
 import { listPublicProperties } from "../lib/api";
 import { whatsappLink } from "../lib/whatsapp";
 import { ADMIN_WHATSAPP_NUMBER } from "../lib/config";
 import { optimizedImageUrl } from "../lib/cloudinary";
 import { COLORS } from "../lib/theme";
+import useFavorites from "../lib/useFavorites";
 import Carousel from "../components/Carousel";
 import SoldOutStamp from "../components/SoldOutStamp";
 import ImageLightbox from "../components/ImageLightbox";
-import BrandHeader from "../components/wizard/BrandHeader";
+import ShowcaseHeader, { headerBtnCls } from "../components/gallery/ShowcaseHeader";
 
 function parseImages(p) {
   let urls = [];
@@ -35,13 +36,9 @@ function parseAttributes(p) {
   }
 }
 
-const backLink = (
-  <Link
-    to="/gallery"
-    className="flex items-center gap-1.5 text-[13px] font-semibold text-white/80 hover:text-white transition-colors"
-  >
-    <ArrowLeft size={15} />
-    All listings
+const backButton = (
+  <Link to="/gallery" aria-label="Back to all listings" className={headerBtnCls}>
+    <ArrowLeft size={22} />
   </Link>
 );
 
@@ -50,6 +47,8 @@ export default function PropertyDetail() {
   const [property, setProperty] = useState(undefined); // undefined = loading, null = not found
   const [error, setError] = useState("");
   const [lightboxIndex, setLightboxIndex] = useState(null);
+  const favorites = useFavorites();
+  const [shared, setShared] = useState(false);
 
   useEffect(() => {
     listPublicProperties()
@@ -60,7 +59,7 @@ export default function PropertyDetail() {
   if (error) {
     return (
       <div className="min-h-screen bg-canvas">
-        <BrandHeader color={COLORS.coral} wide right={backLink} />
+        <ShowcaseHeader left={backButton} />
         <div className="flex items-center justify-center px-5 py-16">
           <p className="alert-error max-w-sm">
             <AlertTriangle size={15} className="shrink-0 mt-0.5" />
@@ -74,7 +73,7 @@ export default function PropertyDetail() {
   if (property === undefined) {
     return (
       <div className="min-h-screen bg-canvas">
-        <BrandHeader color={COLORS.teal} wide right={backLink} />
+        <ShowcaseHeader left={backButton} />
         <div className="max-w-3xl mx-auto px-5 py-6">
           <div className="rounded-2xl overflow-hidden relative aspect-[4/3] sm:aspect-[16/9] skeleton" />
           <div className="mt-6 space-y-3">
@@ -91,7 +90,7 @@ export default function PropertyDetail() {
   if (property === null) {
     return (
       <div className="min-h-screen bg-canvas">
-        <BrandHeader color={COLORS.steel} wide right={backLink} />
+        <ShowcaseHeader left={backButton} />
         <div className="flex flex-col items-center justify-center px-5 py-20 text-center gap-4">
           <h1 className="font-display font-bold text-2xl text-ink">This listing isn't available anymore</h1>
           <p className="text-sm text-ink/60">It may have been sold or removed.</p>
@@ -110,10 +109,46 @@ export default function PropertyDetail() {
   const attributes = parseAttributes(property);
   const attrEntries = Object.entries(attributes).filter(([, v]) => v);
   const soldOut = property.soldOut === "true" || property.soldOut === true;
+  const saved = favorites.has(property.id);
+
+  // Share sheet on phones; copies the link everywhere else.
+  async function handleShare() {
+    const url = window.location.href;
+    const text = `${property.title}${property.location ? `, ${property.location}` : ""}${property.price ? ` (${property.price})` : ""}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: property.title, text, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setShared(true);
+      setTimeout(() => setShared(false), 2000);
+    } catch {
+      // cancelled or not allowed: nothing to do
+    }
+  }
 
   return (
     <div className="min-h-screen bg-canvas flex flex-col">
-      <BrandHeader color={COLORS.teal} wide right={backLink} />
+      <ShowcaseHeader
+        left={backButton}
+        right={
+          <>
+            <button type="button" onClick={handleShare} aria-label="Share this property" className={headerBtnCls}>
+              {shared ? <Check size={20} /> : <Share2 size={20} />}
+            </button>
+            <button
+              type="button"
+              onClick={() => favorites.toggle(property.id)}
+              aria-pressed={saved}
+              aria-label={saved ? "Remove from saved" : "Save this property"}
+              className={`${headerBtnCls} ${saved ? "!bg-white !text-[#E5584A]" : ""}`}
+            >
+              <Heart size={20} fill={saved ? "currentColor" : "none"} />
+            </button>
+          </>
+        }
+      />
 
       <div className="flex-1 max-w-3xl w-full mx-auto px-5 pt-6 pb-8">
         <div className="rounded-2xl overflow-hidden border border-ink/10 relative aspect-[4/3] sm:aspect-[16/9] bg-surface">
@@ -126,13 +161,13 @@ export default function PropertyDetail() {
         <div className="mt-6 space-y-4">
           {property.type && (
             <span
-              className="inline-block text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full"
+              className="fade-up inline-block text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full"
               style={{ color: COLORS.teal, backgroundColor: `color-mix(in srgb, ${COLORS.teal} 10%, white)` }}
             >
               {property.type}
             </span>
           )}
-          <h1 className="font-display font-bold text-[1.7rem] sm:text-3xl text-ink leading-tight">{property.title}</h1>
+          <h1 className="fade-up font-display font-bold text-[1.7rem] sm:text-3xl text-ink leading-tight" style={{ "--d": "120ms" }}>{property.title}</h1>
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             {property.location && (

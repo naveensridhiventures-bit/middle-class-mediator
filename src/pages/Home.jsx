@@ -8,9 +8,8 @@ import Ticker from "../components/home/Ticker";
 import useInView from "../lib/useInView";
 import { whatsappLink } from "../lib/whatsapp";
 import { ADMIN_WHATSAPP_NUMBER } from "../lib/config";
+import { HERO_IMAGE } from "../lib/brand";
 
-// Swap this for your own photo (e.g. "/images/hero-house.jpg") any time.
-const HERO_IMAGE = "/images/hero-banner.jpg";
 
 const ROLE_WORDS = ["buy a home.", "sell a flat.", "find a plot.", "list a shop.", "close a deal."];
 

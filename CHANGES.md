@@ -1,3 +1,34 @@
+# v6 — New property gallery (2026-10-03)
+
+Cumulative: includes the home page, admin and public redesigns and the gallery
+touch fix, so this zip can be applied on its own.
+
+## Gallery (matches the design mockup)
+- Dark header with the blurred photo, back arrow, MCM mark and a search button
+  that slides the search box open.
+- Title "Property Gallery" rises into place; the subtitle rolls through
+  homes / flats / villas / plots / shops.
+- Category chips with icons and counts, built from the types actually listed,
+  stuck to the top while you scroll (soft shadow once stuck).
+- **Featured slider**: crossfades through the newest listings with a slow
+  push-in, title words that rise on every slide, dots that fill like a timer,
+  swipe on phones, arrows on desktop, a gentle 3D tilt toward the mouse.
+- A ribbon of area names (taken from the real listings) drifts across.
+- **Recent listings** as photo tiles: price, photo count, heart. On a computer
+  hovering cycles through the listing's photos. Tiles scale in as you scroll.
+- **Hearts**: save listings on the phone (no account), see them under "Saved".
+- Number of listings counts up; sort sits beside the heading.
+- Returning from a listing puts you back at the same place in the list.
+
+## Property page
+- Same header, with Share (phone share sheet, or copies the link) and a heart.
+
+## Notes
+- Cards no longer carry the WhatsApp button; it is on the property page in
+  the bar pinned to the bottom. Seller remarks and details are there too.
+- Everything respects "reduce motion".
+- `HERO_IMAGE` now lives in `src/lib/brand.js` (used by home and gallery).
+
 # v5 — Animated home page (2026-10-03)
 
 Cumulative: includes the public redesign, the admin redesign and the gallery
