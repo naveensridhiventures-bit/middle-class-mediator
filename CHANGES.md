@@ -1,3 +1,29 @@
+# v5 — Animated home page (2026-10-03)
+
+Cumulative: includes the public redesign, the admin redesign and the gallery
+touch fix, so this zip can be applied on its own.
+
+## Home page
+- New layout matching the design mockup: darkened dusk photo hero, gold MCM
+  logo, cream sheet with three tinted role cards and a dark gallery card.
+- **Moving words**
+  - "The trusted way to…" with a rolling line: buy a home. / sell a flat. /
+    find a plot. / list a shop. / close a deal.
+  - Title words rise out of a mask; "Mediator" carries a gold shimmer sweep
+  - Tagline appears one phrase at a time
+  - A slow ticker ribbon of property types (Homes, Flats, Villas, Plots & Lands…)
+- **Motion**: logo spins in with a slowly orbiting ring and soft glow, gold
+  lights drift upward, the photo slowly pushes in, and the hero scrolls with
+  parallax (photo drifts slower than the page, text lifts and fades).
+- **Cards**: staggered entrance; on a mouse, a light sweeps across the card,
+  the icon tilts and the arrow fills in. On touch, no sticky hover effects.
+- **How it works**: three steps; the gold line draws and the numbered badges
+  pop in as the section scrolls into view.
+- **WhatsApp button** appears once you scroll past the hero.
+- Everything respects "reduce motion": those visitors see the finished page,
+  fully visible, with no movement.
+- Swap the photo any time: change `HERO_IMAGE` at the top of `src/pages/Home.jsx`.
+
 # v4 — Admin redesign (2026-10-03)
 
 Cumulative: includes the public redesign (v3) and the gallery touch fix, so
