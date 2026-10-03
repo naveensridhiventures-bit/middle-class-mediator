@@ -6,49 +6,98 @@ import { ChevronLeft, ChevronRight, Home as HomeIcon } from "lucide-react";
  * autoplay, pause-on-hover, dot indicators, arrow buttons) used by both
  * the public Gallery and the admin CRM lead cards, so both look and move
  * identically.
+ *
+ * Touch fixes:
+ *  - hover-pause only reacts to a real mouse (touch used to leave it
+ *    "stuck" paused via emulated mouse events)
+ *  - a swipe no longer fires a click (which used to pop the lightbox open)
+ *  - images can't be dragged / long-press-previewed into a ghost image
+ *  - the next/previous slide is preloaded so sliding never shows a blank
+ *  - autoplay only runs while the carousel is actually on screen
  */
 export default function Carousel({ images, alt = "Photo", intervalMs = 2800, className = "", showCounter = false, onImageClick }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
-  const timerRef = useRef(null);
+  const [inView, setInView] = useState(true);
+  const rootRef = useRef(null);
   const touchStartX = useRef(null);
+  const touchStartY = useRef(null);
   const touchDeltaX = useRef(0);
+  const touchDeltaY = useRef(0);
+  const swiped = useRef(false);
+  const count = images ? images.length : 0;
+
+  // Only autoplay / preload while visible (saves battery + bandwidth).
+  useEffect(() => {
+    const node = rootRef.current;
+    if (!node || typeof IntersectionObserver === "undefined") return undefined;
+    const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), { threshold: 0.1 });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [count]);
 
   useEffect(() => {
-    if (!images || images.length <= 1 || paused) return undefined;
-    timerRef.current = setInterval(() => {
-      setIndex((i) => (i + 1) % images.length);
+    if (count <= 1 || paused || !inView) return undefined;
+    const timer = setInterval(() => {
+      setIndex((i) => (i + 1) % count);
     }, intervalMs);
-    return () => clearInterval(timerRef.current);
-  }, [images, images?.length, paused, intervalMs]);
+    return () => clearInterval(timer);
+  }, [count, paused, inView, intervalMs]);
+
+  // Preload neighbours so the slide animation never reveals an empty frame.
+  useEffect(() => {
+    if (count <= 1 || !inView) return;
+    [(index + 1) % count, (index - 1 + count) % count].forEach((n) => {
+      const img = new Image();
+      img.src = images[n];
+    });
+  }, [index, count, inView, images]);
 
   function go(delta, e) {
     if (e) e.stopPropagation();
-    setIndex((i) => (i + delta + images.length) % images.length);
+    setIndex((i) => (i + delta + count) % count);
   }
 
-  // Swipe support — arrows are hover-only on desktop, but touch devices
-  // have no hover state, so without this a mobile visitor had no way to
-  // move through a multi-photo listing besides tapping the tiny dots.
   function handleTouchStart(e) {
     touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
     touchDeltaX.current = 0;
+    touchDeltaY.current = 0;
+    swiped.current = false;
     setPaused(true);
   }
   function handleTouchMove(e) {
     if (touchStartX.current === null) return;
     touchDeltaX.current = e.touches[0].clientX - touchStartX.current;
+    touchDeltaY.current = e.touches[0].clientY - touchStartY.current;
+    // Mark as a swipe gesture so the click that may follow is ignored.
+    if (Math.abs(touchDeltaX.current) > 10 && Math.abs(touchDeltaX.current) > Math.abs(touchDeltaY.current)) {
+      swiped.current = true;
+    }
   }
   function handleTouchEnd() {
-    if (Math.abs(touchDeltaX.current) > 40) {
+    if (Math.abs(touchDeltaX.current) > 40 && Math.abs(touchDeltaX.current) > Math.abs(touchDeltaY.current)) {
       go(touchDeltaX.current < 0 ? 1 : -1);
     }
+    resetTouch();
+  }
+  function resetTouch() {
     touchStartX.current = null;
+    touchStartY.current = null;
     touchDeltaX.current = 0;
+    touchDeltaY.current = 0;
     setPaused(false);
   }
 
-  if (!images || images.length === 0) {
+  function handleClick() {
+    if (swiped.current) {
+      swiped.current = false;
+      return;
+    }
+    if (onImageClick) onImageClick(index);
+  }
+
+  if (!images || count === 0) {
     return (
       <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br from-ink/5 to-ink/10 ${className}`}>
         <HomeIcon size={26} className="text-ink/20" strokeWidth={1.5} />
@@ -58,26 +107,40 @@ export default function Carousel({ images, alt = "Photo", intervalMs = 2800, cla
 
   return (
     <div
-      className={`relative w-full h-full overflow-hidden group touch-pan-y ${className}`}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
+      ref={rootRef}
+      className={`relative w-full h-full overflow-hidden group touch-pan-y select-none ${className}`}
+      onPointerEnter={(e) => { if (e.pointerType === "mouse") setPaused(true); }}
+      onPointerLeave={(e) => { if (e.pointerType === "mouse") setPaused(false); }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onTouchCancel={resetTouch}
     >
       <div
-        className={`flex h-full transition-transform duration-700 ease-[cubic-bezier(0.65,0,0.35,1)] ${onImageClick ? "cursor-zoom-in" : ""}`}
-        style={{ width: `${images.length * 100}%`, transform: `translateX(-${index * (100 / images.length)}%)` }}
-        onClick={() => onImageClick && onImageClick(index)}
+        className={`flex h-full will-change-transform transition-transform duration-700 ease-[cubic-bezier(0.65,0,0.35,1)] ${onImageClick ? "cursor-zoom-in" : ""}`}
+        style={{
+          width: `${count * 100}%`,
+          transform: `translate3d(-${index * (100 / count)}%, 0, 0)`,
+          backfaceVisibility: "hidden",
+        }}
+        onClick={handleClick}
       >
         {images.map((src, i) => (
-          <div key={i} className="h-full" style={{ width: `${100 / images.length}%` }}>
-            <img src={src} alt={`${alt} ${i + 1}`} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+          <div key={i} className="h-full overflow-hidden" style={{ width: `${100 / count}%` }}>
+            <img
+              src={src}
+              alt={`${alt} ${i + 1}`}
+              className="w-full h-full object-cover pointer-events-none select-none"
+              style={{ WebkitTouchCallout: "none", WebkitUserDrag: "none" }}
+              draggable={false}
+              loading={i === 0 ? "lazy" : "eager"}
+              decoding="async"
+            />
           </div>
         ))}
       </div>
 
-      {images.length > 1 && (
+      {count > 1 && (
         <>
           <div className="absolute inset-0 bg-gradient-to-t from-ink/25 via-transparent to-transparent pointer-events-none" />
           <button
@@ -98,6 +161,7 @@ export default function Carousel({ images, alt = "Photo", intervalMs = 2800, cla
             {images.map((_, i) => (
               <button
                 key={i}
+                aria-label={`Photo ${i + 1}`}
                 onClick={(e) => { e.stopPropagation(); setIndex(i); }}
                 className="h-1.5 rounded-full transition-all duration-300"
                 style={{
@@ -109,7 +173,7 @@ export default function Carousel({ images, alt = "Photo", intervalMs = 2800, cla
           </div>
           {showCounter && (
             <span className="absolute top-2.5 right-2.5 text-[10px] font-bold bg-ink/60 text-white px-2 py-0.5 rounded-full">
-              {index + 1}/{images.length}
+              {index + 1}/{count}
             </span>
           )}
         </>

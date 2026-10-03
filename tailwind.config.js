@@ -1,5 +1,8 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  // Wrap every hover:/group-hover: style in @media (hover: hover) so taps on
+  // phones no longer leave cards stuck lifted/scaled (that caused the jitter).
+  future: { hoverOnlyWhenSupported: true },
   content: ["./index.html", "./src/**/*.{js,jsx}"],
   theme: {
     extend: {

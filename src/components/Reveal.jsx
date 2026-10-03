@@ -20,6 +20,7 @@ export default function Reveal({
 }) {
   const ref = useRef(null);
   const [visible, setVisible] = useState(false);
+  const [settled, setSettled] = useState(false);
 
   useEffect(() => {
     const node = ref.current;
@@ -27,6 +28,7 @@ export default function Reveal({
 
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       setVisible(true);
+      setSettled(true);
       return undefined;
     }
 
@@ -53,12 +55,19 @@ export default function Reveal({
   return (
     <Tag
       ref={ref}
-      className={`transition-[opacity,transform] duration-700 ease-out will-change-transform ${
-        visible ? "opacity-100" : "opacity-0"
-      } ${className}`}
+      // Once the reveal has finished we drop the transform and will-change
+      // entirely. A leftover transform keeps a GPU layer alive (blurry/glitchy
+      // images on phones) and turns this wrapper into a containing block for
+      // any position:fixed descendant.
+      className={`transition-[opacity,transform] duration-700 ease-out ${
+        settled ? "" : "will-change-transform"
+      } ${visible ? "opacity-100" : "opacity-0"} ${className}`}
       style={{
-        transform: visible ? "translate(0,0)" : hiddenTransform,
+        transform: visible ? (settled ? "none" : "translate(0,0)") : hiddenTransform,
         transitionDelay: visible ? `${delay}ms` : "0ms",
+      }}
+      onTransitionEnd={(e) => {
+        if (e.target === e.currentTarget && e.propertyName === "transform" && visible) setSettled(true);
       }}
     >
       {children}
