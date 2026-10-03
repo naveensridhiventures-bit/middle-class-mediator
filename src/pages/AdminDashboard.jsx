@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { MapPin, Image as ImageIcon, LogOut, Pencil } from "lucide-react";
 import CRMBoard from "../components/admin/CRMBoard";
 import PropertiesTab from "../components/admin/PropertiesTab";
+import BrandHeader from "../components/wizard/BrandHeader";
+import { adminInputCls, btnDark } from "../components/admin/styles";
+import { COLORS } from "../lib/theme";
 import { adminListMediators, adminListSellers, adminListBuyers } from "../lib/api";
 
 // Same option lists as the public Seller/Buyer/Mediator forms, so admin
@@ -16,7 +20,6 @@ const PHOTOS_SHARED = ["Shared", "Will Share Later"];
 const SELLER_PURPOSE = ["Own Use", "Investment"];
 const PROPERTY_AGE = ["Less than 1 Year", "1–5 Years", "5–10 Years", "Above 10 Years"];
 const BUILDING_TYPE = ["Ground Floor", "G+1", "G+2", "G+3 & Above", "Apartment"];
-const ROAD_WIDTH = ["20 Feet", "24 Feet", "30 Feet", "40 Feet & Above"];
 const FACING = ["North", "South", "East", "West"];
 const PROPERTY_USAGE = ["Residential", "Commercial", "Semi-Commercial"];
 const PATTA_APPROVAL = ["Online Patta", "CMDA", "DTCP", "Panchayat", "Not Approved"];
@@ -48,7 +51,7 @@ const MEDIATOR_STATUSES_2 = ["Worth", "Ok", "Not worth"];
 const CRM_CONFIG = {
   seller: {
     label: "Seller",
-    accent: "#1F6F5C",
+    accent: COLORS.teal,
     sheet: "Sellers",
     fetcher: adminListSellers,
     statuses: SELLER_STATUSES,
@@ -92,7 +95,7 @@ const CRM_CONFIG = {
   },
   buyer: {
     label: "Buyer",
-    accent: "#B5533C",
+    accent: COLORS.coral,
     sheet: "Buyers",
     fetcher: adminListBuyers,
     statuses: BUYER_STATUSES,
@@ -112,7 +115,7 @@ const CRM_CONFIG = {
   },
   mediator: {
     label: "Mediator",
-    accent: "#2D4373",
+    accent: COLORS.steel,
     sheet: "Mediators",
     fetcher: adminListMediators,
     statuses: MEDIATOR_STATUSES,
@@ -135,11 +138,14 @@ const CRM_CONFIG = {
 };
 
 const TABS = [
-  { key: "seller", label: "Seller CRM" },
-  { key: "buyer", label: "Buyer CRM" },
-  { key: "mediator", label: "Mediator CRM" },
-  { key: "properties", label: "Published listings" },
+  { key: "seller", label: "Sellers", color: COLORS.teal },
+  { key: "buyer", label: "Buyers", color: COLORS.coral },
+  { key: "mediator", label: "Mediators", color: COLORS.steel },
+  { key: "properties", label: "Published listings", color: COLORS.sage },
 ];
+
+const headerLink =
+  "h-10 px-3 rounded-full bg-white/10 hover:bg-white/20 text-white text-[12px] font-semibold flex items-center gap-1.5 transition-colors";
 
 export default function AdminDashboard() {
   const [tab, setTab] = useState("seller");
@@ -176,85 +182,114 @@ export default function AdminDashboard() {
   if (!password) return null;
 
   const active = CRM_CONFIG[tab];
+  const tabColor = TABS.find((t) => t.key === tab)?.color || COLORS.teal;
 
   return (
-    <div className="max-w-6xl mx-auto px-5 pb-28 lg:pb-20">
-      <div className="pt-10 pb-6 flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <p className="field-label mb-0.5">Admin · hidden control room</p>
-          <h1 className="font-display font-semibold text-2xl text-ink">Command Center</h1>
+    <div className="min-h-screen bg-canvas" style={{ "--accent": tabColor }}>
+      <BrandHeader
+        color={tabColor}
+        wide
+        right={
+          <nav className="flex items-center gap-2" aria-label="Admin shortcuts">
+            <Link to="/control/field-visit" className={headerLink} aria-label="Field visit page">
+              <MapPin size={15} />
+              <span className="hidden sm:inline">Field visit</span>
+            </Link>
+            <Link to="/gallery" className={headerLink} aria-label="Buyer gallery">
+              <ImageIcon size={15} />
+              <span className="hidden sm:inline">Gallery</span>
+            </Link>
+            <button onClick={logout} className={headerLink} aria-label="Log out">
+              <LogOut size={15} />
+              <span className="hidden sm:inline">Log out</span>
+            </button>
+          </nav>
+        }
+      />
+
+      <div className="max-w-6xl mx-auto px-5 pt-6 pb-24">
+        <div className="flex items-end justify-between gap-3 flex-wrap">
+          <div>
+            <h1 className="font-display font-bold text-[1.7rem] leading-tight text-ink">Command center</h1>
+            {!editingName && (
+              <button
+                onClick={() => setEditingName(true)}
+                className="mt-1 text-sm text-ink/60 hover:text-ink flex items-center gap-1.5"
+                title="Change the name shown on remarks you add"
+              >
+                Signed in as <span className="font-semibold text-ink/85">{adminName}</span>
+                <Pencil size={12} />
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-4 flex-wrap">
-          {editingName ? (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                saveName(e.target.elements.name.value);
-              }}
-              className="flex items-center gap-2"
-            >
+
+        {editingName && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              saveName(e.target.elements.name.value);
+            }}
+            className="mt-4 rounded-2xl bg-surface border border-ink/10 p-4 flex flex-col sm:flex-row sm:items-end gap-3"
+          >
+            <div className="flex-1">
+              <label htmlFor="admin-name" className="block text-[11px] font-bold uppercase tracking-wider text-ink/55 mb-1.5">
+                Your name
+              </label>
               <input
+                id="admin-name"
                 name="name"
                 autoFocus
                 defaultValue={adminName}
-                placeholder="Your name (shown on remarks)"
-                className="field-input !py-1.5 !px-3 text-xs w-48"
+                placeholder="Shown next to the remarks you add"
+                className={adminInputCls}
               />
-              <button type="submit" className="btn-primary !py-1.5 !px-3 text-xs">Save</button>
-            </form>
-          ) : (
-            <button
-              onClick={() => setEditingName(true)}
-              className="text-xs text-ink/50 hover:text-ink"
-              title="Change the name shown on remarks you add"
-            >
-              Logged in as <span className="font-semibold text-ink/80">{adminName}</span> ✎
-            </button>
+            </div>
+            <button type="submit" className={`${btnDark} sm:w-32`}>Save</button>
+          </form>
+        )}
+
+        <div className="mt-5 flex gap-2 overflow-x-auto no-scrollbar pb-1" role="tablist" aria-label="Admin sections">
+          {TABS.map((t) => {
+            const on = tab === t.key;
+            return (
+              <button
+                key={t.key}
+                role="tab"
+                aria-selected={on}
+                onClick={() => setTab(t.key)}
+                className={`shrink-0 h-11 px-5 rounded-full text-[14px] font-semibold border flex items-center gap-2 transition-colors ${
+                  on ? "bg-ink text-white border-ink" : "bg-surface text-ink/70 border-ink/15 hover:border-ink/40"
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: on ? "#fff" : t.color }} />
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-5">
+          {active && (
+            <CRMBoard
+              key={tab}
+              type={tab}
+              label={active.label}
+              accent={active.accent}
+              sheet={active.sheet}
+              fetcher={active.fetcher}
+              fields={active.fields}
+              facetFields={active.facetFields}
+              statuses={active.statuses}
+              statuses2={active.statuses2}
+              status2Label={active.status2Label}
+              password={password}
+              adminName={adminName}
+            />
           )}
-          <Link to="/control/field-visit" className="text-xs font-semibold text-ink/50 hover:text-ink">
-            📍 Field visit page
-          </Link>
-          <Link to="/gallery" className="text-xs font-semibold text-ink/50 hover:text-ink">
-            🖼 Buyer gallery
-          </Link>
-          <button onClick={logout} className="text-xs uppercase tracking-wide font-semibold text-ink/50 hover:text-ink">
-            Log out
-          </button>
+          {tab === "properties" && <PropertiesTab password={password} />}
         </div>
       </div>
-
-      <div className="flex gap-2 mb-6 flex-wrap">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
-              tab === t.key ? "bg-ink text-paper" : "bg-white/60 text-ink/60 border border-ink/10 hover:text-ink"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {active && (
-        <CRMBoard
-          key={tab}
-          type={tab}
-          label={active.label}
-          accent={active.accent}
-          sheet={active.sheet}
-          fetcher={active.fetcher}
-          fields={active.fields}
-          facetFields={active.facetFields}
-          statuses={active.statuses}
-          statuses2={active.statuses2}
-          status2Label={active.status2Label}
-          password={password}
-          adminName={adminName}
-        />
-      )}
-      {tab === "properties" && <PropertiesTab password={password} />}
     </div>
   );
 }

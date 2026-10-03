@@ -1,7 +1,5 @@
 import { useId } from "react";
 
-export const isValidPhone = (v) => /^\d{10}$/.test(v || "");
-
 const labelCls = "block text-[11px] font-bold uppercase tracking-wider text-ink/60 mb-2";
 const inputCls =
   "w-full rounded-xl border border-ink/10 bg-[#F7F5F1] px-4 py-3.5 text-[15px] text-ink placeholder:text-ink/35 outline-none transition " +

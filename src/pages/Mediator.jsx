@@ -1,6 +1,7 @@
 import Wizard from "../components/wizard/Wizard";
 import ChoiceGroup from "../components/wizard/ChoiceGroup";
-import TextField, { PhoneField, isValidPhone } from "../components/wizard/TextField";
+import TextField, { PhoneField } from "../components/wizard/TextField";
+import { isValidPhone } from "../lib/validate";
 import { COLORS } from "../lib/theme";
 import { addMediatorLead } from "../lib/api";
 

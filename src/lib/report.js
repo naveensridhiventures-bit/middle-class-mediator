@@ -7,7 +7,6 @@ import autoTable from "jspdf-autotable";
 import { whatsappLink } from "./whatsapp";
 import { ADMIN_WHATSAPP_NUMBER } from "./config";
 
-const INK = [27, 42, 74];
 const GOLD = [200, 155, 60];
 const PAPER = [250, 246, 239];
 

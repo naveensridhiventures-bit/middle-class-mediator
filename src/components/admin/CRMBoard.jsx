@@ -1,28 +1,45 @@
-import { useEffect, useMemo, useState } from "react";
-import { Clock, User, X, SlidersHorizontal, Pencil, Camera, MapPin, Check } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Clock, User, X, SlidersHorizontal, Camera, MapPin, Check, Search, Phone,
+  MessageCircle, ChevronRight, Trash2, FileText, Link2, Share2,
+} from "lucide-react";
 import Carousel from "../Carousel";
 import SoldOutStamp from "../SoldOutStamp";
+import { Sheet, Section, Chip, Field, TextInput, SelectInput } from "./ui";
+import { adminInputCls, btnDark, btnOutline, btnGreen, btnDanger } from "./styles";
 import { adminUpdateLead, adminAddRemark, adminAddVisit, adminDeleteLead, addSellerLead, adminAddProperty, adminUpdateProperty } from "../../lib/api";
 import { whatsappLink, callLink } from "../../lib/whatsapp";
 import { downloadReport, downloadBrochure } from "../../lib/report";
 import { uploadImage, optimizedImageUrl } from "../../lib/cloudinary";
 
-// Each role now has its own custom pipeline (set in AdminDashboard.jsx's
-// CRM_CONFIG), so colors are assigned by position in that list rather than
+// Each role has its own custom pipeline (set in AdminDashboard.jsx's
+// CRM_CONFIG), so colours are assigned by position in that list rather than
 // by matching specific status names — this works for any status list,
 // including Mediator's second independent pipeline.
 const STATUS_PALETTE = [
-  { dot: "bg-gold", bg: "bg-gold/10", text: "text-gold-dark" },
-  { dot: "bg-sky-500", bg: "bg-sky-500/10", text: "text-sky-700" },
-  { dot: "bg-violet-500", bg: "bg-violet-500/10", text: "text-violet-700" },
-  { dot: "bg-emerald-500", bg: "bg-emerald-500/10", text: "text-emerald-700" },
-  { dot: "bg-buyer", bg: "bg-buyer/10", text: "text-buyer" },
-  { dot: "bg-ink/30", bg: "bg-ink/5", text: "text-ink/50" },
+  { dot: "#C89B3C", text: "#8A6A1F" },
+  { dot: "#3F7FB5", text: "#2D6291" },
+  { dot: "#7A5BB0", text: "#6244A0" },
+  { dot: "#2F8F6B", text: "#1F7352" },
+  { dot: "#C4503F", text: "#B04336" },
+  { dot: "#8A93A5", text: "#5B6475" },
 ];
 
 function getStatusStyle(status, statuses) {
   const idx = statuses.indexOf(status);
   return STATUS_PALETTE[idx >= 0 ? idx % STATUS_PALETTE.length : STATUS_PALETTE.length - 1];
+}
+
+function StatusPill({ label, style }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap"
+      style={{ backgroundColor: `color-mix(in srgb, ${style.dot} 14%, white)`, color: style.text }}
+    >
+      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: style.dot }} />
+      {label}
+    </span>
+  );
 }
 
 // Free-text fields (no fixed options) that represent an amount/measurement
@@ -173,9 +190,34 @@ function StarRating({ value, onChange, disabled, size = "text-lg" }) {
   );
 }
 
-// ---------- Compact summary card ----------
+// ---------- Lead card ----------
 
-function LeadCard({ lead, accent, onOpen, statuses, statuses2, status2Label }) {
+// WhatsApp + Call buttons. A lead with no phone number (e.g. a field-visit lead)
+// gets greyed-out buttons instead of a dead link.
+function ContactButtons({ phone, name, compact = false }) {
+  const has = Boolean(String(phone || "").trim());
+  const h = compact ? "!h-10" : "";
+  if (!has) {
+    return (
+      <div className="grid grid-cols-2 gap-2">
+        <span aria-disabled="true" className={`${btnGreen} ${h} opacity-40 pointer-events-none`}><MessageCircle size={14} /> WhatsApp</span>
+        <span aria-disabled="true" className={`${btnOutline} ${h} opacity-40 pointer-events-none`}><Phone size={14} /> Call</span>
+      </div>
+    );
+  }
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <a href={whatsappLink(phone, `Hi ${name}, following up on your registration`)} target="_blank" rel="noreferrer" className={`${btnGreen} ${h}`}>
+        <MessageCircle size={14} /> WhatsApp
+      </a>
+      <a href={callLink(phone)} className={`${btnOutline} ${h}`}>
+        <Phone size={14} /> Call
+      </a>
+    </div>
+  );
+}
+
+function LeadCard({ lead, accent, onOpen, statuses, statuses2 }) {
   const status = lead.status || statuses[0];
   const priority = Number(lead.priority) || 0;
   const overdue = isOverdue(lead.followUpDate, status);
@@ -188,100 +230,91 @@ function LeadCard({ lead, accent, onOpen, statuses, statuses2, status2Label }) {
   const rawPhotos = parsePhotos(lead).length ? parsePhotos(lead) : (latestVisit?.photoUrl ? [latestVisit.photoUrl] : []);
   const photos = rawPhotos.map((u) => optimizedImageUrl(u, 500));
   const soldOut = customFields.soldOut === "true";
+  const tagChips = [
+    lead.area && `📍 ${lead.area}`,
+    lead.budgetValue && `₹ ${Number(lead.budgetValue).toLocaleString()}`,
+    lead.sqft && `${Number(lead.sqft).toLocaleString()} sqft`,
+    ...Object.entries(customFields).filter(([k]) => k !== "galleryId" && k !== "soldOut").map(([k, v]) => `${k}: ${v}`),
+  ].filter(Boolean);
 
   return (
-    <div className="card-ledger overflow-hidden space-y-3 border-l-4" style={{ borderLeftColor: accent }}>
+    <article className="bg-surface rounded-2xl border border-ink/10 overflow-hidden flex flex-col">
       {photos.length > 0 && (
-        <div className="relative -mx-4 -mt-4 mb-1 h-36">
+        <div className="relative h-40 shrink-0">
           <Carousel images={photos} alt={lead.name} showCounter />
-          <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/10 to-transparent pointer-events-none" />
-          <div className="absolute bottom-2 left-3 right-3 text-white pointer-events-none">
-            <p className="text-[11px] font-semibold flex items-center gap-1">
-              📷 {latestVisit ? `Field visit · ${formatRemarkDateTime(latestVisit.at)}` : "Property photos"}
+          <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/5 to-transparent pointer-events-none" />
+          <div className="absolute bottom-2.5 left-3.5 right-3.5 text-white pointer-events-none">
+            <p className="text-[11px] font-semibold flex items-center gap-1.5">
+              <Camera size={12} />
+              {latestVisit ? `Field visit · ${formatRemarkDateTime(latestVisit.at)}` : "Property photos"}
             </p>
             {latestVisit?.address && <p className="text-[10px] text-white/80 truncate">{latestVisit.address}</p>}
           </div>
           {soldOut && <SoldOutStamp size="sm" />}
         </div>
       )}
-      <div className="px-4 space-y-3" style={{ paddingTop: photos.length > 0 ? 0 : 16, paddingBottom: 16 }}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="font-semibold text-ink text-sm truncate flex items-center gap-1.5">
-            {lead.name}
-            {soldOut && photos.length === 0 && (
-              <span className="text-[9px] font-bold uppercase tracking-wide bg-buyer/15 text-buyer px-1.5 py-0.5 rounded-full shrink-0">
-                Sold Out
-              </span>
-            )}
-          </p>
-          <p className="text-[11px] text-ink/40 font-mono mt-0.5">#{lead.id} · {timeAgo(lead.timestamp)}</p>
+
+      <div className="p-4 flex-1 flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h3 className="font-display font-bold text-[16px] leading-snug text-ink truncate flex items-center gap-2">
+              {lead.name}
+              {soldOut && photos.length === 0 && (
+                <span className="text-[9px] font-bold uppercase tracking-wide bg-coral/15 text-coral px-1.5 py-0.5 rounded-full shrink-0">Sold out</span>
+              )}
+            </h3>
+            <p className="text-[11px] text-ink/50 mt-0.5">#{lead.id} · {timeAgo(lead.timestamp)}</p>
+          </div>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <StatusPill label={status} style={sStyle} />
+            {statuses2 && lead.status2 && <StatusPill label={lead.status2} style={getStatusStyle(lead.status2, statuses2)} />}
+          </div>
         </div>
-        <div className="flex flex-col items-end gap-1 shrink-0">
-          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${sStyle.bg} ${sStyle.text}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${sStyle.dot}`} />
-            {status}
-          </span>
-          {statuses2 && lead.status2 && (
-            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${getStatusStyle(lead.status2, statuses2).bg} ${getStatusStyle(lead.status2, statuses2).text}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${getStatusStyle(lead.status2, statuses2).dot}`} />
-              {lead.status2}
+
+        <p className="text-sm text-ink/75 flex items-center gap-1.5">
+          <Phone size={13} className="text-ink/40" />
+          {String(lead.phone || "").trim() ? lead.phone : <span className="text-ink/40 italic">No phone added yet</span>}
+        </p>
+
+        <div className="flex items-center justify-between gap-2">
+          <StarRating value={priority} />
+          {lead.followUpDate && (
+            <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${overdue ? "bg-coral/15 text-coral" : "bg-ink/5 text-ink/60"}`}>
+              {overdue ? "Overdue · " : "Follow up "}
+              {new Date(lead.followUpDate).toLocaleDateString(undefined, { day: "2-digit", month: "short" })}
             </span>
           )}
         </div>
-      </div>
 
-      <p className="text-sm text-ink/70">{lead.phone}</p>
-
-      <div className="flex items-center justify-between">
-        <StarRating value={priority} />
-        {lead.followUpDate && (
-          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${overdue ? "bg-buyer/15 text-buyer" : "bg-ink/5 text-ink/50"}`}>
-            {overdue ? "Overdue · " : "Follow up "}
-            {new Date(lead.followUpDate).toLocaleDateString(undefined, { day: "2-digit", month: "short" })}
-          </span>
-        )}
-      </div>
-
-      {(lead.area || lead.budgetValue || lead.sqft || Object.keys(customFields).length > 0) && (
-        <div className="flex flex-wrap gap-1.5">
-          {lead.area && <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-ink/5 text-ink/60">📍 {lead.area}</span>}
-          {lead.budgetValue && <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-ink/5 text-ink/60">₹ {Number(lead.budgetValue).toLocaleString()}</span>}
-          {lead.sqft && <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-ink/5 text-ink/60">{Number(lead.sqft).toLocaleString()} sqft</span>}
-          {Object.entries(customFields).filter(([k]) => k !== "galleryId" && k !== "soldOut").map(([k, v]) => (
-            <span key={k} className="text-[10px] font-semibold px-2 py-1 rounded-full bg-ink/5 text-ink/60">{k}: {v}</span>
-          ))}
-        </div>
-      )}
-
-      {latestRemark && (
-        <div className="rounded-lg bg-ink/[0.035] px-2.5 py-2">
-          <div className="flex items-center gap-1.5 text-[10px] text-ink/40 mb-0.5">
-            <Clock size={10} strokeWidth={2.25} />
-            {formatRemarkDateTime(latestRemark.at)}
-            {latestRemark.by && <span className="font-semibold" style={{ color: accent }}>· {latestRemark.by}</span>}
+        {tagChips.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {tagChips.map((t) => (
+              <span key={t} className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-ink/5 text-ink/65">{t}</span>
+            ))}
           </div>
-          <p className="text-xs text-ink/70 leading-snug line-clamp-2">{latestRemark.text}</p>
+        )}
+
+        {latestRemark && (
+          <div className="rounded-xl bg-[#F7F5F1] px-3 py-2.5">
+            <div className="flex items-center gap-1.5 text-[10px] text-ink/50 mb-0.5">
+              <Clock size={10} strokeWidth={2.25} />
+              {formatRemarkDateTime(latestRemark.at)}
+              {latestRemark.by && <span className="font-semibold" style={{ color: accent }}>· {latestRemark.by}</span>}
+            </div>
+            <p className="text-[13px] text-ink/75 leading-snug line-clamp-2">{latestRemark.text}</p>
+          </div>
+        )}
+
+        <div className="mt-auto pt-1 space-y-2">
+          <ContactButtons phone={lead.phone} name={lead.name} compact />
+          <button onClick={onOpen} className={`${btnDark} w-full`}>
+            Open details
+            {remarksLog.length > 0 && <span className="opacity-70 normal-case tracking-normal font-semibold">· {remarksLog.length} remark{remarksLog.length === 1 ? "" : "s"}</span>}
+            <ChevronRight size={15} />
+          </button>
         </div>
-      )}
-
-      <div className="flex gap-2">
-        <a href={whatsappLink(lead.phone, `Hi ${lead.name}, following up on your registration`)} target="_blank" rel="noreferrer" className="btn-whatsapp !py-1.5 !px-3 text-xs flex-1">
-          WhatsApp
-        </a>
-        <a href={callLink(lead.phone)} className="btn-ghost !py-1.5 !px-3 text-xs flex-1">Call</a>
       </div>
-
-      <button
-        onClick={onOpen}
-        className="w-full flex items-center justify-center gap-1.5 btn-primary !py-2 text-xs"
-      >
-        <Pencil size={12} strokeWidth={2.25} />
-        View & edit full details
-        {remarksLog.length > 0 && <span className="opacity-70">· {remarksLog.length} remark{remarksLog.length === 1 ? "" : "s"}</span>}
-      </button>
-      </div>
-    </div>
+    </article>
   );
 }
 
@@ -564,435 +597,300 @@ function LeadDetailModal({ lead, fields, accent, sheet, roleLabel, statuses, sta
     }
   }
 
+  const customKeys = Object.keys(customFields).filter((k) => k !== "galleryId" && k !== "soldOut");
+  const detailFields = fields.filter(([key]) => key !== "sellerRemarks");
+  const toggleable = detailFields.filter(([key]) => form[key]);
+  const sellerRemarkOn = galleryFields.includes("sellerRemarks");
+
   return (
-    <div className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-start sm:items-center justify-center p-3 sm:p-6 overflow-y-auto" onClick={onClose}>
-      <div
-        className="bg-paper rounded-3xl w-full max-w-2xl shadow-2xl my-6 sm:my-0 border-t-4"
-        style={{ borderTopColor: accent }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="p-5 sm:p-6 flex items-start justify-between gap-3 border-b border-ink/5">
-          <div className="flex-1 grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Name</label>
-              <input className="field-input !py-2 text-sm font-semibold" value={form.name} onChange={(e) => set("name", e.target.value)} />
-            </div>
-            <div>
-              <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Phone</label>
-              <input className="field-input !py-2 text-sm" value={form.phone} onChange={(e) => set("phone", e.target.value)} />
-            </div>
-          </div>
-          <button onClick={onClose} className="shrink-0 w-8 h-8 rounded-full bg-ink/5 flex items-center justify-center hover:bg-ink/10">
-            <X size={16} className="text-ink/60" />
-          </button>
-        </div>
-
-        <div className="p-5 sm:p-6 space-y-6 max-h-[65vh] overflow-y-auto">
-          {/* Property photos — up to 4, admin can add/remove on any seller lead */}
-          {supportsPhoto && (
-            <div>
-              <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">
-                Property photos {photos.length > 0 && `(${photos.length}/4)`}
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                {photos.map((url, i) => (
-                  <div key={i} className="group relative rounded-2xl overflow-hidden shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 aspect-square">
-                    <img src={optimizedImageUrl(url, 300)} alt={`Property ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
-                    {i === 0 && (
-                      <span className="absolute top-1.5 left-1.5 text-[9px] font-bold uppercase tracking-wide bg-ink/80 text-white px-1.5 py-0.5 rounded">
-                        Cover
-                      </span>
-                    )}
-                    <button
-                      onClick={() => handleRemovePhoto(i)}
-                      className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-ink/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                ))}
-                {photos.length < 4 && (
-                  <label className="flex flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-ink/15 aspect-square cursor-pointer hover:border-ink/30 hover:bg-ink/[0.02] transition">
-                    <Camera size={18} className="text-ink/30" strokeWidth={1.5} />
-                    <span className="text-[10px] font-semibold text-ink/50 text-center px-2">
-                      {photoUploading ? "Uploading…" : "Add photo"}
-                    </span>
-                    <input type="file" accept="image/*" className="hidden" onChange={handleAddPhotoSlot} disabled={photoUploading} />
-                  </label>
-                )}
-              </div>
-              {photoError && <p className="text-xs text-buyer mt-2">{photoError}</p>}
-            </div>
-          )}
-
-          {/* Gallery listing title — a custom, creative title admin can set for
-              the public listing, instead of the plain auto-generated one */}
-          {supportsPhoto && (
-            <div>
-              <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">
-                Gallery listing title
-              </label>
-              <input
-                className="field-input !py-2.5 text-sm"
-                placeholder="e.g. Sun-drenched 3BHK with a private terrace garden"
-                value={form.listingTitle}
-                onChange={(e) => set("listingTitle", e.target.value)}
-              />
-              <p className="text-[10px] text-ink/35 mt-1">
-                Optional — make it catchy. Leave blank to use the plain "Type in Area" title.
-              </p>
-            </div>
-          )}
-
-          {/* Pipeline controls */}
-          <div>
-            <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">Pipeline</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Status</label>
-                <select className="field-input !py-2 text-sm" value={form.status} onChange={(e) => set("status", e.target.value)}>
-                  {statuses.map((s) => <option key={s}>{s}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Next follow-up</label>
-                <input type="date" className="field-input !py-2 text-sm" value={form.followUpDate} onChange={(e) => set("followUpDate", e.target.value)} />
-              </div>
-            </div>
-            {statuses2 && (
-              <div className="mt-3">
-                <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">{status2Label || "Second pipeline"}</label>
-                <select className="field-input !py-2 text-sm" value={form.status2} onChange={(e) => set("status2", e.target.value)}>
-                  <option value="">— not set —</option>
-                  {statuses2.map((s) => <option key={s}>{s}</option>)}
-                </select>
-              </div>
-            )}
-            <div className="mt-3">
-              <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Priority</label>
-              <StarRating value={form.priority} onChange={(v) => set("priority", v)} size="text-2xl" />
-            </div>
-          </div>
-
-          {/* Submitted details */}
-          <div>
-            <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">Submitted details</p>
-            <div className="grid sm:grid-cols-2 gap-3">
-              {fields.filter(([key]) => key !== "sellerRemarks").map(([key, label, options]) => (
-                <div key={key}>
-                  <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">{label}</label>
-                  {options ? (
-                    <select className="field-input !py-2 text-sm" value={form[key]} onChange={(e) => set(key, e.target.value)}>
-                      <option value="">— not set —</option>
-                      {options.map((o) => <option key={o}>{o}</option>)}
-                    </select>
-                  ) : NUMERIC_AMOUNT_KEYS.has(key) ? (
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      className="field-input !py-2 text-sm"
-                      placeholder="e.g. 10,000"
-                      value={formatThousands(form[key])}
-                      onChange={(e) => set(key, unformatNumber(e.target.value))}
-                    />
-                  ) : (
-                    <input className="field-input !py-2 text-sm" value={form[key]} onChange={(e) => set(key, e.target.value)} />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Admin metadata for advanced filtering */}
-          <div>
-            <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">Area &amp; sizing (for advanced filters)</p>
-            <div className="grid sm:grid-cols-3 gap-3">
-              <div>
-                <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Area / locality</label>
-                <input className="field-input !py-2 text-sm" placeholder="e.g. Ambattur" value={form.area} onChange={(e) => set("area", e.target.value)} />
-              </div>
-              <div>
-                <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Budget (₹)</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  className="field-input !py-2 text-sm"
-                  placeholder="e.g. 50,00,000"
-                  value={formatThousands(form.budgetValue)}
-                  onChange={(e) => set("budgetValue", unformatNumber(e.target.value))}
-                />
-              </div>
-              <div>
-                <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Size (sqft)</label>
-                <input type="number" className="field-input !py-2 text-sm" placeholder="e.g. 1200" value={form.sqft} onChange={(e) => set("sqft", e.target.value)} />
-              </div>
-            </div>
-          </div>
-
-          {/* Manual location — type an address or paste a Google Maps link directly, no GPS capture needed */}
-          {supportsPhoto && (
-            <div>
-              <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">Location</p>
-              <div className="grid sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Exact address</label>
-                  <textarea
-                    className="field-input !py-2 text-sm min-h-[44px]"
-                    placeholder="Type or paste the full address"
-                    value={form.exactAddress}
-                    onChange={(e) => set("exactAddress", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Google Maps link</label>
-                  <input
-                    className="field-input !py-2 text-sm"
-                    placeholder="Paste a Google Maps link here"
-                    value={form.mapLink}
-                    onChange={(e) => set("mapLink", e.target.value)}
-                  />
-                  <p className="text-[10px] text-ink/35 mt-1">
-                    Open the location in Google Maps, tap Share, copy the link, and paste it here.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Custom fields — mediator can add any attribute they need; it becomes a filter facet automatically */}
-          <div>
-            <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">
-              Custom fields {Object.keys(customFields).filter((k) => k !== "galleryId" && k !== "soldOut").length > 0 && `(${Object.keys(customFields).filter((k) => k !== "galleryId" && k !== "soldOut").length})`}
-            </p>
-            <p className="text-xs text-ink/40 mb-2">
-              Add any attribute you need (e.g. "Facing", "Furnishing", "Amenity") — it'll automatically show up as a filter option across all leads.
-            </p>
-            {Object.keys(customFields).filter((k) => k !== "galleryId" && k !== "soldOut").length > 0 && (
-              <div className="space-y-2 mb-3">
-                {Object.entries(customFields).filter(([key]) => key !== "galleryId" && key !== "soldOut").map(([key, value]) => (
-                  <div key={key} className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-ink/60 w-28 shrink-0 truncate">{key}</span>
-                    <input
-                      className="field-input !py-1.5 text-xs flex-1"
-                      value={value}
-                      onChange={(e) => updateCustomField(key, e.target.value)}
-                    />
-                    <button onClick={() => removeCustomField(key)} className="shrink-0 w-7 h-7 rounded-full bg-ink/5 flex items-center justify-center hover:bg-buyer/10">
-                      <X size={13} className="text-ink/50" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <input
-                className="field-input !py-2 text-xs flex-1"
-                placeholder="Field name (e.g. Facing)"
-                value={newFieldName}
-                onChange={(e) => setNewFieldName(e.target.value)}
-              />
-              <input
-                className="field-input !py-2 text-xs flex-1"
-                placeholder="Value (e.g. East)"
-                value={newFieldValue}
-                onChange={(e) => setNewFieldValue(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addCustomField()}
-              />
-              <button onClick={addCustomField} disabled={!newFieldName.trim()} className="btn-ghost !py-2 !px-3 text-xs whitespace-nowrap">
-                + Add
-              </button>
-            </div>
-          </div>
-
-          {/* Share on Gallery — publishes a buyer-safe version (no phone, no exact address) */}
-          {supportsPhoto && (
-            <div className="rounded-2xl bg-ink/[0.03] p-4">
-              <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-1">
-                Buyer gallery {customFields.galleryId && <span className="text-emerald-600">· Live</span>}
-              </p>
-              <p className="text-xs text-ink/40 mb-3">
-                Shares the photo, area, property type and price to the public gallery buyers browse
-                — the owner's phone number and exact address are never included.
-              </p>
-              <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={soldOut}
-                  onChange={(e) => setSoldOut(e.target.checked)}
-                  className="w-4 h-4 accent-buyer"
-                />
-                <span className="text-sm font-semibold text-ink/70">Mark as Sold Out</span>
-                {soldOut && (
-                  <span className="text-[10px] font-bold uppercase tracking-wide bg-buyer/15 text-buyer px-2 py-0.5 rounded-full">
-                    Sold Out
-                  </span>
-                )}
-              </label>
-
-              {fields.some(([key]) => key !== "sellerRemarks" && form[key]) && (
-                <div className="mb-3">
-                  <p className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold mb-1.5">
-                    Choose which details to show on the gallery
-                  </p>
-                  <div className="grid grid-cols-2 gap-1.5 max-h-52 overflow-y-auto pr-1">
-                    {fields.filter(([key]) => key !== "sellerRemarks" && form[key]).map(([key, label]) => {
-                      const on = galleryFields.includes(key);
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => toggleGalleryField(key)}
-                          className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border-2 transition text-left ${
-                            on
-                              ? "bg-seller/10 border-seller text-seller"
-                              : "bg-white/50 border-ink/10 text-ink/40 hover:border-ink/20"
-                          }`}
-                        >
-                          <span
-                            className={`shrink-0 w-4 h-4 rounded-full flex items-center justify-center transition ${
-                              on ? "bg-seller" : "bg-ink/10"
-                            }`}
-                          >
-                            {on && <Check size={11} className="text-white" strokeWidth={3} />}
-                          </span>
-                          <span className="truncate">{label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <button
-                onClick={handleShareGallery}
-                disabled={galleryStatus === "sharing"}
-                className="btn-primary w-full !py-2.5 text-sm"
-              >
-                {galleryStatus === "sharing" && "Sharing…"}
-                {galleryStatus === "shared" && "Shared ✓"}
-                {galleryStatus === "idle" && (customFields.galleryId ? "Update on gallery" : "🖼 Share on gallery")}
-              </button>
-              {customFields.galleryId && (
-                <button
-                  onClick={handleCopyLink}
-                  className="btn-ghost w-full !py-2.5 text-sm mt-2"
-                >
-                  {linkCopied ? "Link copied ✓" : "🔗 Copy property link"}
-                </button>
-              )}
-              {galleryError && <p className="text-xs text-buyer mt-2">{galleryError}</p>}
-            </div>
-          )}
-
-          {/* Seller's remark — distinct from the admin's internal Remarks history below.
-              This one is what the seller actually said, with its own gallery toggle. */}
-          {supportsPhoto && (
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold">Seller's remark</p>
-                <button
-                  type="button"
-                  onClick={() => toggleGalleryField("sellerRemarks")}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border-2 transition ${
-                    galleryFields.includes("sellerRemarks")
-                      ? "bg-seller/10 border-seller text-seller"
-                      : "bg-white/50 border-ink/10 text-ink/40"
-                  }`}
-                >
-                  <span
-                    className={`w-3.5 h-3.5 rounded-full flex items-center justify-center ${
-                      galleryFields.includes("sellerRemarks") ? "bg-seller" : "bg-ink/10"
-                    }`}
-                  >
-                    {galleryFields.includes("sellerRemarks") && <Check size={9} className="text-white" strokeWidth={3} />}
-                  </span>
-                  Show on gallery
-                </button>
-              </div>
-              <textarea
-                className="field-input !py-2 text-sm min-h-[60px]"
-                placeholder="What the seller told you — this is separate from your own internal notes below."
-                value={form.sellerRemarks}
-                onChange={(e) => set("sellerRemarks", e.target.value)}
-              />
-            </div>
-          )}
-
-          {/* Remarks history — the admin's own internal notes, never shown on the gallery */}
-          <div>
-            <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mb-2">
-              Remarks history {remarksLog.length > 0 && `(${remarksLog.length})`}
-            </p>
-            {remarksLog.length === 0 ? (
-              <p className="text-xs text-ink/40 italic mb-2">No remarks logged yet.</p>
-            ) : (
-              <div className="max-h-40 overflow-y-auto space-y-2 pr-1 mb-2">
-                {remarksLog.map((r, i) => (
-                  <div key={i} className="border-l-[3px] rounded-lg bg-white/70 px-3 py-2" style={{ borderLeftColor: accent }}>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-ink/45 mb-1">
-                      <span className="inline-flex items-center gap-1">
-                        <Clock size={11} strokeWidth={2.25} />
-                        {formatRemarkDateTime(r.at)}
-                      </span>
-                      {r.by && (
-                        <span className="inline-flex items-center gap-1 font-semibold" style={{ color: accent }}>
-                          <User size={11} strokeWidth={2.25} />
-                          {r.by}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-ink/80 leading-snug">{r.text}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="flex gap-1.5">
-              <input
-                className="field-input !py-2 text-sm flex-1"
-                placeholder="Add a remark…"
-                value={newRemark}
-                onChange={(e) => setNewRemark(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAddRemark()}
-              />
-              <button onClick={handleAddRemark} disabled={savingRemark || !newRemark.trim()} className="btn-whatsapp !py-2 !px-4 text-sm whitespace-nowrap">
-                {savingRemark ? "…" : "Save"}
-              </button>
-            </div>
-            {remarkError && <p className="text-xs text-buyer mt-1.5">{remarkError}</p>}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="p-5 sm:p-6 border-t border-ink/5">
-          {saveError && <p className="text-xs text-buyer mb-2">{saveError}</p>}
-          {deleteError && <p className="text-xs text-buyer mb-2">{deleteError}</p>}
-          <div className="flex items-center gap-3 flex-wrap">
-          <button onClick={handleSave} disabled={saving} className="btn-primary flex-1 !py-3">
+    <Sheet
+      title={form.name || "Lead"}
+      subtitle={`#${lead.id} · ${roleLabel} lead`}
+      accent={accent}
+      onClose={onClose}
+      footer={
+        <>
+          {saveError && <p className="text-xs text-coral mb-2">{saveError}</p>}
+          {deleteError && <p className="text-xs text-coral mb-2">{deleteError}</p>}
+          <button onClick={handleSave} disabled={saving} className={`${btnDark} w-full !h-12`}>
             {saving ? "Saving…" : saved ? "Saved ✓" : "Save changes"}
           </button>
-          <button onClick={handleDownloadSingle} className="btn-ghost !py-3 !px-4" title="Full internal PDF — includes owner name, phone, and exact address">
-            📄 Admin PDF
+          <div className="flex gap-2 mt-2.5">
+            <button onClick={handleDownloadSingle} className={`${btnOutline} flex-1 !px-2 !h-10 !text-[11px]`} title="Full internal PDF — includes owner name, phone, and exact address">
+              <FileText size={13} /> Admin PDF
+            </button>
+            {supportsPhoto && (
+              <button onClick={handleDownloadCustomerPDF} className={`${btnOutline} flex-1 !px-2 !h-10 !text-[11px]`} title="Buyer-safe PDF to share with a customer — no owner name, phone, or exact address">
+                <FileText size={13} /> Customer PDF
+              </button>
+            )}
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className={`${confirmDelete ? btnDanger : `${btnOutline} !text-coral !border-coral/40`} flex-1 !px-2 !h-10 !text-[11px]`}
+            >
+              <Trash2 size={13} />
+              {deleting ? "Deleting…" : confirmDelete ? "Tap to confirm" : "Delete"}
+            </button>
+          </div>
+        </>
+      }
+    >
+      {/* One-tap contact */}
+      <div className="mb-4">
+        <ContactButtons phone={form.phone} name={form.name} />
+      </div>
+
+      <Section title="Contact & pipeline" defaultOpen>
+        <div className="grid sm:grid-cols-2 gap-3.5">
+          <TextInput label="Name" value={form.name} onChange={(e) => set("name", e.target.value)} />
+          <TextInput label="Phone" type="tel" inputMode="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+          <SelectInput label="Status" options={statuses} value={form.status} onChange={(e) => set("status", e.target.value)} />
+          <TextInput label="Next follow-up" type="date" value={form.followUpDate} onChange={(e) => set("followUpDate", e.target.value)} />
+          {statuses2 && (
+            <SelectInput
+              label={status2Label || "Second pipeline"}
+              emptyLabel="— not set —"
+              options={statuses2}
+              value={form.status2}
+              onChange={(e) => set("status2", e.target.value)}
+            />
+          )}
+          <Field label="Priority">
+            <StarRating value={form.priority} onChange={(v) => set("priority", v)} size="text-3xl" />
+          </Field>
+        </div>
+      </Section>
+
+      <Section title="Remarks" badge={remarksLog.length || null} defaultOpen>
+        <p className="text-xs text-ink/50 mb-3">Your own internal notes. They are never shown on the gallery.</p>
+        {remarksLog.length === 0 ? (
+          <p className="text-sm text-ink/45 italic mb-3">No remarks yet. Add the first one below.</p>
+        ) : (
+          <div className="max-h-52 overflow-y-auto space-y-2 mb-3">
+            {remarksLog.map((r, i) => (
+              <div key={i} className="border-l-[3px] rounded-lg bg-[#F7F5F1] px-3 py-2.5" style={{ borderLeftColor: accent }}>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-ink/50 mb-1">
+                  <span className="inline-flex items-center gap-1">
+                    <Clock size={11} strokeWidth={2.25} />
+                    {formatRemarkDateTime(r.at)}
+                  </span>
+                  {r.by && (
+                    <span className="inline-flex items-center gap-1 font-semibold" style={{ color: accent }}>
+                      <User size={11} strokeWidth={2.25} />
+                      {r.by}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-ink/85 leading-snug whitespace-pre-line">{r.text}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-2">
+          <input
+            className={`${adminInputCls} flex-1 min-w-0`}
+            placeholder="Add a remark…"
+            aria-label="New remark"
+            value={newRemark}
+            onChange={(e) => setNewRemark(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAddRemark()}
+          />
+          <button onClick={handleAddRemark} disabled={savingRemark || !newRemark.trim()} className={`${btnGreen} !px-5 shrink-0`}>
+            {savingRemark ? "…" : "Add"}
           </button>
-          {supportsPhoto && (
-            <button onClick={handleDownloadCustomerPDF} className="btn-ghost !py-3 !px-4" title="Buyer-safe PDF to share with a customer — no owner name, phone, or exact address">
-              📤 Customer PDF
+        </div>
+        {remarkError && <p className="text-xs text-coral mt-2">{remarkError}</p>}
+      </Section>
+
+      {supportsPhoto && (
+        <Section title="Property photos" badge={`${photos.length}/4`} defaultOpen={photos.length > 0}>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {photos.map((url, i) => (
+              <div key={url + i} className="relative rounded-xl overflow-hidden aspect-square bg-ink/5">
+                <img src={optimizedImageUrl(url, 300)} alt={`Property ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                {i === 0 && (
+                  <span className="absolute top-1.5 left-1.5 text-[9px] font-bold uppercase tracking-wide bg-ink/80 text-white px-1.5 py-0.5 rounded">Cover</span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleRemovePhoto(i)}
+                  aria-label={`Remove photo ${i + 1}`}
+                  className="absolute top-1.5 right-1.5 w-8 h-8 rounded-full bg-ink/75 text-white flex items-center justify-center"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+            {photos.length < 4 && (
+              <label className="flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-ink/20 aspect-square cursor-pointer hover:border-ink/40 hover:bg-ink/[0.02] transition">
+                <Camera size={20} className="text-ink/40" strokeWidth={1.5} />
+                <span className="text-[11px] font-semibold text-ink/55 text-center px-2">{photoUploading ? "Uploading…" : "Add photo"}</span>
+                <input type="file" accept="image/*" className="hidden" onChange={handleAddPhotoSlot} disabled={photoUploading} />
+              </label>
+            )}
+          </div>
+          {photoError && <p className="text-xs text-coral mt-2">{photoError}</p>}
+        </Section>
+      )}
+
+      <Section title="Submitted details">
+        <div className="grid sm:grid-cols-2 gap-3.5">
+          {detailFields.map(([key, label, options]) =>
+            options ? (
+              <SelectInput key={key} label={label} emptyLabel="— not set —" options={options} value={form[key]} onChange={(e) => set(key, e.target.value)} />
+            ) : NUMERIC_AMOUNT_KEYS.has(key) ? (
+              <TextInput
+                key={key}
+                label={label}
+                inputMode="numeric"
+                placeholder="e.g. 10,000"
+                value={formatThousands(form[key])}
+                onChange={(e) => set(key, unformatNumber(e.target.value))}
+              />
+            ) : (
+              <TextInput key={key} label={label} value={form[key]} onChange={(e) => set(key, e.target.value)} />
+            )
+          )}
+        </div>
+      </Section>
+
+      <Section title="Area & size (used by filters)">
+        <div className="grid sm:grid-cols-3 gap-3.5">
+          <TextInput label="Area / locality" placeholder="e.g. Ambattur" value={form.area} onChange={(e) => set("area", e.target.value)} />
+          <TextInput
+            label="Budget (₹)"
+            inputMode="numeric"
+            placeholder="e.g. 50,00,000"
+            value={formatThousands(form.budgetValue)}
+            onChange={(e) => set("budgetValue", unformatNumber(e.target.value))}
+          />
+          <TextInput label="Size (sqft)" type="number" inputMode="decimal" placeholder="e.g. 1200" value={form.sqft} onChange={(e) => set("sqft", e.target.value)} />
+        </div>
+      </Section>
+
+      {supportsPhoto && (
+        <Section title="Exact location">
+          <div className="grid gap-3.5">
+            <Field label="Exact address">
+              {(id) => (
+                <textarea id={id} className={`${adminInputCls} min-h-[72px]`} placeholder="Type or paste the full address" value={form.exactAddress} onChange={(e) => set("exactAddress", e.target.value)} />
+              )}
+            </Field>
+            <TextInput
+              label="Google Maps link"
+              placeholder="Paste a Google Maps link here"
+              hint="Open the place in Google Maps, tap Share, copy the link and paste it here."
+              value={form.mapLink}
+              onChange={(e) => set("mapLink", e.target.value)}
+            />
+          </div>
+        </Section>
+      )}
+
+      <Section title="Custom fields" badge={customKeys.length || null}>
+        <p className="text-xs text-ink/50 mb-3">
+          Add any detail you need, like "Facing" or "Furnishing". It becomes a filter option across all leads.
+        </p>
+        {customKeys.length > 0 && (
+          <div className="space-y-2 mb-3">
+            {customKeys.map((key) => (
+              <div key={key} className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-ink/65 w-24 shrink-0 truncate">{key}</span>
+                <input className={`${adminInputCls} flex-1 min-w-0 !py-2.5`} aria-label={key} value={customFields[key]} onChange={(e) => updateCustomField(key, e.target.value)} />
+                <button type="button" onClick={() => removeCustomField(key)} aria-label={`Remove ${key}`} className="shrink-0 w-10 h-10 rounded-full bg-ink/5 hover:bg-coral/10 flex items-center justify-center">
+                  <X size={15} className="text-ink/55" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          <input className={adminInputCls} placeholder="Name (e.g. Facing)" aria-label="New field name" value={newFieldName} onChange={(e) => setNewFieldName(e.target.value)} />
+          <input
+            className={adminInputCls}
+            placeholder="Value (e.g. East)"
+            aria-label="New field value"
+            value={newFieldValue}
+            onChange={(e) => setNewFieldValue(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addCustomField()}
+          />
+        </div>
+        <button onClick={addCustomField} disabled={!newFieldName.trim()} className={`${btnOutline} w-full mt-2`}>
+          + Add field
+        </button>
+      </Section>
+
+      {supportsPhoto && (
+        <Section title="Buyer gallery" badge={customFields.galleryId ? "Live" : null}>
+          <p className="text-xs text-ink/50 mb-4">
+            Publishes a buyer-safe version of this listing. The owner's name, phone number and exact address are never included.
+          </p>
+
+          <TextInput
+            label="Listing title"
+            placeholder="e.g. Sun-drenched 3BHK with a private terrace garden"
+            hint="Optional. Leave blank to use the plain “Type in Area” title."
+            value={form.listingTitle}
+            onChange={(e) => set("listingTitle", e.target.value)}
+          />
+
+          <div className="mt-4">
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-ink/55">Seller's remark</span>
+              <Chip active={sellerRemarkOn} onClick={() => toggleGalleryField("sellerRemarks")} className="!h-8 !text-[12px]">
+                {sellerRemarkOn && <Check size={12} strokeWidth={3} />}
+                Show on gallery
+              </Chip>
+            </div>
+            <textarea
+              className={`${adminInputCls} min-h-[72px]`}
+              aria-label="Seller's remark"
+              placeholder="What the seller told you. This is separate from your internal remarks."
+              value={form.sellerRemarks}
+              onChange={(e) => set("sellerRemarks", e.target.value)}
+            />
+          </div>
+
+          {toggleable.length > 0 && (
+            <div className="mt-4">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-ink/55 mb-2">Details to show on the gallery</p>
+              <div className="flex flex-wrap gap-2">
+                {toggleable.map(([key, label]) => {
+                  const on = galleryFields.includes(key);
+                  return (
+                    <Chip key={key} active={on} onClick={() => toggleGalleryField(key)}>
+                      {on && <Check size={12} strokeWidth={3} />}
+                      {label}
+                    </Chip>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <label className="mt-4 flex items-center gap-3 rounded-xl border border-ink/10 bg-[#F7F5F1] px-4 py-3 cursor-pointer select-none">
+            <input type="checkbox" checked={soldOut} onChange={(e) => setSoldOut(e.target.checked)} className="w-5 h-5 accent-[#B94A3D]" />
+            <span className="text-sm font-semibold text-ink/80 flex-1">Mark as sold out</span>
+            {soldOut && <span className="text-[10px] font-bold uppercase tracking-wide bg-coral/15 text-coral px-2 py-0.5 rounded-full">Sold out</span>}
+          </label>
+
+          <button onClick={handleShareGallery} disabled={galleryStatus === "sharing"} className={`${btnDark} w-full mt-4 !h-12`}>
+            <Share2 size={15} />
+            {galleryStatus === "sharing" && "Sharing…"}
+            {galleryStatus === "shared" && "Shared ✓"}
+            {galleryStatus === "idle" && (customFields.galleryId ? "Update on gallery" : "Share on gallery")}
+          </button>
+          {customFields.galleryId && (
+            <button onClick={handleCopyLink} className={`${btnOutline} w-full mt-2`}>
+              <Link2 size={15} />
+              {linkCopied ? "Link copied ✓" : "Copy property link"}
             </button>
           )}
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className={`!py-3 !px-4 rounded-2xl text-sm font-semibold transition ${
-              confirmDelete ? "bg-buyer text-white" : "btn-ghost text-buyer"
-            }`}
-          >
-            {deleting ? "Deleting…" : confirmDelete ? "Confirm delete?" : "🗑 Delete"}
-          </button>
-          <button onClick={onClose} className="btn-ghost !py-3 !px-5">Close</button>
-          </div>
-        </div>
-      </div>
-    </div>
+          {galleryError && <p className="text-xs text-coral mt-2">{galleryError}</p>}
+        </Section>
+      )}
+    </Sheet>
   );
 }
 
@@ -1066,152 +964,118 @@ function NewFieldVisitModal({ accent, onClose, onCreate }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-start sm:items-center justify-center p-3 sm:p-6 overflow-y-auto" onClick={onClose}>
-      <div
-        className="bg-paper rounded-3xl w-full max-w-md shadow-2xl my-6 sm:my-0 border-t-4"
-        style={{ borderTopColor: accent }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="p-5 sm:p-6 flex items-center justify-between border-b border-ink/5">
-          <h3 className="font-display font-semibold text-lg text-ink">New field visit lead</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-ink/5 flex items-center justify-center hover:bg-ink/10">
-            <X size={16} className="text-ink/60" />
-          </button>
-        </div>
-
-        <div className="p-5 sm:p-6 space-y-4">
-          <p className="text-xs text-ink/50 leading-relaxed">
-            Snap a photo on-site, capture your live location (or just type the address), and this
-            creates a brand-new seller lead timestamped now. Fill in the rest of the details later
-            from the lead's edit panel.
-          </p>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Name (optional)</label>
-              <input className="field-input !py-2 text-sm" placeholder="Customer name" value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Phone (optional)</label>
-              <input className="field-input !py-2 text-sm" placeholder="Phone number" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <label className="btn-ghost !py-2.5 !px-4 text-sm cursor-pointer flex items-center gap-1.5 shrink-0">
-              <Camera size={14} strokeWidth={2.25} />
-              {photo ? "Retake photo" : "Take photo"}
-              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoChange} />
-            </label>
-            {photoPreview && <img src={photoPreview} alt="Preview" className="w-12 h-12 rounded-lg object-cover" />}
-          </div>
-
-          <div>
-            <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1.5">Location &amp; address</label>
-            <button
-              onClick={handleCaptureLocation}
-              disabled={locating}
-              className="btn-ghost w-full !py-2.5 text-sm flex items-center justify-center gap-1.5 mb-2"
-            >
-              <MapPin size={14} strokeWidth={2.25} />
-              {locating ? "Getting live location…" : coords ? "Re-capture live location" : "Capture live location"}
-            </button>
-            {coords && (
-              <p className="text-[11px] text-ink/40 mb-2">
-                📍 Captured: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
-              </p>
-            )}
-            <input
-              className="field-input !py-2.5 text-sm"
-              placeholder="Address (auto-filled after capture, or type manually)"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-            />
-          </div>
-
-          {error && <p className="text-xs text-buyer">{error}</p>}
-
-          <button onClick={handleCreate} disabled={!photo || creating} className="btn-primary w-full !py-3">
+    <Sheet
+      title="New field visit"
+      subtitle="Creates a new seller lead, timestamped now"
+      accent={accent}
+      onClose={onClose}
+      maxWidth="max-w-md"
+      footer={
+        <>
+          {error && <p className="text-xs text-coral mb-2">{error}</p>}
+          <button onClick={handleCreate} disabled={!photo || creating} className={`${btnDark} w-full !h-12`}>
             {creating ? (uploadPct > 0 && uploadPct < 100 ? `Uploading photo… ${uploadPct}%` : "Creating lead…") : "Create lead from this visit"}
           </button>
+        </>
+      }
+    >
+      <p className="text-sm text-ink/60 leading-relaxed mb-5">
+        Take a photo on site, capture your live location (or type the address), and fill in the rest later from the lead's details.
+      </p>
+
+      <div className="grid grid-cols-2 gap-3.5">
+        <TextInput label="Name (optional)" placeholder="Customer name" value={name} onChange={(e) => setName(e.target.value)} />
+        <TextInput label="Phone (optional)" type="tel" inputMode="tel" placeholder="Phone number" value={phone} onChange={(e) => setPhone(e.target.value)} />
+      </div>
+
+      <div className="mt-5 flex items-center gap-3">
+        <label className={`${btnOutline} cursor-pointer shrink-0`}>
+          <Camera size={15} strokeWidth={2.25} />
+          {photo ? "Retake photo" : "Take photo"}
+          <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoChange} />
+        </label>
+        {photoPreview && <img src={photoPreview} alt="Preview" className="w-14 h-14 rounded-xl object-cover" />}
+      </div>
+
+      <div className="mt-5">
+        <button onClick={handleCaptureLocation} disabled={locating} className={`${btnOutline} w-full`}>
+          <MapPin size={15} strokeWidth={2.25} />
+          {locating ? "Getting live location…" : coords ? "Re-capture live location" : "Capture live location"}
+        </button>
+        {coords && (
+          <p className="text-[11px] text-ink/50 mt-2">
+            Captured: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+          </p>
+        )}
+        <div className="mt-3">
+          <TextInput label="Address" placeholder="Auto-filled after capture, or type it" value={address} onChange={(e) => setAddress(e.target.value)} />
         </div>
       </div>
-    </div>
+    </Sheet>
   );
 }
 
-// ---------- Advanced filter panel ----------
+// ---------- Filters (opens as a sheet) ----------
 
-function AdvancedFilters({ areas, selectedAreas, onToggleArea, budgetMin, budgetMax, setBudgetMin, setBudgetMax, sqftMin, sqftMax, setSqftMin, setSqftMax, facets, selectedFacets, onToggleFacetValue, onClear }) {
+function FiltersSheet({ accent, resultCount, areas, selectedAreas, onToggleArea, budgetMin, budgetMax, setBudgetMin, setBudgetMax, sqftMin, sqftMax, setSqftMin, setSqftMax, facets, selectedFacets, onToggleFacetValue, onClear, onClose }) {
   const facetNames = Object.keys(facets);
   return (
-    <div className="card-ledger p-4 space-y-4">
+    <Sheet
+      title="Filters"
+      subtitle={`${resultCount} lead${resultCount === 1 ? "" : "s"} match`}
+      accent={accent}
+      onClose={onClose}
+      maxWidth="max-w-xl"
+      footer={
+        <div className="flex gap-2.5">
+          <button onClick={onClear} className={`${btnOutline} flex-1`}>Clear all</button>
+          <button onClick={onClose} className={`${btnDark} flex-1`}>Show {resultCount}</button>
+        </div>
+      }
+    >
       {areas.length > 0 && (
-        <div>
-          <p className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold mb-1.5">Area / locality</p>
-          <div className="flex flex-wrap gap-1.5">
+        <div className="mb-6">
+          <p className="font-display font-bold text-[15px] text-ink mb-2.5">Area</p>
+          <div className="flex flex-wrap gap-2">
             {areas.map((a) => (
-              <button
-                key={a}
-                onClick={() => onToggleArea(a)}
-                className={`px-3 py-1 rounded-full text-xs font-semibold border ${
-                  selectedAreas.includes(a) ? "bg-ink text-paper border-ink" : "bg-white/60 text-ink/60 border-ink/10"
-                }`}
-              >
-                {a}
-              </button>
+              <Chip key={a} active={selectedAreas.includes(a)} onClick={() => onToggleArea(a)}>{a}</Chip>
             ))}
           </div>
         </div>
       )}
-      <div className="grid sm:grid-cols-2 gap-4">
+
+      <div className="grid sm:grid-cols-2 gap-5 mb-6">
         <div>
-          <p className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold mb-1.5">Budget range (₹)</p>
+          <p className="font-display font-bold text-[15px] text-ink mb-2.5">Budget (₹)</p>
           <div className="flex items-center gap-2">
-            <input type="number" placeholder="Min" className="field-input !py-2 text-xs" value={budgetMin} onChange={(e) => setBudgetMin(e.target.value)} />
-            <span className="text-ink/30 text-xs">–</span>
-            <input type="number" placeholder="Max" className="field-input !py-2 text-xs" value={budgetMax} onChange={(e) => setBudgetMax(e.target.value)} />
+            <input type="number" inputMode="numeric" placeholder="Min" aria-label="Minimum budget" className={adminInputCls} value={budgetMin} onChange={(e) => setBudgetMin(e.target.value)} />
+            <span className="text-ink/30">–</span>
+            <input type="number" inputMode="numeric" placeholder="Max" aria-label="Maximum budget" className={adminInputCls} value={budgetMax} onChange={(e) => setBudgetMax(e.target.value)} />
           </div>
         </div>
         <div>
-          <p className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold mb-1.5">Size range (sqft)</p>
+          <p className="font-display font-bold text-[15px] text-ink mb-2.5">Size (sqft)</p>
           <div className="flex items-center gap-2">
-            <input type="number" placeholder="Min" className="field-input !py-2 text-xs" value={sqftMin} onChange={(e) => setSqftMin(e.target.value)} />
-            <span className="text-ink/30 text-xs">–</span>
-            <input type="number" placeholder="Max" className="field-input !py-2 text-xs" value={sqftMax} onChange={(e) => setSqftMax(e.target.value)} />
+            <input type="number" inputMode="numeric" placeholder="Min" aria-label="Minimum size" className={adminInputCls} value={sqftMin} onChange={(e) => setSqftMin(e.target.value)} />
+            <span className="text-ink/30">–</span>
+            <input type="number" inputMode="numeric" placeholder="Max" aria-label="Maximum size" className={adminInputCls} value={sqftMax} onChange={(e) => setSqftMax(e.target.value)} />
           </div>
         </div>
       </div>
 
-      {facetNames.length > 0 && (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-3 border-t border-ink/5">
-          {facetNames.map((name) => (
-            <div key={name}>
-              <p className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold mb-1.5">{name}</p>
-              <div className="space-y-1">
-                {Object.entries(facets[name]).map(([value, count]) => {
-                  const checked = (selectedFacets[name] || []).includes(value);
-                  return (
-                    <label key={value} className="flex items-center gap-2 text-xs text-ink/70 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => onToggleFacetValue(name, value)}
-                        className="accent-ink w-3.5 h-3.5"
-                      />
-                      <span className="flex-1 truncate">{value}</span>
-                      <span className="text-ink/35">({count})</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+      {facetNames.map((name) => (
+        <div key={name} className="mb-6 last:mb-0">
+          <p className="font-display font-bold text-[15px] text-ink mb-2.5">{name}</p>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(facets[name]).map(([value, count]) => (
+              <Chip key={value} active={(selectedFacets[name] || []).includes(value)} onClick={() => onToggleFacetValue(name, value)}>
+                {value} <span className="opacity-60">({count})</span>
+              </Chip>
+            ))}
+          </div>
         </div>
-      )}
-
-      <button onClick={onClear} className="text-xs font-semibold text-ink/40 hover:text-ink">Clear advanced filters</button>
-    </div>
+      ))}
+    </Sheet>
   );
 }
 
@@ -1323,11 +1187,14 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
     return map;
   }, [facetFields]);
 
-  function getFacetValue(lead, facetName) {
-    const known = facetKeyLookup[facetName];
-    if (known) return lead[known.key];
-    return parseCustomFields(lead)[facetName];
-  }
+  const getFacetValue = useCallback(
+    (lead, facetName) => {
+      const known = facetKeyLookup[facetName];
+      if (known) return lead[known.key];
+      return parseCustomFields(lead)[facetName];
+    },
+    [facetKeyLookup]
+  );
 
   const facetActiveCount = Object.values(selectedFacets).reduce((sum, arr) => sum + arr.length, 0);
 
@@ -1364,7 +1231,7 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
       });
       return matchesQuery && matchesStatus && matchesStatus2 && matchesArea && matchesBudget && matchesSqft && matchesFacets;
     });
-  }, [leads, query, activeStatus, activeStatus2, selectedAreas, budgetMin, budgetMax, sqftMin, sqftMax, selectedFacets]);
+  }, [leads, query, activeStatus, activeStatus2, selectedAreas, budgetMin, budgetMax, sqftMin, sqftMax, selectedFacets, statuses, statuses2, getFacetValue]);
 
   const counts = useMemo(() => {
     const c = { All: leads?.length || 0 };
@@ -1430,116 +1297,131 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
     load();
   }
 
-  if (error) return <p className="text-buyer text-sm">{error}</p>;
+  if (error) {
+    return (
+      <p className="alert-error">
+        {error}
+      </p>
+    );
+  }
+
+  function clearAll() {
+    setQuery("");
+    setActiveStatus("All");
+    setActiveStatus2("All");
+    clearAdvanced();
+  }
+
+  const nothingYet = leads !== null && leads.length === 0;
 
   return (
-    <div className="space-y-5">
-      <div className="card-ledger p-5 flex flex-wrap items-center gap-4 justify-between" style={{ background: `linear-gradient(135deg, ${accent}12, transparent)` }}>
-        <div className="flex items-center gap-3">
-          <span className="w-11 h-11 rounded-2xl flex items-center justify-center font-display font-bold text-lg text-white shadow-md" style={{ backgroundColor: accent }}>
+    <div style={{ "--accent": accent }}>
+      {/* Summary */}
+      <div className="rounded-2xl bg-surface border border-ink/10 p-4 flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="w-12 h-12 rounded-xl flex items-center justify-center font-display font-bold text-xl text-white shrink-0" style={{ backgroundColor: accent }}>
             {label[0]}
           </span>
-          <div>
-            <p className="field-label mb-0.5">Lead pipeline</p>
-            <h2 className="font-display font-semibold text-xl text-ink">{label} CRM</h2>
+          <div className="min-w-0">
+            <h2 className="font-display font-bold text-[1.25rem] leading-tight text-ink">{label} leads</h2>
+            <p className="text-xs text-ink/55 mt-0.5">
+              {counts.All} total{leads !== null && filtered.length !== counts.All ? ` · ${filtered.length} showing` : ""}
+            </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="text-right">
-            <p className="text-2xl font-display font-bold text-ink leading-none">{counts.All}</p>
-            <p className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold mt-0.5">Total leads</p>
-          </div>
+        <div className="flex gap-2 flex-wrap">
           {sheet === "Sellers" && (
-            <button onClick={() => setShowNewVisit(true)} className="btn-whatsapp !py-2.5 !px-4 text-xs whitespace-nowrap flex items-center gap-1.5">
-              <Camera size={13} strokeWidth={2.25} />
-              New field visit
+            <button onClick={() => setShowNewVisit(true)} className={btnGreen}>
+              <Camera size={14} strokeWidth={2.25} />
+              Field visit
             </button>
           )}
-          <button onClick={handleDownload} disabled={!leads || filtered.length === 0} className="btn-primary !py-2.5 !px-4 text-xs whitespace-nowrap">
-            Download report
+          <button onClick={handleDownload} disabled={!leads || filtered.length === 0} className={btnDark}>
+            <FileText size={14} />
+            Report
           </button>
         </div>
       </div>
 
-      <div className="flex gap-2 flex-wrap">
-        {["All", ...statuses].map((s) => {
-          const isActive = activeStatus === s;
-          const sStyle = s === "All" ? null : getStatusStyle(s, statuses);
-          return (
-            <button
-              key={s}
-              onClick={() => setActiveStatus(s)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition flex items-center gap-1.5 ${
-                isActive ? "bg-ink text-paper" : `${sStyle?.bg || "bg-white/60"} ${sStyle?.text || "text-ink/60"} border border-ink/10`
-              }`}
-            >
-              {sStyle && <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-paper" : sStyle.dot}`} />}
-              {s} <span className="opacity-60">({counts[s] ?? 0})</span>
-            </button>
-          );
-        })}
+      {/* Pipeline filter */}
+      <div className="mt-4 flex gap-2 overflow-x-auto no-scrollbar pb-1" role="group" aria-label="Filter by status">
+        {["All", ...statuses].map((s) => (
+          <Chip key={s} active={activeStatus === s} onClick={() => setActiveStatus(s)} dot={s === "All" ? null : getStatusStyle(s, statuses).dot}>
+            {s} <span className="opacity-60">({counts[s] ?? 0})</span>
+          </Chip>
+        ))}
       </div>
 
       {statuses2 && (
-        <div className="flex gap-2 flex-wrap">
-          <span className="text-[11px] uppercase tracking-wide text-ink/40 font-semibold self-center pr-1">
-            {status2Label || "Second pipeline"}:
-          </span>
-          {["All", ...statuses2].map((s) => {
-            const isActive = activeStatus2 === s;
-            const sStyle = s === "All" ? null : getStatusStyle(s, statuses2);
-            return (
-              <button
-                key={s}
-                onClick={() => setActiveStatus2(s)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition flex items-center gap-1.5 ${
-                  isActive ? "bg-ink text-paper" : `${sStyle?.bg || "bg-white/60"} ${sStyle?.text || "text-ink/60"} border border-ink/10`
-                }`}
-              >
-                {sStyle && <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-paper" : sStyle.dot}`} />}
-                {s} <span className="opacity-60">({counts2[s] ?? 0})</span>
-              </button>
-            );
-          })}
+        <div className="mt-2 flex gap-2 overflow-x-auto no-scrollbar pb-1 items-center" role="group" aria-label={status2Label || "Second pipeline"}>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-ink/50 shrink-0 pr-1">{status2Label || "Second pipeline"}</span>
+          {["All", ...statuses2].map((s) => (
+            <Chip key={s} active={activeStatus2 === s} onClick={() => setActiveStatus2(s)} dot={s === "All" ? null : getStatusStyle(s, statuses2).dot}>
+              {s} <span className="opacity-60">({counts2[s] ?? 0})</span>
+            </Chip>
+          ))}
         </div>
       )}
 
-      <div className="flex gap-2">
-        <input className="field-input flex-1" placeholder="Search by name, phone, or lead ID…" value={query} onChange={(e) => setQuery(e.target.value)} />
+      {/* Search + filters */}
+      <div className="mt-3 flex gap-2.5">
+        <div className="relative flex-1 min-w-0">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/35" />
+          <input
+            className={`${adminInputCls} !pl-10 !bg-surface`}
+            placeholder="Search name, phone, ID"
+            aria-label="Search leads"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
         <button
-          onClick={() => setShowAdvanced((v) => !v)}
-          className={`shrink-0 flex items-center gap-1.5 px-4 rounded-xl text-xs font-semibold border ${
-            showAdvanced || advancedActiveCount > 0 ? "bg-ink text-paper border-ink" : "bg-white/60 text-ink/60 border-ink/10"
+          onClick={() => setShowAdvanced(true)}
+          className={`shrink-0 h-[3rem] px-4 rounded-xl border text-[13px] font-semibold flex items-center gap-2 transition-colors ${
+            advancedActiveCount > 0 ? "bg-ink text-white border-ink" : "bg-surface text-ink/75 border-ink/10 hover:border-ink/30"
           }`}
         >
-          <SlidersHorizontal size={13} />
-          Advanced
-          {advancedActiveCount > 0 && <span className="opacity-70">({advancedActiveCount})</span>}
+          <SlidersHorizontal size={15} />
+          Filters
+          {advancedActiveCount > 0 && <span className="bg-white/20 rounded-full px-1.5 text-[11px]">{advancedActiveCount}</span>}
         </button>
       </div>
 
-      {showAdvanced && (
-        <AdvancedFilters
-          areas={areaOptions}
-          selectedAreas={selectedAreas}
-          onToggleArea={toggleArea}
-          budgetMin={budgetMin} budgetMax={budgetMax} setBudgetMin={setBudgetMin} setBudgetMax={setBudgetMax}
-          sqftMin={sqftMin} sqftMax={sqftMax} setSqftMin={setSqftMin} setSqftMax={setSqftMax}
-          facets={facets}
-          selectedFacets={selectedFacets}
-          onToggleFacetValue={toggleFacetValue}
-          onClear={clearAdvanced}
-        />
-      )}
+      {/* Results */}
+      <div className="mt-5">
+        {leads === null && (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="rounded-2xl bg-surface border border-ink/10 p-4 space-y-3">
+                <div className="h-5 w-2/3 rounded-md skeleton" />
+                <div className="h-4 w-1/3 rounded-md skeleton" />
+                <div className="h-10 w-full rounded-full skeleton" />
+                <div className="h-11 w-full rounded-full skeleton" />
+              </div>
+            ))}
+          </div>
+        )}
 
-      {leads === null && <p className="text-ink/50 text-sm">Loading…</p>}
-      {leads !== null && filtered.length === 0 && (
-        <p className="text-ink/50 text-sm">No {label.toLowerCase()} leads match here yet.</p>
-      )}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map((lead) => (
-          <LeadCard key={lead.id} lead={lead} accent={accent} onOpen={() => setOpenLeadId(lead.id)} statuses={statuses} statuses2={statuses2} status2Label={status2Label} />
-        ))}
+        {nothingYet && (
+          <div className="rounded-2xl bg-surface border border-dashed border-ink/20 p-8 text-center">
+            <p className="font-display font-bold text-lg text-ink">No {label.toLowerCase()} leads yet</p>
+            <p className="text-sm text-ink/55 mt-1">They appear here as soon as someone submits the {label.toLowerCase()} form.</p>
+          </div>
+        )}
+
+        {leads !== null && !nothingYet && filtered.length === 0 && (
+          <div className="rounded-2xl bg-surface border border-dashed border-ink/20 p-8 text-center">
+            <p className="font-display font-bold text-lg text-ink">No leads match</p>
+            <p className="text-sm text-ink/55 mt-1">Try a different search or clear the filters.</p>
+            <button onClick={clearAll} className={`${btnOutline} mx-auto mt-4`}>Clear filters</button>
+          </div>
+        )}
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
+          {filtered.map((lead) => (
+            <LeadCard key={lead.id} lead={lead} accent={accent} onOpen={() => setOpenLeadId(lead.id)} statuses={statuses} statuses2={statuses2} />
+          ))}
+        </div>
       </div>
 
       {openLead && (
@@ -1560,12 +1442,25 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
         />
       )}
 
-      {showNewVisit && (
-        <NewFieldVisitModal
+      {showAdvanced && (
+        <FiltersSheet
           accent={accent}
-          onClose={() => setShowNewVisit(false)}
-          onCreate={handleCreateFieldVisit}
+          resultCount={filtered.length}
+          areas={areaOptions}
+          selectedAreas={selectedAreas}
+          onToggleArea={toggleArea}
+          budgetMin={budgetMin} budgetMax={budgetMax} setBudgetMin={setBudgetMin} setBudgetMax={setBudgetMax}
+          sqftMin={sqftMin} sqftMax={sqftMax} setSqftMin={setSqftMin} setSqftMax={setSqftMax}
+          facets={facets}
+          selectedFacets={selectedFacets}
+          onToggleFacetValue={toggleFacetValue}
+          onClear={clearAdvanced}
+          onClose={() => setShowAdvanced(false)}
         />
+      )}
+
+      {showNewVisit && (
+        <NewFieldVisitModal accent={accent} onClose={() => setShowNewVisit(false)} onCreate={handleCreateFieldVisit} />
       )}
     </div>
   );

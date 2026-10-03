@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
+import { Pencil, Trash2 } from "lucide-react";
 import ImageUploader from "../ImageUploader";
+import { TextInput, SelectInput, Field } from "./ui";
+import { adminInputCls, btnDark, btnOutline } from "./styles";
 import {
   listPublicProperties,
   adminAddProperty,
@@ -16,6 +19,8 @@ const EMPTY = {
   contactPhone: "",
 };
 
+const TYPES = ["House", "Shop", "Land / Plot", "Apartment", "Other"];
+
 export default function PropertiesTab({ password }) {
   const [properties, setProperties] = useState(null);
   const [form, setForm] = useState(EMPTY);
@@ -23,6 +28,7 @@ export default function PropertiesTab({ password }) {
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [confirmId, setConfirmId] = useState(null);
 
   function load() {
     listPublicProperties().then(setProperties).catch((e) => setError(e.message));
@@ -73,61 +79,62 @@ export default function PropertiesTab({ password }) {
     }
   }
 
+  // Two taps instead of a browser pop-up: first tap arms it, second removes.
   async function handleDelete(id) {
-    if (!confirm("Remove this listing from the buyer page?")) return;
-    await adminDeleteProperty(password, id);
-    load();
+    if (confirmId !== id) {
+      setConfirmId(id);
+      setTimeout(() => setConfirmId((c) => (c === id ? null : c)), 4000);
+      return;
+    }
+    setConfirmId(null);
+    try {
+      await adminDeleteProperty(password, id);
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
   }
 
   return (
-    <div className="space-y-8">
-      <form onSubmit={handleSubmit} className="card-ledger p-5 sm:p-6 space-y-4">
-        <p className="font-display font-semibold text-lg text-ink">
-          {editingId ? "Edit listing" : "Add a listing for buyers"}
-        </p>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label className="field-label">Title</label>
-            <input className="field-input" value={form.title} onChange={(e) => update("title", e.target.value)} required />
+    <div className="grid lg:grid-cols-[minmax(0,26rem)_1fr] gap-6 items-start">
+      <form onSubmit={handleSubmit} className="rounded-2xl bg-surface border border-ink/10 p-5 lg:sticky lg:top-4">
+        <h2 className="font-display font-bold text-[1.2rem] text-ink">{editingId ? "Edit listing" : "Add a listing"}</h2>
+        <p className="text-xs text-ink/55 mt-1">Shown on the public gallery for buyers.</p>
+
+        <div className="mt-5 grid gap-3.5">
+          <TextInput label="Title" required value={form.title} onChange={(e) => update("title", e.target.value)} />
+          <div className="grid grid-cols-2 gap-3">
+            <SelectInput label="Type" options={TYPES} value={form.type} onChange={(e) => update("type", e.target.value)} />
+            <TextInput label="Price" required placeholder="e.g. ₹50,00,000" value={form.price} onChange={(e) => update("price", e.target.value)} />
           </div>
-          <div>
-            <label className="field-label">Type</label>
-            <select className="field-input" value={form.type} onChange={(e) => update("type", e.target.value)}>
-              <option>House</option>
-              <option>Shop</option>
-              <option>Land / Plot</option>
-              <option>Apartment</option>
-              <option>Other</option>
-            </select>
-          </div>
-          <div>
-            <label className="field-label">Location</label>
-            <input className="field-input" value={form.location} onChange={(e) => update("location", e.target.value)} required />
-          </div>
-          <div>
-            <label className="field-label">Price</label>
-            <input className="field-input" value={form.price} onChange={(e) => update("price", e.target.value)} required />
-          </div>
-          <div className="sm:col-span-2">
-            <label className="field-label">Contact number for this listing (optional — defaults to admin)</label>
-            <input className="field-input" value={form.contactPhone} onChange={(e) => update("contactPhone", e.target.value)} placeholder="e.g. 9198XXXXXXX" />
-          </div>
+          <TextInput label="Location" required value={form.location} onChange={(e) => update("location", e.target.value)} />
+          <TextInput
+            label="Contact number (optional)"
+            hint="Leave blank to use the admin number."
+            type="tel"
+            inputMode="tel"
+            placeholder="e.g. 9198XXXXXXX"
+            value={form.contactPhone}
+            onChange={(e) => update("contactPhone", e.target.value)}
+          />
+          <Field label="Description">
+            {(id) => (
+              <textarea id={id} className={`${adminInputCls} min-h-[96px]`} value={form.description} onChange={(e) => update("description", e.target.value)} />
+            )}
+          </Field>
+          <Field label="Photo">
+            <ImageUploader onUploaded={setImageUrl} />
+          </Field>
         </div>
-        <div>
-          <label className="field-label">Description</label>
-          <textarea className="field-input min-h-[90px]" value={form.description} onChange={(e) => update("description", e.target.value)} />
-        </div>
-        <div>
-          <label className="field-label">Photo</label>
-          <ImageUploader onUploaded={setImageUrl} />
-        </div>
-        {error && <p className="text-sm text-buyer">{error}</p>}
-        <div className="flex gap-3">
-          <button type="submit" disabled={saving} className="btn-primary flex-1">
+
+        {error && <p className="alert-error mt-4">{error}</p>}
+
+        <div className="mt-5 flex gap-2.5">
+          <button type="submit" disabled={saving} className={`${btnDark} flex-1 !h-12`}>
             {saving ? "Saving…" : editingId ? "Update listing" : "Publish listing"}
           </button>
           {editingId && (
-            <button type="button" onClick={resetForm} className="btn-ghost">
+            <button type="button" onClick={resetForm} className={`${btnOutline} !h-12`}>
               Cancel
             </button>
           )}
@@ -135,19 +142,45 @@ export default function PropertiesTab({ password }) {
       </form>
 
       <div>
-        <p className="field-label mb-3">Live listings</p>
-        {properties === null && <p className="text-ink/50 text-sm">Loading…</p>}
-        {properties?.length === 0 && <p className="text-ink/50 text-sm">Nothing published yet.</p>}
+        <h2 className="font-display font-bold text-[1.2rem] text-ink mb-3">
+          Live listings {properties?.length ? <span className="text-ink/45 text-base">({properties.length})</span> : null}
+        </h2>
+        {properties === null && !error && (
+          <div className="space-y-3">
+            {[0, 1].map((i) => <div key={i} className="h-20 rounded-2xl skeleton" />)}
+          </div>
+        )}
+        {properties?.length === 0 && (
+          <div className="rounded-2xl bg-surface border border-dashed border-ink/20 p-8 text-center">
+            <p className="font-display font-bold text-lg text-ink">Nothing published yet</p>
+            <p className="text-sm text-ink/55 mt-1">Add a listing here, or share a seller lead to the gallery from the Sellers tab.</p>
+          </div>
+        )}
         <div className="space-y-3">
           {properties?.map((p) => (
-            <div key={p.id} className="card-ledger p-4 flex items-center gap-4">
-              {p.imageUrl && <img src={p.imageUrl} alt="" className="w-14 h-14 rounded-lg object-cover border border-ink/10" />}
+            <div key={p.id} className="rounded-2xl bg-surface border border-ink/10 p-3.5 flex items-center gap-3.5">
+              {p.imageUrl ? (
+                <img src={p.imageUrl} alt="" className="w-16 h-16 rounded-xl object-cover border border-ink/10 shrink-0" />
+              ) : (
+                <div className="w-16 h-16 rounded-xl bg-ink/5 shrink-0" />
+              )}
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-ink text-sm truncate">{p.title}</p>
-                <p className="text-xs text-ink/50">{p.location} · {p.price}</p>
+                <p className="font-display font-bold text-[15px] text-ink truncate">{p.title}</p>
+                <p className="text-xs text-ink/55 truncate">{[p.location, p.price].filter(Boolean).join(" · ")}</p>
               </div>
-              <button onClick={() => startEdit(p)} className="btn-ghost !py-1.5 !px-3 text-xs">Edit</button>
-              <button onClick={() => handleDelete(p.id)} className="text-xs text-buyer font-semibold px-2">Remove</button>
+              <button onClick={() => startEdit(p)} aria-label={`Edit ${p.title}`} className="w-11 h-11 rounded-full border border-ink/15 hover:bg-ink/5 flex items-center justify-center shrink-0">
+                <Pencil size={15} />
+              </button>
+              <button
+                onClick={() => handleDelete(p.id)}
+                aria-label={`Remove ${p.title}`}
+                className={`h-11 rounded-full flex items-center justify-center gap-1.5 shrink-0 text-[12px] font-bold transition-colors ${
+                  confirmId === p.id ? "bg-coral text-white px-4" : "w-11 border border-coral/40 text-coral hover:bg-coral/10"
+                }`}
+              >
+                <Trash2 size={15} />
+                {confirmId === p.id && "Confirm"}
+              </button>
             </div>
           ))}
         </div>

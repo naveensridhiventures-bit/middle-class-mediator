@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Camera, MapPin, CheckCircle2 } from "lucide-react";
+import { Camera, MapPin, Check } from "lucide-react";
 import { addSellerLead, adminAddVisit, adminUpdateLead } from "../lib/api";
 import { uploadImage } from "../lib/cloudinary";
+import { COLORS } from "../lib/theme";
+import BrandHeader from "../components/wizard/BrandHeader";
+import { TextInput } from "../components/admin/ui";
+import { btnDark, btnOutline } from "../components/admin/styles";
 
 function getCurrentLocation() {
   return new Promise((resolve, reject) => {
@@ -138,96 +142,80 @@ export default function AdminFieldVisit() {
   }
 
   return (
-    <div className="min-h-screen bg-paper">
-      <div className="max-w-md mx-auto px-5 py-10">
-        <p className="field-label mb-0.5">Admin · hidden field tool</p>
-        <h1 className="font-display font-semibold text-2xl text-ink mb-1">Log a field visit</h1>
-        <p className="text-sm text-ink/50 mb-6">
-          Fill this in on-site. It creates a new seller lead immediately, with the photo, location,
-          and address attached — you can fill in the rest of the details later from the Seller CRM.
-        </p>
+    <div className="min-h-screen bg-canvas sm:py-8">
+      <div
+        className="mx-auto max-w-md min-h-[100dvh] sm:min-h-0 bg-surface sm:rounded-[2rem] sm:ring-8 sm:ring-[#EDE7DF] sm:shadow-[0_28px_60px_-24px_rgba(27,42,74,0.35)]"
+        style={{ "--accent": COLORS.teal }}
+      >
+        <BrandHeader color={COLORS.teal} className="sm:rounded-t-[2rem]" />
 
-        <div className="card-ledger p-5 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Property owner name</label>
-              <input className="field-input !py-2.5 text-sm" placeholder="Owner's name" value={form.ownerName} onChange={(e) => set("ownerName", e.target.value)} />
-            </div>
-            <div>
-              <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Phone (optional)</label>
-              <input className="field-input !py-2.5 text-sm" placeholder="Phone number" value={form.phone} onChange={(e) => set("phone", e.target.value)} />
-            </div>
+        <div className="px-5 pt-6 pb-8">
+          <p className="text-[12px] font-bold uppercase tracking-[0.14em]" style={{ color: COLORS.teal }}>Field visit</p>
+          <h1 className="mt-2 font-display font-bold text-[1.6rem] leading-tight text-ink">Log a field visit</h1>
+          <p className="mt-2 text-sm text-ink/60 leading-relaxed">
+            Fill this in on site. It creates a new seller lead right away, with the photo and location attached. Add the rest of the details later from the Sellers tab.
+          </p>
+
+          <div className="mt-6 grid gap-4">
+            <TextInput label="Property owner name" placeholder="Owner's name" value={form.ownerName} onChange={(e) => set("ownerName", e.target.value)} />
+            <TextInput label="Phone (optional)" type="tel" inputMode="tel" placeholder="Phone number" value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+            <TextInput label="Area / locality" placeholder="e.g. Ambattur" value={form.area} onChange={(e) => set("area", e.target.value)} />
           </div>
 
-          <div>
-            <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1">Area / locality</label>
-            <input className="field-input !py-2.5 text-sm" placeholder="e.g. Ambattur" value={form.area} onChange={(e) => set("area", e.target.value)} />
-          </div>
-
-          <div className="flex items-center gap-3">
-            <label className="btn-ghost !py-2.5 !px-4 text-sm cursor-pointer flex items-center gap-1.5 shrink-0">
-              <Camera size={14} strokeWidth={2.25} />
+          <div className="mt-6 flex items-center gap-3">
+            <label className={`${btnOutline} cursor-pointer shrink-0`}>
+              <Camera size={15} strokeWidth={2.25} />
               {photo ? "Retake photo" : "Take photo"}
               <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoChange} />
             </label>
-            {photoPreview && <img src={photoPreview} alt="Preview" className="w-12 h-12 rounded-lg object-cover" />}
+            {photoPreview && <img src={photoPreview} alt="Preview" className="w-14 h-14 rounded-xl object-cover" />}
           </div>
 
-          <div>
-            <label className="text-[10px] uppercase tracking-wide text-ink/40 font-semibold block mb-1.5">Location &amp; address</label>
-            <button
-              onClick={handleCaptureLocation}
-              disabled={locating}
-              className="btn-ghost w-full !py-2.5 text-sm flex items-center justify-center gap-1.5 mb-2"
-            >
-              <MapPin size={14} strokeWidth={2.25} />
+          <div className="mt-6">
+            <button onClick={handleCaptureLocation} disabled={locating} className={`${btnOutline} w-full`}>
+              <MapPin size={15} strokeWidth={2.25} />
               {locating ? "Getting live location…" : coords ? "Re-capture live location" : "Capture live location"}
             </button>
             {coords && (
-              <p className="text-[11px] text-ink/40 mb-2">
-                📍 Captured: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+              <p className="text-[11px] text-ink/50 mt-2">
+                Captured: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
               </p>
             )}
-            <input
-              className="field-input !py-2.5 text-sm"
-              placeholder="Address (auto-filled after capture, or type manually)"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-            />
+            <div className="mt-3">
+              <TextInput label="Address" placeholder="Auto-filled after capture, or type it" value={address} onChange={(e) => setAddress(e.target.value)} />
+            </div>
           </div>
 
-          {error && <p className="text-xs text-buyer">{error}</p>}
+          {error && <p className="alert-error mt-5">{error}</p>}
 
-          <button onClick={handleSubmit} disabled={!photo || creating} className="btn-primary w-full !py-3">
+          <button onClick={handleSubmit} disabled={!photo || creating} className={`${btnDark} w-full !h-14 mt-6`}>
             {creating ? (uploadPct > 0 && uploadPct < 100 ? `Uploading photo… ${uploadPct}%` : "Saving…") : "Save this visit"}
           </button>
-        </div>
 
-        <Link to="/control/dashboard" className="block text-center text-xs text-ink/40 hover:text-ink mt-6">
-          ← Back to Command Center
-        </Link>
+          <Link to="/control/dashboard" className="block text-center text-xs text-ink/55 hover:text-ink mt-6">
+            ← Back to command center
+          </Link>
+        </div>
       </div>
 
       {/* Success popup */}
       {success && (
-        <div className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-center justify-center p-5" onClick={() => setSuccess(null)}>
-          <div className="bg-paper rounded-3xl max-w-sm w-full p-7 text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <CheckCircle2 size={40} className="text-seller mx-auto mb-3" strokeWidth={1.5} />
-            <h2 className="font-display font-semibold text-xl text-ink mb-1">Visit logged</h2>
-            <p className="text-sm text-ink/60 mb-1">
-              <strong>{success.name}</strong> was added to the Seller CRM.
+        <div className="fixed inset-0 z-50 bg-ink/60 flex items-center justify-center p-5" onClick={() => setSuccess(null)}>
+          <div role="dialog" aria-modal="true" aria-label="Visit logged" className="bg-surface rounded-[1.75rem] max-w-sm w-full p-7 text-center shadow-2xl animate-step" onClick={(e) => e.stopPropagation()}>
+            <span className="w-16 h-16 rounded-full flex items-center justify-center mx-auto" style={{ backgroundColor: COLORS.sage }}>
+              <Check size={30} className="text-white" strokeWidth={3} />
+            </span>
+            <h2 className="font-display font-bold text-[1.3rem] text-ink mt-4">Visit logged</h2>
+            <p className="text-sm text-ink/65 mt-1.5">
+              <strong>{success.name}</strong> was added to the Sellers tab.
             </p>
-            <p className="text-xs text-ink/40 mb-6">
+            <p className="text-xs text-ink/50 mt-1 mb-6">
               {success.at.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" })} ·{" "}
               {success.at.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
             </p>
-            <div className="flex gap-2">
-              <button onClick={() => setSuccess(null)} className="btn-ghost flex-1 !py-2.5 text-sm">
-                Log another
-              </button>
-              <Link to="/control/dashboard" className="btn-primary flex-1 !py-2.5 text-sm text-center">
-                Go to Seller CRM
-              </Link>
+            <div className="flex gap-2.5">
+              <button onClick={() => setSuccess(null)} className={`${btnOutline} flex-1`}>Log another</button>
+              <Link to="/control/dashboard" className={`${btnDark} flex-1`}>Open Sellers</Link>
             </div>
           </div>
         </div>

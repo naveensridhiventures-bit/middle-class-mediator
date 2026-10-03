@@ -1,3 +1,30 @@
+# v4 — Admin redesign (2026-10-03)
+
+Cumulative: includes the public redesign (v3) and the gallery touch fix, so
+this zip can be applied on its own.
+
+## Admin (command center) now matches the public screens
+- **Command center**: brand bar with shortcuts (Field visit, Gallery, Log out),
+  tabs for Sellers / Buyers / Mediators / Published listings, and a plain
+  "Your name" box for the name shown on remarks.
+- **Lead list**: clear cards with status pill, phone, stars, follow-up date,
+  latest remark, and big WhatsApp / Call / Open details buttons. Leads with
+  no phone get greyed-out buttons instead of a dead link.
+- **Status chips** scroll sideways with counts; search sits right below.
+- **Filters** open in their own panel (area, budget, size, and every facet as
+  tap-able chips with counts) with "Clear all" and "Show N".
+- **Lead details** open as a bottom sheet on phones. Instead of one very long
+  form, sections fold open and closed: Contact & pipeline, Remarks, Photos,
+  Submitted details, Area & size, Exact location, Custom fields, Buyer gallery.
+  Save, Admin PDF, Customer PDF and Delete stay pinned at the bottom.
+  Photo remove buttons are always visible (they used to need a mouse hover).
+- **New field visit**, **Published listings** and the **Field visit page**
+  restyled the same way. Listing removal is two taps instead of a browser pop-up.
+- Every action (save, remarks, photos, gallery share/update, copy link, PDFs,
+  delete, filters, custom fields) works exactly as before.
+- Fixed: the lead filters didn't list all their dependencies (could show a
+  stale list in rare cases). Lint is now fully clean (0 warnings).
+
 # v3 — Full UI redesign + gallery touch fix (2026-10-03)
 
 Cumulative: includes the earlier gallery image-glitch fix, so this zip can be
