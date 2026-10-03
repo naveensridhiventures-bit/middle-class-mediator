@@ -1,17 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  Handshake, MapPin, Ruler, Quote,
-  Search, SlidersHorizontal, ArrowUpDown, X, AlertTriangle,
-} from "lucide-react";
+import { MapPin, Ruler, Quote, Search, ArrowUpDown, AlertTriangle, ChevronRight } from "lucide-react";
 import { listPublicProperties } from "../lib/api";
 import { whatsappLink } from "../lib/whatsapp";
 import { ADMIN_WHATSAPP_NUMBER } from "../lib/config";
 import { optimizedImageUrl } from "../lib/cloudinary";
+import { COLORS } from "../lib/theme";
 import Carousel from "../components/Carousel";
 import SoldOutStamp from "../components/SoldOutStamp";
 import ImageLightbox from "../components/ImageLightbox";
-import Reveal from "../components/Reveal";
+import BrandHeader from "../components/wizard/BrandHeader";
 
 function parseAttributes(p) {
   if (!p.attributes) return {};
@@ -53,7 +51,7 @@ function priceValue(price) {
 
 // ---------- Property card ----------
 
-function PropertyCard({ p, index }) {
+function PropertyCard({ p }) {
   const images = parseImages(p);
   const attributes = parseAttributes(p);
   const attrEntries = Object.entries(attributes).filter(([, v]) => v);
@@ -61,114 +59,117 @@ function PropertyCard({ p, index }) {
   const [lightboxIndex, setLightboxIndex] = useState(null);
 
   return (
-    <Reveal delay={(index % 3) * 90} distance={36}>
-      <div className={`group rounded-3xl overflow-hidden bg-white shadow-md hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-500 ${soldOut ? "opacity-90" : ""}`}>
+    <article className="bg-surface rounded-2xl border border-ink/10 overflow-hidden flex flex-col transition-shadow hover:shadow-lg">
       <div className="aspect-[4/3] relative">
         <div className={soldOut ? "grayscale opacity-70 w-full h-full" : "w-full h-full"}>
           <Carousel images={images} alt={p.title} showCounter onImageClick={images.length ? setLightboxIndex : undefined} />
         </div>
         {p.price && !soldOut && (
-          <span className="absolute top-3 left-3 z-10 bg-white/95 text-ink font-display font-bold text-sm px-3 py-1 rounded-full shadow">
+          <span className="absolute top-3 left-3 z-10 bg-ink text-white font-display font-bold text-sm px-3 py-1.5 rounded-full shadow">
             {p.price}
           </span>
         )}
         {soldOut && <SoldOutStamp size="lg" />}
       </div>
-      <div className="p-5 space-y-2">
-        {p.type && (
-          <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-seller/10 text-seller">
-            {p.type}
-          </span>
-        )}
-        <div>
-          <Link to={`/gallery/${p.id}`} className="group/title inline-block">
-            <h3 className="font-display font-bold text-xl text-ink leading-snug group-hover/title:text-seller transition-colors">
-              {p.title}
-            </h3>
-            <span className="block h-0.5 w-10 rounded-full bg-gold mt-1 group-hover/title:w-16 transition-all" />
+
+      <div className="p-4 flex-1 flex flex-col gap-3">
+        <div className="space-y-2">
+          {p.type && (
+            <span
+              className="inline-block text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full"
+              style={{ color: COLORS.teal, backgroundColor: `color-mix(in srgb, ${COLORS.teal} 10%, white)` }}
+            >
+              {p.type}
+            </span>
+          )}
+          <Link to={`/gallery/${p.id}`} className="block">
+            <h3 className="font-display font-bold text-lg text-ink leading-snug hover:underline underline-offset-4">{p.title}</h3>
           </Link>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {p.location && (
+              <p className="text-xs text-ink/55 flex items-center gap-1">
+                <MapPin size={12} className="shrink-0" />
+                {p.location}
+              </p>
+            )}
+            {p.sqft && (
+              <p className="text-xs text-ink/55 flex items-center gap-1">
+                <Ruler size={12} className="shrink-0" />
+                {Number(p.sqft).toLocaleString()} sqft
+              </p>
+            )}
+            {soldOut && p.price && <p className="text-xs text-ink/40 line-through">{p.price}</p>}
+          </div>
+          {p.description && <p className="text-[13px] text-ink/60 leading-relaxed">{p.description}</p>}
         </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          {p.location && (
-            <p className="text-xs text-ink/50 flex items-center gap-1">
-              <MapPin size={12} className="shrink-0" />
-              {p.location}
-            </p>
-          )}
-          {p.sqft && (
-            <p className="text-xs text-ink/50 flex items-center gap-1">
-              <Ruler size={12} className="shrink-0" />
-              {Number(p.sqft).toLocaleString()} sqft
-            </p>
-          )}
-          {soldOut && p.price && <p className="text-xs text-ink/40 line-through">{p.price}</p>}
-        </div>
-        {p.description && <p className="text-xs text-ink/50">{p.description}</p>}
 
         {attrEntries.length > 0 && (
-          <div className="grid grid-cols-2 gap-1.5 pt-1">
+          <div className="grid grid-cols-2 gap-2">
             {attrEntries.map(([k, v]) => (
-              <div key={k} className="bg-ink/[0.035] rounded-lg px-2.5 py-1.5">
-                <p className="text-[9px] uppercase tracking-wide text-ink/35 font-bold leading-none mb-0.5">{k}</p>
-                <p className="text-xs text-ink/70 font-medium truncate">{v}</p>
+              <div key={k} className="bg-[#F7F5F1] rounded-lg px-3 py-2">
+                <p className="text-[10px] uppercase tracking-wider text-ink/50 font-bold leading-none mb-1">{k}</p>
+                <p className="text-[13px] text-ink/80 font-medium truncate">{v}</p>
               </div>
             ))}
           </div>
         )}
 
         {p.sellerNote && (
-          <div className="relative bg-gradient-to-br from-gold/10 to-seller/5 border-l-4 border-gold rounded-r-xl pl-4 pr-4 py-3 my-1">
-            <Quote size={16} className="text-gold/50 absolute top-2.5 right-3" />
-            <p className="text-[10px] uppercase tracking-wide text-gold-dark font-bold mb-1">Seller's remark</p>
+          <div className="relative bg-[#F8F2E4] border-l-4 border-gold rounded-r-xl pl-4 pr-4 py-3">
+            <Quote size={16} className="text-gold/60 absolute top-2.5 right-3" />
+            <p className="text-[10px] uppercase tracking-wider text-gold-dark font-bold mb-1">Seller's remark</p>
             <p className="text-sm text-ink/75 italic leading-relaxed pr-5 whitespace-pre-line">{p.sellerNote}</p>
           </div>
         )}
 
-        <div className="pt-1">
+        <div className="mt-auto pt-1 flex gap-2.5">
           {soldOut ? (
-            <span className="w-full !py-2.5 text-sm text-center rounded-xl bg-ink/10 text-ink/40 font-semibold flex items-center justify-center">
+            <span className="flex-1 h-12 rounded-full bg-ink/10 text-ink/45 text-[12px] font-bold uppercase tracking-[0.12em] flex items-center justify-center">
               No longer available
             </span>
           ) : (
-            <a
-              href={whatsappLink(
-                ADMIN_WHATSAPP_NUMBER,
-                `Hi, I'm interested in this property: ${p.title}${p.location ? ` (${p.location})` : ""} — ${p.price || ""}${p.refId ? `\n\nProperty ref: ${p.refId}` : ""}\n\nCan you share more details?`
-              )}
-              target="_blank"
-              rel="noreferrer"
-              className="btn-whatsapp w-full !py-2.5 text-sm text-center block group-hover:scale-[1.02] transition-transform"
-            >
-              Show interest on WhatsApp
-            </a>
+            <>
+              <Link
+                to={`/gallery/${p.id}`}
+                className="h-12 px-5 rounded-full border border-ink/20 text-ink text-[12px] font-bold uppercase tracking-[0.12em] flex items-center justify-center gap-1 hover:bg-ink/5 transition-colors"
+              >
+                Details
+                <ChevronRight size={14} />
+              </Link>
+              <a
+                href={whatsappLink(
+                  ADMIN_WHATSAPP_NUMBER,
+                  `Hi, I'm interested in this property: ${p.title}${p.location ? ` (${p.location})` : ""} — ${p.price || ""}${p.refId ? `\n\nProperty ref: ${p.refId}` : ""}\n\nCan you share more details?`
+                )}
+                target="_blank"
+                rel="noreferrer"
+                className="flex-1 h-12 rounded-full bg-whatsapp text-white text-[12px] font-bold uppercase tracking-[0.12em] flex items-center justify-center text-center px-3"
+              >
+                I'm interested
+              </a>
+            </>
           )}
         </div>
       </div>
 
       {lightboxIndex !== null && (
-        <ImageLightbox
-          images={images}
-          initialIndex={lightboxIndex}
-          alt={p.title}
-          onClose={() => setLightboxIndex(null)}
-        />
+        <ImageLightbox images={images} initialIndex={lightboxIndex} alt={p.title} onClose={() => setLightboxIndex(null)} />
       )}
-      </div>
-    </Reveal>
+    </article>
   );
 }
 
 // ---------- Loading skeleton ----------
 
-function SkeletonCard({ delay = 0 }) {
+function SkeletonCard() {
   return (
-    <div className="rounded-3xl overflow-hidden bg-white shadow-md" style={{ animationDelay: `${delay}ms` }}>
+    <div className="rounded-2xl overflow-hidden bg-surface border border-ink/10">
       <div className="aspect-[4/3] skeleton" />
-      <div className="p-5 space-y-3">
+      <div className="p-4 space-y-3">
         <div className="h-4 w-20 rounded-full skeleton" />
         <div className="h-5 w-3/4 rounded-md skeleton" />
         <div className="h-3 w-1/2 rounded-md skeleton" />
-        <div className="h-10 w-full rounded-xl skeleton mt-2" />
+        <div className="h-12 w-full rounded-full skeleton mt-2" />
       </div>
     </div>
   );
@@ -178,8 +179,8 @@ function SkeletonCard({ delay = 0 }) {
 
 const SORT_OPTIONS = [
   { key: "newest", label: "Newest first" },
-  { key: "price-low", label: "Price: Low to High" },
-  { key: "price-high", label: "Price: High to Low" },
+  { key: "price-low", label: "Price: low to high" },
+  { key: "price-high", label: "Price: high to low" },
 ];
 
 const CACHE_KEY = "mcm_gallery_cache_v1";
@@ -197,7 +198,6 @@ export default function Gallery() {
   const [query, setQuery] = useState("");
   const [activeType, setActiveType] = useState("All");
   const [sort, setSort] = useState("newest");
-  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     listPublicProperties()
@@ -245,105 +245,77 @@ export default function Gallery() {
   }, [properties, query, activeType, sort]);
 
   return (
-    <div className="min-h-screen bg-paper">
-      {/* Header */}
-      <div className="bg-ink text-paper relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "radial-gradient(circle at 20% 30%, white 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
-        <div className="max-w-6xl mx-auto px-5 py-10 sm:py-14 text-center relative">
-          <Reveal direction="down" distance={16}>
-            <Link to="/" className="relative w-14 h-14 mx-auto mb-4 block" aria-label="Middle Class Mediator home">
-              <div className="w-14 h-14 rounded-full border-2 border-gold flex items-center justify-center hover:bg-white/5 transition">
-                <span className="font-display font-bold text-gold text-sm tracking-wide">MCM</span>
-              </div>
-              <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-gold flex items-center justify-center">
-                <Handshake size={11} className="text-ink" strokeWidth={2.5} />
-              </div>
-            </Link>
-            <h1 className="font-display font-bold text-gold text-3xl sm:text-4xl tracking-tight">Property Gallery</h1>
-            <p className="text-paper/70 text-sm mt-2 max-w-md mx-auto">
-              Curated listings from our sellers. Like something? Show interest on WhatsApp and our
-              team will reach out with the full details.
-            </p>
-          </Reveal>
-        </div>
-      </div>
-
-      {/* Highlighted CTA — funnel gallery visitors into registering */}
-      <div className="bg-gold">
-        <Reveal className="max-w-6xl mx-auto px-5 py-4 flex flex-wrap items-center justify-center sm:justify-between gap-3 text-center sm:text-left" direction="up" distance={14}>
-          <p className="font-display font-bold text-ink text-sm sm:text-base">
-            Have a property to sell, or looking to buy? Get listed with Middle Class Mediator.
-          </p>
-          <a
-            href="https://middle-class-mediator-murex.vercel.app/"
-            className="shrink-0 bg-ink text-gold font-bold text-sm px-5 py-2.5 rounded-full hover:bg-ink-dark hover:scale-105 transition shadow-md"
+    <div className="min-h-screen bg-canvas">
+      <BrandHeader
+        color={COLORS.teal}
+        wide
+        right={
+          <Link
+            to="/"
+            className="rounded-full bg-coral text-white text-[11px] font-bold uppercase tracking-[0.12em] px-4 py-2.5 hover:brightness-110 transition"
           >
-            Register now →
-          </a>
-        </Reveal>
+            Register
+          </Link>
+        }
+      />
+
+      <div className="max-w-6xl mx-auto px-5 pt-7">
+        <h1 className="font-display font-bold text-[1.8rem] sm:text-4xl leading-tight text-ink">Property gallery</h1>
+        <p className="text-sm text-ink/60 mt-2 max-w-xl leading-relaxed">
+          Listings shared by our sellers. Tap "I'm interested" and our team will send you the full details on WhatsApp.
+        </p>
       </div>
 
-      {/* Sticky filter bar */}
-      <div className="sticky top-0 z-20 bg-paper/95 backdrop-blur-sm border-b border-ink/5 shadow-sm">
-        <div className="max-w-6xl mx-auto px-5 py-3 flex flex-wrap items-center gap-2.5">
-          <div className="relative flex-1 min-w-[180px]">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink/30" />
+      {/* Sticky search + filters */}
+      <div className="sticky top-0 z-20 bg-canvas border-b border-ink/5 mt-5">
+        <div className="max-w-6xl mx-auto px-5 pt-3 flex items-center gap-2.5">
+          <div className="relative flex-1 min-w-0">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/35" />
             <input
-              className="field-input !pl-9 !py-2.5 text-sm w-full"
-              placeholder="Search by title, area, or type…"
+              className="w-full rounded-xl border border-ink/10 bg-surface pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink/40 outline-none focus:border-teal focus:shadow-[0_0_0_3px_rgba(31,111,92,0.15)] transition"
+              placeholder="Search listings"
+              aria-label="Search listings"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-
-          <div className="relative">
+          <div className="relative shrink-0">
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value)}
-              className="field-input !py-2.5 !pl-8 text-sm appearance-none cursor-pointer"
+              aria-label="Sort listings"
+              className="rounded-xl border border-ink/10 bg-surface pl-9 pr-3 py-3 text-sm text-ink appearance-none cursor-pointer outline-none focus:border-teal max-w-[11.5rem]"
             >
               {SORT_OPTIONS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
             </select>
-            <ArrowUpDown size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink/30 pointer-events-none" />
+            <ArrowUpDown size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink/40 pointer-events-none" />
           </div>
-
-          {types.length > 0 && (
-            <button
-              onClick={() => setShowFilters((v) => !v)}
-              className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold border transition ${
-                showFilters || activeType !== "All" ? "bg-ink text-paper border-ink" : "bg-white/60 text-ink/60 border-ink/10"
-              }`}
-            >
-              <SlidersHorizontal size={14} />
-              Type {activeType !== "All" && <span className="opacity-70">· {activeType}</span>}
-            </button>
-          )}
         </div>
 
-        {showFilters && types.length > 0 && (
-          <div className="max-w-6xl mx-auto px-5 pb-3 flex flex-wrap gap-1.5">
-            {["All", ...types].map((t) => (
-              <button
-                key={t}
-                onClick={() => setActiveType(t)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
-                  activeType === t ? "bg-ink text-paper border-ink" : "bg-white/60 text-ink/60 border-ink/10 hover:border-ink/30"
-                }`}
-              >
-                {t}
-              </button>
-            ))}
-            {activeType !== "All" && (
-              <button onClick={() => setActiveType("All")} className="px-3 py-1.5 rounded-full text-xs font-semibold text-buyer flex items-center gap-1">
-                <X size={12} /> Clear
-              </button>
-            )}
+        {types.length > 0 && (
+          <div className="max-w-6xl mx-auto px-5 py-3 flex gap-2 overflow-x-auto no-scrollbar" role="group" aria-label="Filter by property type">
+            {["All", ...types].map((t) => {
+              const on = activeType === t;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setActiveType(t)}
+                  aria-pressed={on}
+                  className={`shrink-0 h-9 px-4 rounded-full text-[13px] font-semibold border transition-colors ${
+                    on ? "bg-ink text-white border-ink" : "bg-surface text-ink/70 border-ink/15 hover:border-ink/40"
+                  }`}
+                >
+                  {t}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
 
       {/* Grid */}
-      <div className="max-w-6xl mx-auto px-5 py-10">
+      <div className="max-w-6xl mx-auto px-5 py-6">
         {error && (
           <p className="alert-error max-w-md mx-auto mb-6">
             <AlertTriangle size={15} className="shrink-0 mt-0.5" />
@@ -351,26 +323,49 @@ export default function Gallery() {
           </p>
         )}
         {properties !== null && properties.length === 0 && !error && (
-          <p className="text-ink/50 text-sm text-center py-10">No listings published yet — check back soon.</p>
+          <p className="text-ink/55 text-sm text-center py-10">No listings published yet. Check back soon.</p>
         )}
         {properties !== null && properties.length > 0 && (
-          <p className="text-xs text-ink/40 font-semibold mb-4">
+          <p className="text-xs text-ink/50 font-semibold mb-4">
             {filtered.length} listing{filtered.length === 1 ? "" : "s"}
           </p>
         )}
         {properties !== null && properties.length > 0 && filtered.length === 0 && (
-          <p className="text-ink/50 text-sm text-center py-10">No listings match your search — try clearing a filter.</p>
+          <div className="text-center py-10">
+            <p className="text-ink/60 text-sm">No listings match your search.</p>
+            <button
+              type="button"
+              onClick={() => { setQuery(""); setActiveType("All"); }}
+              className="mt-3 h-11 px-6 rounded-full border border-ink/20 text-ink text-[12px] font-bold uppercase tracking-[0.12em] hover:bg-ink/5 transition-colors"
+            >
+              Clear filters
+            </button>
+          </div>
         )}
 
         {properties === null && !error ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} delay={i * 60} />)}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((p, i) => <PropertyCard key={p.id} p={p} index={i} />)}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filtered.map((p) => <PropertyCard key={p.id} p={p} />)}
           </div>
         )}
+
+        {/* Register prompt — sits at the end of the list, where interest is highest */}
+        <div className="mt-10 rounded-2xl bg-ink text-white p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <p className="font-display font-bold text-lg">Have a property to sell, or looking to buy?</p>
+            <p className="text-sm text-white/65 mt-1">Get listed with Middle Class Mediator. It takes a minute.</p>
+          </div>
+          <Link
+            to="/"
+            className="shrink-0 h-12 px-7 rounded-full bg-coral text-white text-[12px] font-bold uppercase tracking-[0.12em] flex items-center justify-center hover:brightness-110 transition"
+          >
+            Register now
+          </Link>
+        </div>
       </div>
     </div>
   );

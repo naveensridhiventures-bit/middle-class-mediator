@@ -1,24 +1,12 @@
-import { useState } from "react";
-import {
-  User, MessageCircle, Home as HomeIcon, Building2, Building, LandPlot,
-  Hotel, UtensilsCrossed, Scissors, Store, Briefcase, MapPin, Sparkles,
-  RefreshCw, HardHat, Tag, ShieldCheck, Zap, CalendarClock, Search,
-  Image as ImageIcon, Clock, TrendingUp, CalendarRange, Layers, Ruler,
-  ArrowUp, ArrowDown, ArrowLeft, ArrowRight, FileText, AlertTriangle,
-  CheckCircle2, Car, Bike, XCircle, Key, DoorOpen, CreditCard, Ban,
-} from "lucide-react";
-import Seal from "../components/Seal";
-import RadioGroup from "../components/RadioGroup";
-import BackHome from "../components/BackHome";
-import Reveal from "../components/Reveal";
+import Wizard from "../components/wizard/Wizard";
+import ChoiceGroup from "../components/wizard/ChoiceGroup";
+import TextField, { PhoneField, isValidPhone } from "../components/wizard/TextField";
+import { COLORS } from "../lib/theme";
 import { addSellerLead } from "../lib/api";
 import { whatsappLink } from "../lib/whatsapp";
 import { MEDIATOR_WHATSAPP_NUMBER } from "../lib/config";
 
-const ACCENT = "#1F6F5C";
-
 const PROPERTY_TYPES = ["Home / Independent House", "Apartment / Flat", "Villa", "Plot / Land", "Hotel", "Restaurant", "Saloon", "Shop / Retail", "Office / Commercial Space"];
-const LOCATIONS = ["North Chennai", "Central Chennai", "South Chennai", "Other"];
 const PROPERTY_STATUS = ["Brand New", "Resale", "Under Construction"];
 const PRICE_RANGES = ["Below ₹30 Lakhs", "₹30–50 Lakhs", "₹50–75 Lakhs", "₹75 Lakhs–₹1 Crore", "Above ₹1 Crore"];
 const OWNER_TYPE = ["Direct Owner", "Agent / Broker"];
@@ -36,30 +24,7 @@ const PARKING = ["Car Parking", "Bike Parking", "Both", "No Parking"];
 const RENTAL_STATUS = ["Rented", "Vacant"];
 const LOAN_STATUS = ["Loan Running", "Loan Closed", "No Loan"];
 
-const TYPE_ICONS = {
-  "Home / Independent House": HomeIcon, "Apartment / Flat": Building2, Villa: Building,
-  "Plot / Land": LandPlot, Hotel: Hotel, Restaurant: UtensilsCrossed, Saloon: Scissors,
-  "Shop / Retail": Store, "Office / Commercial Space": Briefcase,
-};
-const LOCATION_ICONS = Object.fromEntries(LOCATIONS.map((l) => [l, MapPin]));
-const STATUS_ICONS = { "Brand New": Sparkles, Resale: RefreshCw, "Under Construction": HardHat };
-const PRICE_ICONS = Object.fromEntries(PRICE_RANGES.map((p) => [p, Tag]));
-const OWNER_TYPE_ICONS = { "Direct Owner": User, "Agent / Broker": Briefcase };
-const TIMELINE_ICONS = { Immediately: Zap, "Within 1 Month": CalendarClock, "Within 3 Months": CalendarClock, "Just Exploring": Search };
-const PHOTOS_SHARED_ICONS = { Shared: ImageIcon, "Will Share Later": Clock };
-const PURPOSE_ICONS = { "Own Use": HomeIcon, Investment: TrendingUp };
-const AGE_ICONS = Object.fromEntries(PROPERTY_AGE.map((a) => [a, CalendarRange]));
-const BUILDING_TYPE_ICONS = Object.fromEntries(BUILDING_TYPE.map((b) => [b, Layers]));
-const ROAD_WIDTH_ICONS = Object.fromEntries(ROAD_WIDTH.map((r) => [r, Ruler]));
-const FACING_ICONS = { North: ArrowUp, South: ArrowDown, East: ArrowRight, West: ArrowLeft };
-const USAGE_ICONS = { Residential: HomeIcon, Commercial: Building2, "Semi-Commercial": Building };
-const PATTA_ICONS = { "Online Patta": FileText, CMDA: FileText, DTCP: FileText, Panchayat: FileText, "Not Approved": AlertTriangle };
-const APPROVAL_STATUS_ICONS = Object.fromEntries(APPROVAL_STATUS.map((a) => [a, CheckCircle2]));
-const PARKING_ICONS = { "Car Parking": Car, "Bike Parking": Bike, Both: CheckCircle2, "No Parking": XCircle };
-const RENTAL_ICONS = { Rented: Key, Vacant: DoorOpen };
-const LOAN_ICONS = { "Loan Running": CreditCard, "Loan Closed": CheckCircle2, "No Loan": Ban };
-
-const emptyForm = {
+const initialForm = {
   name: "", phone: "",
   ownership: "", propertyLocation: "", photosShared: "",
   propertyType: "", purpose: "", propertyStatus: "", propertyAge: "", buildingType: "",
@@ -69,202 +34,229 @@ const emptyForm = {
   expectedPrice: "", timeline: "", sellerRemarks: "",
 };
 
-export default function Seller() {
-  const [form, setForm] = useState(emptyForm);
-  const [status, setStatus] = useState("idle");
-  const [errorMsg, setErrorMsg] = useState("");
+const landing = {
+  title: "Selling a property in Chennai?",
+  subtitle: "List it with us and we'll connect you with genuine buyers.",
+  note: "Takes about 3 minutes. Only the starred questions are required — skip the rest if you like.",
+  cta: "Get started",
+  items: [
+    { label: "Owner", text: "Who you are and how to reach you", color: COLORS.steel },
+    { label: "Property", text: "Type, location, size and approvals", color: COLORS.teal },
+    { label: "Price", text: "Your expected price and timeline", color: COLORS.coral },
+  ],
+};
 
-  function update(key, value) {
-    setForm((f) => ({ ...f, [key]: value }));
-  }
-
-  const isComplete =
-    form.name && form.phone && form.ownership && form.propertyLocation &&
-    form.propertyType && form.propertyStatus && form.expectedPrice && form.timeline;
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!isComplete) return;
-    setStatus("saving");
-    setErrorMsg("");
-    try {
-      await addSellerLead(form);
-      setStatus("done");
-    } catch (err) {
-      setErrorMsg(err.message || "Could not save — check your connection and try again.");
-      setStatus("error");
-    }
-  }
-
-  const waMessage =
-    `New seller registration — ${form.propertyType}\n` +
-    `From: ${form.name} (${form.phone})\n` +
-    `Location: ${form.propertyLocation}\n` +
-    `Status: ${form.propertyStatus}\n` +
-    `Expected price: ${form.expectedPrice}\n` +
-    `Ownership: ${form.ownership}\n` +
-    `Planning to sell: ${form.timeline}`;
-
-  if (status === "done") {
-    return (
-      <div className="min-h-screen bg-paper flex items-center justify-center px-5 py-16">
-        <div className="max-w-md w-full text-center">
-          <Seal label="Listed" color={ACCENT} size={80} rotate={6} />
-          <h1 className="font-display font-semibold text-2xl text-ink mt-5 mb-2">
-            Your property is on record
-          </h1>
-          <p className="text-ink/60 mb-7 leading-relaxed">
-            We've saved your listing in {form.propertyLocation}. As the seller, you can message
-            the mediator directly on WhatsApp — they'll follow up with you personally.
-          </p>
-          <a href={whatsappLink(MEDIATOR_WHATSAPP_NUMBER, waMessage)} target="_blank" rel="noreferrer" className="btn-whatsapp w-full">
-            Message the mediator on WhatsApp
-          </a>
-          <a href="/seller" className="block mt-4 text-sm text-ink/50 hover:text-ink">
-            List another property
-          </a>
-          <a href="/" className="block mt-2 text-sm text-ink/40 hover:text-ink">
-            Back to home
-          </a>
-        </div>
-      </div>
-    );
-  }
-
+function NumberField({ label, placeholder, value, onChange, className = "" }) {
   return (
-    <div className="min-h-screen bg-paper">
-      <div className="max-w-lg mx-auto px-5 py-10">
-        <BackHome color={ACCENT} />
-        <div className="text-center mb-7">
-          <div className="relative w-14 h-14 mx-auto mb-4">
-            <div className="w-14 h-14 rounded-full border-2 flex items-center justify-center" style={{ borderColor: ACCENT }}>
-              <span className="font-display font-bold text-sm tracking-wide" style={{ color: ACCENT }}>MCM</span>
-            </div>
-          </div>
-          <div className="flex items-center justify-center gap-3 mb-1.5">
-            <span className="h-px w-8" style={{ backgroundColor: `${ACCENT}40` }} />
-            <p className="text-[11px] font-bold uppercase tracking-[0.15em]" style={{ color: ACCENT }}>Property owner details</p>
-            <span className="h-px w-8" style={{ backgroundColor: `${ACCENT}40` }} />
-          </div>
-          <h1 className="font-display font-bold text-3xl text-ink">Seller registration</h1>
-          <p className="text-ink/50 text-sm mt-1.5">
-            Give us as much detail as you can — fields marked <span className="text-buyer font-semibold">*</span> are required, everything else helps us match you faster.
-          </p>
+    <TextField
+      className={className}
+      label={label}
+      type="number"
+      inputMode="decimal"
+      min="0"
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  );
+}
+
+const steps = [
+  {
+    label: "Owner type",
+    title: "Are you the property owner?",
+    valid: (f) => f.ownership,
+    render: (f, set) => <ChoiceGroup options={OWNER_TYPE} value={f.ownership} onChange={(v) => set("ownership", v)} required />,
+  },
+  {
+    label: "Personal details",
+    title: "Who should we contact?",
+    hint: "The mediator will message you on WhatsApp.",
+    valid: (f) => f.name.trim() && isValidPhone(f.phone),
+    render: (f, set) => (
+      <>
+        <TextField label="Full name" required autoComplete="name" placeholder="Your name" value={f.name} onChange={(e) => set("name", e.target.value)} />
+        <PhoneField value={f.phone} onChange={(v) => set("phone", v)} />
+      </>
+    ),
+  },
+  {
+    label: "Property type",
+    title: "What are you selling?",
+    valid: (f) => f.propertyType,
+    render: (f, set) => <ChoiceGroup options={PROPERTY_TYPES} value={f.propertyType} onChange={(v) => set("propertyType", v)} required />,
+  },
+  {
+    label: "Location",
+    title: "Where is the property?",
+    valid: (f) => f.propertyLocation.trim(),
+    render: (f, set) => (
+      <>
+        <TextField label="Area / locality" required placeholder="e.g. Ambattur, Anna Nagar" value={f.propertyLocation} onChange={(e) => set("propertyLocation", e.target.value)} />
+        <ChoiceGroup label="Photos and videos" options={PHOTOS_SHARED} value={f.photosShared} onChange={(v) => set("photosShared", v)} />
+      </>
+    ),
+  },
+  {
+    label: "Status & age",
+    title: "Status and age",
+    valid: (f) => f.propertyStatus,
+    render: (f, set) => (
+      <>
+        <ChoiceGroup label="Property status" required options={PROPERTY_STATUS} value={f.propertyStatus} onChange={(v) => set("propertyStatus", v)} />
+        <ChoiceGroup label="Property age" options={PROPERTY_AGE} value={f.propertyAge} onChange={(v) => set("propertyAge", v)} />
+        <ChoiceGroup label="Purpose" options={PURPOSE} value={f.purpose} onChange={(v) => set("purpose", v)} />
+      </>
+    ),
+  },
+  {
+    label: "Building",
+    title: "About the building",
+    optional: true,
+    valid: () => true,
+    render: (f, set) => (
+      <>
+        <ChoiceGroup label="Building type" options={BUILDING_TYPE} value={f.buildingType} onChange={(v) => set("buildingType", v)} />
+        <ChoiceGroup label="Property usage" options={PROPERTY_USAGE} value={f.propertyUsage} onChange={(v) => set("propertyUsage", v)} />
+      </>
+    ),
+  },
+  {
+    label: "Size",
+    title: "How big is it?",
+    optional: true,
+    valid: () => true,
+    render: (f, set) => (
+      <>
+        <NumberField label="Land area (sq.ft)" placeholder="e.g. 1200" value={f.landArea} onChange={(v) => set("landArea", v)} />
+        <NumberField label="Built-up area (sq.ft)" placeholder="e.g. 1800" value={f.builtUpArea} onChange={(v) => set("builtUpArea", v)} />
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <NumberField className="!mt-0" label="Frontage length (ft)" placeholder="Length" value={f.frontageLength} onChange={(v) => set("frontageLength", v)} />
+          <NumberField className="!mt-0" label="Frontage breadth (ft)" placeholder="Breadth" value={f.frontageBreadth} onChange={(v) => set("frontageBreadth", v)} />
         </div>
+      </>
+    ),
+  },
+  {
+    label: "Road & facing",
+    title: "Road and facing",
+    optional: true,
+    valid: () => true,
+    render: (f, set) => (
+      <>
+        <ChoiceGroup label="Road width" options={ROAD_WIDTH} value={f.roadWidth} onChange={(v) => set("roadWidth", v)} />
+        <ChoiceGroup label="Facing" options={FACING} value={f.facing} onChange={(v) => set("facing", v)} />
+      </>
+    ),
+  },
+  {
+    label: "Approvals",
+    title: "Patta and approvals",
+    optional: true,
+    valid: () => true,
+    render: (f, set) => (
+      <>
+        <ChoiceGroup label="Patta / approval" options={PATTA_APPROVAL} value={f.pattaApproval} onChange={(v) => set("pattaApproval", v)} />
+        <ChoiceGroup label="Approval status" options={APPROVAL_STATUS} value={f.approvalStatus} onChange={(v) => set("approvalStatus", v)} />
+      </>
+    ),
+  },
+  {
+    label: "Parking & loan",
+    title: "Parking, rental and loan",
+    optional: true,
+    valid: () => true,
+    render: (f, set) => (
+      <>
+        <ChoiceGroup label="Parking" options={PARKING} value={f.parking} onChange={(v) => set("parking", v)} />
+        <ChoiceGroup label="Rental status" options={RENTAL_STATUS} value={f.rentalStatus} onChange={(v) => set("rentalStatus", v)} />
+        <ChoiceGroup label="Loan status" options={LOAN_STATUS} value={f.loanStatus} onChange={(v) => set("loanStatus", v)} />
+      </>
+    ),
+  },
+  {
+    label: "Price",
+    title: "What price do you expect?",
+    valid: (f) => f.expectedPrice,
+    render: (f, set) => <ChoiceGroup options={PRICE_RANGES} value={f.expectedPrice} onChange={(v) => set("expectedPrice", v)} required />,
+  },
+  {
+    label: "Timeline",
+    title: "When are you planning to sell?",
+    valid: (f) => f.timeline,
+    render: (f, set) => (
+      <>
+        <ChoiceGroup options={TIMELINE} value={f.timeline} onChange={(v) => set("timeline", v)} required />
+        <div className="mt-7">
+          <TextField
+            label="Anything else buyers should know?"
+            multiline
+            placeholder="Optional — e.g. corner plot, near the metro, owner relocating"
+            value={f.sellerRemarks}
+            onChange={(e) => set("sellerRemarks", e.target.value)}
+          />
+        </div>
+      </>
+    ),
+  },
+];
 
-        <form onSubmit={handleSubmit} className="card-ledger p-6 space-y-6 shadow-xl">
-          <Reveal>
-            <RadioGroup stepNumber="1" label="Are you the property owner?" required options={OWNER_TYPE} value={form.ownership} onChange={(v) => update("ownership", v)} accentColor={ACCENT} icons={OWNER_TYPE_ICONS} />
-
-            <div className="grid sm:grid-cols-2 gap-3 mt-6">
-              <div>
-                <label className="field-label">Full name <span className="text-buyer">*</span></label>
-                <div className="relative">
-                  <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/30" />
-                  <input className="field-input !pl-10" value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Full name" required />
-                </div>
-              </div>
-              <div>
-                <label className="field-label">Mobile number (WhatsApp) <span className="text-buyer">*</span></label>
-                <div className="relative">
-                  <MessageCircle size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/30" />
-                  <input className="field-input !pl-10" type="tel" inputMode="numeric" pattern="[0-9]{10}" maxLength={10} value={form.phone} onChange={(e) => update("phone", e.target.value.replace(/\D/g, ""))} placeholder="10-digit number" required />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <label className="field-label">Property location <span className="text-buyer">*</span></label>
-              <div className="relative">
-                <MapPin size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/30" />
-                <input className="field-input !pl-10" value={form.propertyLocation} onChange={(e) => update("propertyLocation", e.target.value)} placeholder="Area / locality" required />
-              </div>
-            </div>
-          </Reveal>
-
-          <div className="border-t border-ink/5 pt-6 space-y-6">
-            <Reveal className="space-y-6">
-              <RadioGroup stepNumber="2" label="Photos &amp; videos" options={PHOTOS_SHARED} value={form.photosShared} onChange={(v) => update("photosShared", v)} accentColor={ACCENT} icons={PHOTOS_SHARED_ICONS} />
-              <RadioGroup stepNumber="3" label="Property type" required options={PROPERTY_TYPES} value={form.propertyType} onChange={(v) => update("propertyType", v)} accentColor={ACCENT} icons={TYPE_ICONS} />
-              <RadioGroup stepNumber="4" label="Purpose" options={PURPOSE} value={form.purpose} onChange={(v) => update("purpose", v)} accentColor={ACCENT} icons={PURPOSE_ICONS} />
-            </Reveal>
-
-            <Reveal className="space-y-6">
-              <RadioGroup stepNumber="5" label="Property status" required options={PROPERTY_STATUS} value={form.propertyStatus} onChange={(v) => update("propertyStatus", v)} accentColor={ACCENT} icons={STATUS_ICONS} />
-              <RadioGroup stepNumber="6" label="Property age" options={PROPERTY_AGE} value={form.propertyAge} onChange={(v) => update("propertyAge", v)} accentColor={ACCENT} icons={AGE_ICONS} />
-              <RadioGroup stepNumber="7" label="Building type" options={BUILDING_TYPE} value={form.buildingType} onChange={(v) => update("buildingType", v)} accentColor={ACCENT} icons={BUILDING_TYPE_ICONS} />
-            </Reveal>
-
-            <Reveal className="space-y-6">
-              <div className="grid sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="field-label">8. Land area (sq.ft)</label>
-                  <input type="number" className="field-input" value={form.landArea} onChange={(e) => update("landArea", e.target.value)} placeholder="e.g. 1200" />
-                </div>
-                <div>
-                  <label className="field-label">9. Built-up area (sq.ft)</label>
-                  <input type="number" className="field-input" value={form.builtUpArea} onChange={(e) => update("builtUpArea", e.target.value)} placeholder="e.g. 1800" />
-                </div>
-              </div>
-
-              <div>
-                <label className="field-label">10. Frontage / size</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <input type="number" className="field-input" value={form.frontageLength} onChange={(e) => update("frontageLength", e.target.value)} placeholder="Length (ft)" />
-                  <input type="number" className="field-input" value={form.frontageBreadth} onChange={(e) => update("frontageBreadth", e.target.value)} placeholder="Breadth (ft)" />
-                </div>
-              </div>
-            </Reveal>
-
-            <Reveal className="space-y-6">
-              <RadioGroup stepNumber="11" label="Road width" options={ROAD_WIDTH} value={form.roadWidth} onChange={(v) => update("roadWidth", v)} accentColor={ACCENT} icons={ROAD_WIDTH_ICONS} />
-              <RadioGroup stepNumber="12" label="Facing" options={FACING} value={form.facing} onChange={(v) => update("facing", v)} accentColor={ACCENT} icons={FACING_ICONS} />
-              <RadioGroup stepNumber="13" label="Property usage" options={PROPERTY_USAGE} value={form.propertyUsage} onChange={(v) => update("propertyUsage", v)} accentColor={ACCENT} icons={USAGE_ICONS} />
-            </Reveal>
-
-            <Reveal className="space-y-6">
-              <RadioGroup stepNumber="14" label="Patta / approval" options={PATTA_APPROVAL} value={form.pattaApproval} onChange={(v) => update("pattaApproval", v)} accentColor={ACCENT} icons={PATTA_ICONS} />
-              <RadioGroup stepNumber="15" label="Approval status" options={APPROVAL_STATUS} value={form.approvalStatus} onChange={(v) => update("approvalStatus", v)} accentColor={ACCENT} icons={APPROVAL_STATUS_ICONS} />
-              <RadioGroup stepNumber="16" label="Parking" options={PARKING} value={form.parking} onChange={(v) => update("parking", v)} accentColor={ACCENT} icons={PARKING_ICONS} />
-            </Reveal>
-
-            <Reveal className="space-y-6">
-              <RadioGroup stepNumber="17" label="Rental status" options={RENTAL_STATUS} value={form.rentalStatus} onChange={(v) => update("rentalStatus", v)} accentColor={ACCENT} icons={RENTAL_ICONS} />
-              <RadioGroup stepNumber="18" label="Loan status" options={LOAN_STATUS} value={form.loanStatus} onChange={(v) => update("loanStatus", v)} accentColor={ACCENT} icons={LOAN_ICONS} />
-              <RadioGroup stepNumber="19" label="Expected selling price" required options={PRICE_RANGES} value={form.expectedPrice} onChange={(v) => update("expectedPrice", v)} accentColor={ACCENT} icons={PRICE_ICONS} />
-              <RadioGroup stepNumber="20" label="When are you planning to sell?" required options={TIMELINE} value={form.timeline} onChange={(v) => update("timeline", v)} accentColor={ACCENT} icons={TIMELINE_ICONS} />
-            </Reveal>
-
-            <Reveal>
-              <label className="field-label">21. Remarks / additional details</label>
-              <textarea
-                className="field-input min-h-[80px]"
-                value={form.sellerRemarks}
-                onChange={(e) => update("sellerRemarks", e.target.value)}
-                placeholder="Anything else worth mentioning about the property…"
-              />
-            </Reveal>
-          </div>
-
-          {errorMsg && (
-            <p className="alert-error">
-              <AlertTriangle size={15} className="shrink-0 mt-0.5" />
-              {errorMsg}
-            </p>
-          )}
-
-          <button type="submit" disabled={status === "saving" || !isComplete} className="btn-primary w-full flex items-center justify-center gap-2">
-            {status === "saving" ? "Saving…" : (<>Save &amp; continue to WhatsApp <MessageCircle size={16} /></>)}
-          </button>
-          {!isComplete && status === "idle" && (
-            <p className="text-xs text-ink/35 text-center -mt-3">Fill in the required fields marked with * to continue.</p>
-          )}
-          <p className="text-xs text-ink/40 leading-relaxed flex items-start gap-1.5">
-            <ShieldCheck size={13} className="shrink-0 mt-0.5" />
-            After reviewing your property details, our team will contact you directly for the next steps.
-          </p>
-        </form>
-      </div>
-    </div>
+export default function Seller() {
+  return (
+    <Wizard
+      role="Seller"
+      initialForm={initialForm}
+      landing={landing}
+      steps={steps}
+      reviewTitle="Review your listing"
+      reviewNote="Check everything looks right. Tap any row to change it."
+      reviewRows={(f) => [
+        { label: "Owner type", value: f.ownership, step: 1 },
+        { label: "Name", value: f.name, step: 2 },
+        { label: "Mobile", value: f.phone, step: 2 },
+        { label: "Property", value: f.propertyType, step: 3 },
+        { label: "Location", value: f.propertyLocation, step: 4 },
+        { label: "Photos", value: f.photosShared, step: 4 },
+        { label: "Status", value: f.propertyStatus, step: 5 },
+        { label: "Age", value: f.propertyAge, step: 5 },
+        { label: "Purpose", value: f.purpose, step: 5 },
+        { label: "Building", value: f.buildingType, step: 6 },
+        { label: "Usage", value: f.propertyUsage, step: 6 },
+        { label: "Land area", value: f.landArea ? `${f.landArea} sq.ft` : "", step: 7 },
+        { label: "Built-up", value: f.builtUpArea ? `${f.builtUpArea} sq.ft` : "", step: 7 },
+        { label: "Frontage", value: f.frontageLength || f.frontageBreadth ? `${f.frontageLength || "–"} × ${f.frontageBreadth || "–"} ft` : "", step: 7 },
+        { label: "Road width", value: f.roadWidth, step: 8 },
+        { label: "Facing", value: f.facing, step: 8 },
+        { label: "Patta", value: f.pattaApproval, step: 9 },
+        { label: "Approval", value: f.approvalStatus, step: 9 },
+        { label: "Parking", value: f.parking, step: 10 },
+        { label: "Rental", value: f.rentalStatus, step: 10 },
+        { label: "Loan", value: f.loanStatus, step: 10 },
+        { label: "Price", value: f.expectedPrice, step: 11 },
+        { label: "Timeline", value: f.timeline, step: 12 },
+        { label: "Remarks", value: f.sellerRemarks.trim(), step: 12 },
+      ]}
+      submit={(f) => addSellerLead({ ...f, name: f.name.trim(), propertyLocation: f.propertyLocation.trim() })}
+      submitLabel="Submit listing"
+      success={{
+        title: "Listing submitted successfully",
+        text: (f) =>
+          `We've saved your listing in ${f.propertyLocation.trim()}. As the seller, you can message the mediator directly on WhatsApp — they'll follow up with you personally.`,
+        primary: (f) => ({
+          label: "Message the mediator on WhatsApp",
+          href: whatsappLink(
+            MEDIATOR_WHATSAPP_NUMBER,
+            `New seller registration — ${f.propertyType}\n` +
+              `From: ${f.name} (${f.phone})\n` +
+              `Location: ${f.propertyLocation}\n` +
+              `Status: ${f.propertyStatus}\n` +
+              `Expected price: ${f.expectedPrice}\n` +
+              `Ownership: ${f.ownership}\n` +
+              `Planning to sell: ${f.timeline}`
+          ),
+        }),
+        againLabel: "List another property",
+      }}
+    />
   );
 }

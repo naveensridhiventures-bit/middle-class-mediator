@@ -1,34 +1,29 @@
 import { Link } from "react-router-dom";
-import { Handshake, User, Search, Image as ImageIcon, ChevronDown } from "lucide-react";
+import { Handshake, User, Search, Image as ImageIcon, ChevronDown, ArrowRight } from "lucide-react";
 import Reveal from "../components/Reveal";
+import { COLORS } from "../lib/theme";
 
 const roles = [
   {
     to: "/seller",
-    title: "SELLER",
+    title: "I'm a seller",
     icon: User,
     desc: "List your property and connect with genuine buyers.",
-    from: "#1B2A4A",
-    to2: "#2D4373",
-    underline: "#5B7BD8",
+    color: COLORS.teal,
   },
   {
     to: "/buyer",
-    title: "BUYER",
+    title: "I'm a buyer",
     icon: Search,
-    desc: "Find the best properties that match your needs.",
-    from: "#14453A",
-    to2: "#1F6F5C",
-    underline: "#3FBE9C",
+    desc: "Tell us what you need and we'll find matching properties.",
+    color: COLORS.coral,
   },
   {
     to: "/mediator",
-    title: "MEDIATOR",
+    title: "I'm a mediator",
     icon: Handshake,
-    desc: "Connect buyers and sellers and close better deals.",
-    from: "#2E1D52",
-    to2: "#4C2E8C",
-    underline: "#B79CF2",
+    desc: "Join the network and close better deals.",
+    color: COLORS.steel,
   },
 ];
 
@@ -81,55 +76,51 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ---------- Role cards — float up over the hero photo's floor ---------- */}
-      <section className="relative z-10 -mt-8 sm:-mt-24 lg:-mt-28 pb-10 sm:pb-14 lg:pb-20">
-        <div
-          className="absolute inset-0 -z-10"
-          style={{ background: "linear-gradient(to bottom, transparent, #111B33 30%, #111B33)" }}
-        />
-        <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-10">
-          <div className="grid sm:grid-cols-3 gap-4 sm:gap-6">
-            {roles.map((r, i) => (
-              <Reveal key={r.to} delay={i * 130} direction="up" distance={32}>
-                <Link
-                  to={r.to}
-                  className="group rounded-3xl p-6 sm:p-8 flex flex-col items-center text-center gap-2.5 sm:gap-4 shadow-2xl hover:-translate-y-1.5 hover:scale-[1.02] hover:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6)] transition-all duration-300"
-                  style={{ background: `linear-gradient(160deg, ${r.from}, ${r.to2})` }}
-                >
-                  <span className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white/12 flex items-center justify-center group-hover:bg-white/20 group-hover:rotate-6 transition">
-                    <r.icon size={20} className="sm:hidden text-white" strokeWidth={1.75} />
-                    <r.icon size={26} className="hidden sm:block text-white" strokeWidth={1.75} />
-                  </span>
-                  <div>
-                    <p className="font-display font-bold text-white text-xs sm:text-sm tracking-[0.15em]">I'M A</p>
-                    <h2 className="font-display font-bold text-white text-xl sm:text-2xl lg:text-[1.7rem] tracking-tight -mt-0.5">
-                      {r.title}
-                    </h2>
-                  </div>
-                  <p className="text-white/70 text-xs sm:text-sm leading-relaxed max-w-[240px] sm:max-w-[220px]">{r.desc}</p>
-                  <span className="h-0.5 w-10 rounded-full mt-0.5 sm:mt-1 group-hover:w-16 transition-all duration-300" style={{ backgroundColor: r.underline }} />
-                </Link>
-              </Reveal>
+      {/* ---------- Role picker — a cream sheet that rises over the hero ---------- */}
+      <section className="relative z-10 -mt-8 sm:-mt-16 bg-canvas rounded-t-[2rem] pt-8 pb-10">
+        <div className="max-w-3xl mx-auto px-5">
+          <h2 className="font-display font-bold text-[1.6rem] leading-tight text-ink">How can we help you today?</h2>
+          <p className="text-sm text-ink/55 mt-1.5">Pick the option that fits you. It only takes a minute.</p>
+
+          <div className="mt-6 grid sm:grid-cols-3 gap-3">
+            {roles.map((r) => (
+              <Link
+                key={r.to}
+                to={r.to}
+                className="group flex sm:flex-col items-center sm:items-start gap-4 rounded-2xl bg-surface border-2 p-5 transition-shadow hover:shadow-md"
+                style={{ borderColor: `color-mix(in srgb, ${r.color} 45%, white)` }}
+              >
+                <span className="w-12 h-12 rounded-xl flex items-center justify-center text-white shrink-0" style={{ backgroundColor: r.color }}>
+                  <r.icon size={22} strokeWidth={2} />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block font-display font-bold text-lg text-ink">{r.title}</span>
+                  <span className="block text-sm text-ink/60 leading-snug mt-0.5">{r.desc}</span>
+                </span>
+                <ArrowRight size={18} className="text-ink/30 shrink-0 sm:hidden" />
+              </Link>
             ))}
           </div>
-        </div>
-      </section>
 
-      {/* ---------- Footer — surfaces the gallery, otherwise unreachable from here ---------- */}
-      <footer className="bg-ink-dark border-t border-white/5">
-        <Reveal className="max-w-7xl mx-auto px-6 lg:px-10 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left" direction="up" distance={16}>
-          <p className="text-paper/40 text-xs">
-            © {new Date().getFullYear()} Middle Class Mediator. Trusted mediation for Chennai properties.
-          </p>
           <Link
             to="/gallery"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-gold hover:text-gold-light hover:gap-3 transition-all"
+            className="mt-3 flex items-center gap-4 rounded-2xl bg-ink text-white p-5 hover:bg-ink-light transition-colors"
           >
-            <ImageIcon size={15} />
-            Browse the property gallery
+            <span className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+              <ImageIcon size={22} />
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block font-display font-bold text-lg">Browse the property gallery</span>
+              <span className="block text-sm text-white/65 mt-0.5">See listings shared by our sellers.</span>
+            </span>
+            <ArrowRight size={18} className="text-white/50 shrink-0" />
           </Link>
-        </Reveal>
-      </footer>
+
+          <p className="text-center text-xs text-ink/40 mt-8">
+            © {new Date().getFullYear()} Middle Class Mediator. Trusted mediation for Chennai properties.
+          </p>
+        </div>
+      </section>
     </div>
   );
 }

@@ -1,3 +1,37 @@
+# v3 — Full UI redesign + gallery touch fix (2026-10-03)
+
+Cumulative: includes the earlier gallery image-glitch fix, so this zip can be
+applied on its own.
+
+## Redesign (matches the "Buyer experience" mockup)
+- **Buyer, Seller and Mediator are now step-by-step flows**: landing → one
+  question group per screen → review → success. Same fields, same options,
+  same data sent to the Google Sheet.
+  - Dark brand bar with a coloured "M" chip that changes colour each step
+  - Progress bar, big tap-to-choose option cards (radio dot → tick)
+  - Continue is disabled until the step is valid; the footer stays pinned
+    to the bottom of the phone screen
+  - Phone must be 10 digits (clear message while incomplete)
+  - Seller's optional questions can be skipped
+  - Review screen: tap any row to edit it, then "Save changes" returns to review
+  - Success screen with "Register another" / "Back to home"
+- **Home**: hero photo kept; role picker is now a cream sheet with three clear
+  cards plus a "Browse the property gallery" card.
+- **Gallery**: same search/sort; property-type filter chips are now always
+  visible; calmer cards with "Details" and "I'm interested" buttons; no more
+  hover-lift animation. "Register now" now links inside the app.
+- **Property page**: pinned bar with the price and the WhatsApp button.
+- **Admin login** restyled to match. The admin CRM itself is unchanged.
+- Small text colours darkened to meet contrast guidelines.
+
+## Gallery touch fix (from v1 of the glitch fix)
+- Lightbox renders at the page level (it was trapped inside a transformed card)
+- Swipe no longer counts as a tap; hover effects only on devices with a mouse
+- Next/previous photo preloaded; images can't be dragged or long-press-previewed
+
+## Removed (no longer used)
+`src/components/RadioGroup.jsx`, `BackHome.jsx`, `Seal.jsx`
+
 # v2 — Scroll animations & movement (2026-09-11)
 
 This zip is cumulative — it includes everything from v1 (bug fixes / UI

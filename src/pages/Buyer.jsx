@@ -1,17 +1,8 @@
-import { useState } from "react";
-import {
-  User, MessageCircle, Home as HomeIcon, Building2, Building, LandPlot,
-  Hotel, UtensilsCrossed, Scissors, Store, Briefcase, MapPin, Wallet,
-  TrendingUp, Tag, Landmark, CheckCircle2, XCircle, Zap, CalendarClock,
-  Search, ShieldCheck, AlertTriangle,
-} from "lucide-react";
-import Seal from "../components/Seal";
-import RadioGroup from "../components/RadioGroup";
-import BackHome from "../components/BackHome";
-import Reveal from "../components/Reveal";
+import Wizard from "../components/wizard/Wizard";
+import ChoiceGroup from "../components/wizard/ChoiceGroup";
+import TextField, { PhoneField, isValidPhone } from "../components/wizard/TextField";
+import { COLORS } from "../lib/theme";
 import { addBuyerLead } from "../lib/api";
-
-const ACCENT = "#B5533C";
 
 const PROPERTY_TYPES = ["Home / Independent House", "Apartment / Flat", "Villa", "Plot / Land", "Hotel", "Restaurant", "Saloon", "Shop / Retail", "Office / Commercial Space"];
 const PURPOSE = ["Own Use", "Investment"];
@@ -20,165 +11,104 @@ const LOCATIONS = ["North Chennai", "Central Chennai", "South Chennai", "No Spec
 const YES_NO = ["Yes", "No"];
 const TIMELINE = ["Immediately", "Within 1 Month", "Within 3 Months", "Just Exploring"];
 
-const TYPE_ICONS = {
-  "Home / Independent House": HomeIcon,
-  "Apartment / Flat": Building2,
-  Villa: Building,
-  "Plot / Land": LandPlot,
-  Hotel: Hotel,
-  Restaurant: UtensilsCrossed,
-  Saloon: Scissors,
-  "Shop / Retail": Store,
-  "Office / Commercial Space": Briefcase,
+const initialForm = {
+  name: "",
+  phone: "",
+  propertyType: "",
+  purpose: "",
+  budget: "",
+  preferredLocation: "",
+  loanRequirement: "",
+  timeline: "",
 };
-const PURPOSE_ICONS = { "Own Use": HomeIcon, Investment: TrendingUp };
-const BUDGET_ICONS = Object.fromEntries(BUDGET.map((b) => [b, Tag]));
-const LOCATION_ICONS = Object.fromEntries(LOCATIONS.map((l) => [l, l === "No Specific Preference" ? Landmark : MapPin]));
-const YES_NO_ICONS = { Yes: CheckCircle2, No: XCircle };
-const TIMELINE_ICONS = { Immediately: Zap, "Within 1 Month": CalendarClock, "Within 3 Months": CalendarClock, "Just Exploring": Search };
+
+const landing = {
+  title: "Looking to buy in Chennai?",
+  subtitle: "Tell us what you're looking for.",
+  note: "Takes about a minute. We'll contact you on WhatsApp with matching properties.",
+  cta: "Get started",
+  items: [
+    { label: "Buyer", text: "Your name and WhatsApp number", color: COLORS.steel },
+    { label: "Property", text: "The type of property and where", color: COLORS.teal },
+    { label: "Budget", text: "Your budget, loan and timeline", color: COLORS.coral },
+  ],
+};
+
+const steps = [
+  {
+    label: "Personal details",
+    title: "Who should we contact?",
+    hint: "We'll reach out on WhatsApp.",
+    valid: (f) => f.name.trim() && isValidPhone(f.phone),
+    render: (f, set) => (
+      <>
+        <TextField label="Full name" required autoComplete="name" placeholder="Your name" value={f.name} onChange={(e) => set("name", e.target.value)} />
+        <PhoneField value={f.phone} onChange={(v) => set("phone", v)} />
+      </>
+    ),
+  },
+  {
+    label: "Property type",
+    title: "What property are you looking for?",
+    valid: (f) => f.propertyType,
+    render: (f, set) => <ChoiceGroup options={PROPERTY_TYPES} value={f.propertyType} onChange={(v) => set("propertyType", v)} required />,
+  },
+  {
+    label: "Purpose & budget",
+    title: "Purpose and budget",
+    valid: (f) => f.purpose && f.budget,
+    render: (f, set) => (
+      <>
+        <ChoiceGroup label="Purpose" required options={PURPOSE} value={f.purpose} onChange={(v) => set("purpose", v)} />
+        <ChoiceGroup label="Budget" required options={BUDGET} value={f.budget} onChange={(v) => set("budget", v)} />
+      </>
+    ),
+  },
+  {
+    label: "Location & loan",
+    title: "Where, and will you need a loan?",
+    valid: (f) => f.preferredLocation && f.loanRequirement,
+    render: (f, set) => (
+      <>
+        <ChoiceGroup label="Preferred location" required options={LOCATIONS} value={f.preferredLocation} onChange={(v) => set("preferredLocation", v)} />
+        <ChoiceGroup label="Loan requirement" required options={YES_NO} value={f.loanRequirement} onChange={(v) => set("loanRequirement", v)} />
+      </>
+    ),
+  },
+  {
+    label: "Timeline",
+    title: "When are you planning to buy?",
+    valid: (f) => f.timeline,
+    render: (f, set) => <ChoiceGroup options={TIMELINE} value={f.timeline} onChange={(v) => set("timeline", v)} required />,
+  },
+];
 
 export default function Buyer() {
-  const [form, setForm] = useState({
-    name: "",
-    phone: "",
-    propertyType: "",
-    purpose: "",
-    budget: "",
-    preferredLocation: "",
-    loanRequirement: "",
-    timeline: "",
-  });
-  const [status, setStatus] = useState("idle");
-  const [errorMsg, setErrorMsg] = useState("");
-
-  function update(key, value) {
-    setForm((f) => ({ ...f, [key]: value }));
-  }
-
-  const isComplete =
-    form.name &&
-    form.phone &&
-    form.propertyType &&
-    form.purpose &&
-    form.budget &&
-    form.preferredLocation &&
-    form.loanRequirement &&
-    form.timeline;
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!isComplete) return;
-    setStatus("saving");
-    setErrorMsg("");
-    try {
-      await addBuyerLead(form);
-      setStatus("done");
-    } catch (err) {
-      setErrorMsg(err.message || "Could not save — check your connection and try again.");
-      setStatus("error");
-    }
-  }
-
-  if (status === "done") {
-    return (
-      <div className="min-h-screen bg-paper flex items-center justify-center px-5 py-16">
-        <div className="max-w-md w-full text-center">
-          <Seal label="Registered" color={ACCENT} size={80} rotate={-4} />
-          <h1 className="font-display font-semibold text-2xl text-ink mt-5 mb-2">
-            Your report has been submitted
-          </h1>
-          <p className="text-ink/60 mb-7 leading-relaxed">
-            Thanks <strong>{form.name}</strong> — your requirements are on record. Our team
-            reviews every submission and will reach out to you directly with matching properties.
-          </p>
-          <a href="/buyer" className="btn-ghost w-full">
-            Register another requirement
-          </a>
-          <a href="/" className="block mt-3 text-sm text-ink/40 hover:text-ink">
-            Back to home
-          </a>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-paper">
-      <div className="max-w-lg mx-auto px-5 py-10">
-        <BackHome color={ACCENT} />
-        <div className="text-center mb-7">
-          <div className="relative w-14 h-14 mx-auto mb-4">
-            <div className="w-14 h-14 rounded-full border-2 flex items-center justify-center" style={{ borderColor: ACCENT }}>
-              <span className="font-display font-bold text-sm tracking-wide" style={{ color: ACCENT }}>MCM</span>
-            </div>
-          </div>
-          <div className="flex items-center justify-center gap-3 mb-1.5">
-            <span className="h-px w-8" style={{ backgroundColor: `${ACCENT}40` }} />
-            <p className="text-[11px] font-bold uppercase tracking-[0.15em]" style={{ color: ACCENT }}>Looking to buy in Chennai?</p>
-            <span className="h-px w-8" style={{ backgroundColor: `${ACCENT}40` }} />
-          </div>
-          <h1 className="font-display font-bold text-3xl text-ink">Buyer registration</h1>
-          <p className="text-ink/50 text-sm mt-1.5">
-            Tell us what you're looking for — all fields marked <span className="text-buyer font-semibold">*</span> are required.
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="card-ledger p-6 space-y-6 shadow-xl">
-          <Reveal className="grid sm:grid-cols-2 gap-3">
-            <div>
-              <label className="field-label">Full name <span className="text-buyer">*</span></label>
-              <div className="relative">
-                <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/30" />
-                <input className="field-input !pl-10" value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Full name" required />
-              </div>
-            </div>
-            <div>
-              <label className="field-label">Mobile number (WhatsApp) <span className="text-buyer">*</span></label>
-              <div className="relative">
-                <MessageCircle size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/30" />
-                <input className="field-input !pl-10" type="tel" inputMode="numeric" pattern="[0-9]{10}" maxLength={10} value={form.phone} onChange={(e) => update("phone", e.target.value.replace(/\D/g, ""))} placeholder="10-digit number" required />
-              </div>
-            </div>
-          </Reveal>
-
-          <div className="border-t border-ink/5 pt-6 space-y-6">
-            <Reveal className="space-y-6">
-              <RadioGroup stepNumber="1" label="Property type" required options={PROPERTY_TYPES} value={form.propertyType} onChange={(v) => update("propertyType", v)} accentColor={ACCENT} icons={TYPE_ICONS} />
-              <RadioGroup stepNumber="2" label="Purpose" required options={PURPOSE} value={form.purpose} onChange={(v) => update("purpose", v)} accentColor={ACCENT} icons={PURPOSE_ICONS} />
-              <RadioGroup stepNumber="3" label="Budget" required options={BUDGET} value={form.budget} onChange={(v) => update("budget", v)} accentColor={ACCENT} icons={BUDGET_ICONS} />
-            </Reveal>
-            <Reveal className="space-y-6">
-              <RadioGroup stepNumber="4" label="Preferred location" required options={LOCATIONS} value={form.preferredLocation} onChange={(v) => update("preferredLocation", v)} accentColor={ACCENT} icons={LOCATION_ICONS} />
-              <RadioGroup stepNumber="5" label="Loan requirement" required options={YES_NO} value={form.loanRequirement} onChange={(v) => update("loanRequirement", v)} accentColor={ACCENT} icons={YES_NO_ICONS} />
-              <RadioGroup stepNumber="6" label="When are you planning to buy?" required options={TIMELINE} value={form.timeline} onChange={(v) => update("timeline", v)} accentColor={ACCENT} icons={TIMELINE_ICONS} />
-            </Reveal>
-          </div>
-
-          {errorMsg && (
-            <p className="alert-error">
-              <AlertTriangle size={15} className="shrink-0 mt-0.5" />
-              {errorMsg}
-            </p>
-          )}
-
-          <button type="submit" disabled={status === "saving" || !isComplete} className="btn-primary w-full flex items-center justify-center gap-2">
-            {status === "saving" ? "Saving…" : (
-              <>
-                Submit report
-                <Wallet size={16} />
-              </>
-            )}
-          </button>
-          {!isComplete && status === "idle" && (
-            <p className="text-xs text-ink/35 text-center -mt-3">Fill in the required fields marked with * to continue.</p>
-          )}
-          <p className="text-xs text-ink/40 leading-relaxed flex items-start gap-1.5">
-            <ShieldCheck size={13} className="shrink-0 mt-0.5" />
-            This submits your requirements as a report for our team. After reviewing, our team
-            will contact you with matching properties based on your requirements.
-          </p>
-        </form>
-      </div>
-    </div>
+    <Wizard
+      role="Buyer"
+      initialForm={initialForm}
+      landing={landing}
+      steps={steps}
+      reviewTitle="Review your requirements"
+      reviewNote="Check everything looks right. Tap any row to change it."
+      reviewRows={(f) => [
+        { label: "Name", value: f.name, step: 1 },
+        { label: "Mobile", value: f.phone, step: 1 },
+        { label: "Property", value: f.propertyType, step: 2 },
+        { label: "Purpose", value: f.purpose, step: 3 },
+        { label: "Budget", value: f.budget, step: 3 },
+        { label: "Location", value: f.preferredLocation, step: 4 },
+        { label: "Loan", value: f.loanRequirement, step: 4 },
+        { label: "Timeline", value: f.timeline, step: 5 },
+      ]}
+      submit={(f) => addBuyerLead({ ...f, name: f.name.trim() })}
+      submitLabel="Submit requirement"
+      success={{
+        title: "Requirement submitted successfully",
+        text: (f) => `Thanks, ${f.name.trim()}. Our team will review your requirements and contact you with matching properties.`,
+        againLabel: "Register another",
+      }}
+    />
   );
 }

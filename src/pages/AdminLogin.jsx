@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Lock } from "lucide-react";
 import { adminLogin } from "../lib/api";
+import { COLORS } from "../lib/theme";
+import BrandHeader from "../components/wizard/BrandHeader";
+import TextField from "../components/wizard/TextField";
 
 export default function AdminLogin() {
   const [password, setPassword] = useState("");
@@ -17,40 +19,48 @@ export default function AdminLogin() {
       await adminLogin(password);
       sessionStorage.setItem("mcm_admin_pw", password);
       navigate("/control/dashboard");
-    } catch (err) {
-      setError("Wrong password.");
+    } catch {
+      setError("Wrong password. Check it and try again.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-paper flex items-center justify-center px-5">
-      <div className="max-w-sm w-full">
-        <div className="w-12 h-12 rounded-full border-2 border-ink/15 flex items-center justify-center mx-auto mb-5">
-          <Lock size={18} className="text-ink/50" />
-        </div>
-        <div className="card-ledger p-7 shadow-xl">
-          <p className="field-label mb-1">Admin</p>
-          <h1 className="font-display font-semibold text-2xl text-ink mb-6">Sign in</h1>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="field-label">Password</label>
-              <input
-                type="password"
-                className="field-input"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoFocus
-                required
-              />
-            </div>
-            {error && <p className="alert-error">{error}</p>}
-            <button type="submit" disabled={loading} className="btn-primary w-full">
-              {loading ? "Checking…" : "Sign in"}
-            </button>
-          </form>
-        </div>
+    <div className="min-h-screen bg-canvas sm:py-8">
+      <div
+        className="mx-auto max-w-md min-h-[100dvh] sm:min-h-0 bg-surface sm:rounded-[2rem] sm:ring-8 sm:ring-[#EDE7DF] sm:shadow-[0_28px_60px_-24px_rgba(27,42,74,0.35)]"
+        style={{ "--accent": COLORS.steel }}
+      >
+        <BrandHeader color={COLORS.steel} className="sm:rounded-t-[2rem]" />
+        <form onSubmit={handleSubmit} className="px-5 pt-8 pb-10">
+          <p className="text-[12px] font-bold uppercase tracking-[0.14em]" style={{ color: COLORS.steel }}>
+            Admin
+          </p>
+          <h1 className="mt-2 font-display font-bold text-[1.6rem] leading-tight text-ink">Sign in</h1>
+          <p className="mt-2 text-sm text-ink/55">Enter the admin password to open the dashboard.</p>
+
+          <div className="mt-6">
+            <TextField
+              label="Password"
+              required
+              type="password"
+              autoComplete="current-password"
+              autoFocus
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              error={error}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading || !password}
+            className="mt-6 w-full h-14 rounded-full bg-ink text-white text-[12px] font-bold uppercase tracking-[0.14em] transition active:scale-[0.99] disabled:opacity-40 disabled:pointer-events-none"
+          >
+            {loading ? "Checking…" : "Sign in"}
+          </button>
+        </form>
       </div>
     </div>
   );

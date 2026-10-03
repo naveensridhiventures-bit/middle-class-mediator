@@ -7,9 +7,7 @@
     scroll-behavior: smooth;
   }
   body {
-    @apply bg-paper text-ink font-body antialiased;
-    background-image: radial-gradient(#1B2A4A0d 1px, transparent 1px);
-    background-size: 18px 18px;
+    @apply bg-canvas text-ink font-body antialiased;
   }
   :focus-visible {
     outline: 2px solid #C89B3C;
@@ -88,5 +86,25 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+/* A step change is the person's own action, so a short settle-in is fine. */
+@keyframes stepIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-step {
+  animation: stepIn 0.28s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-step {
+    animation: none;
   }
 }

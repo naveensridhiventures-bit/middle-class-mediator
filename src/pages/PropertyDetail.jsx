@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Handshake, MapPin, Ruler, ArrowLeft, Quote, AlertTriangle } from "lucide-react";
+import { MapPin, Ruler, ArrowLeft, Quote, AlertTriangle } from "lucide-react";
 import { listPublicProperties } from "../lib/api";
 import { whatsappLink } from "../lib/whatsapp";
 import { ADMIN_WHATSAPP_NUMBER } from "../lib/config";
 import { optimizedImageUrl } from "../lib/cloudinary";
+import { COLORS } from "../lib/theme";
 import Carousel from "../components/Carousel";
 import SoldOutStamp from "../components/SoldOutStamp";
 import ImageLightbox from "../components/ImageLightbox";
-import Reveal from "../components/Reveal";
+import BrandHeader from "../components/wizard/BrandHeader";
 
 function parseImages(p) {
   let urls = [];
@@ -34,6 +35,16 @@ function parseAttributes(p) {
   }
 }
 
+const backLink = (
+  <Link
+    to="/gallery"
+    className="flex items-center gap-1.5 text-[13px] font-semibold text-white/80 hover:text-white transition-colors"
+  >
+    <ArrowLeft size={15} />
+    All listings
+  </Link>
+);
+
 export default function PropertyDetail() {
   const { id } = useParams();
   const [property, setProperty] = useState(undefined); // undefined = loading, null = not found
@@ -48,28 +59,29 @@ export default function PropertyDetail() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-paper flex items-center justify-center px-5">
-        <p className="alert-error max-w-sm">
-          <AlertTriangle size={15} className="shrink-0 mt-0.5" />
-          {error}
-        </p>
+      <div className="min-h-screen bg-canvas">
+        <BrandHeader color={COLORS.coral} wide right={backLink} />
+        <div className="flex items-center justify-center px-5 py-16">
+          <p className="alert-error max-w-sm">
+            <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+            {error}
+          </p>
+        </div>
       </div>
     );
   }
 
   if (property === undefined) {
     return (
-      <div className="min-h-screen bg-paper">
-        <div className="bg-ink h-[57px]" />
-        <div className="max-w-3xl mx-auto px-5 py-8">
-          <div className="rounded-3xl overflow-hidden shadow-xl relative aspect-[4/3] sm:aspect-[16/9] skeleton" />
+      <div className="min-h-screen bg-canvas">
+        <BrandHeader color={COLORS.teal} wide right={backLink} />
+        <div className="max-w-3xl mx-auto px-5 py-6">
+          <div className="rounded-2xl overflow-hidden relative aspect-[4/3] sm:aspect-[16/9] skeleton" />
           <div className="mt-6 space-y-3">
             <div className="h-5 w-24 rounded-full skeleton" />
             <div className="h-7 w-2/3 rounded-md skeleton" />
             <div className="h-4 w-1/3 rounded-md skeleton" />
-            <div className="h-8 w-1/3 rounded-md skeleton" />
             <div className="h-24 w-full rounded-2xl skeleton mt-4" />
-            <div className="h-12 w-full rounded-xl skeleton mt-4" />
           </div>
         </div>
       </div>
@@ -78,12 +90,18 @@ export default function PropertyDetail() {
 
   if (property === null) {
     return (
-      <div className="min-h-screen bg-paper flex flex-col items-center justify-center px-5 text-center gap-4">
-        <p className="text-ink/60 text-sm">This listing isn't available anymore.</p>
-        <Link to="/gallery" className="btn-primary !py-2.5 !px-5 text-sm">
-          <ArrowLeft size={14} className="inline -mt-0.5 mr-1.5" />
-          Back to all listings
-        </Link>
+      <div className="min-h-screen bg-canvas">
+        <BrandHeader color={COLORS.steel} wide right={backLink} />
+        <div className="flex flex-col items-center justify-center px-5 py-20 text-center gap-4">
+          <h1 className="font-display font-bold text-2xl text-ink">This listing isn't available anymore</h1>
+          <p className="text-sm text-ink/60">It may have been sold or removed.</p>
+          <Link
+            to="/gallery"
+            className="h-12 px-7 rounded-full bg-ink text-white text-[12px] font-bold uppercase tracking-[0.12em] flex items-center justify-center"
+          >
+            See all listings
+          </Link>
+        </div>
       </div>
     );
   }
@@ -94,104 +112,99 @@ export default function PropertyDetail() {
   const soldOut = property.soldOut === "true" || property.soldOut === true;
 
   return (
-    <div className="min-h-screen bg-paper">
-      <div className="bg-ink text-paper">
-        <div className="max-w-3xl mx-auto px-5 py-6 flex items-center justify-between">
-          <Link to="/gallery" className="flex items-center gap-1.5 text-sm text-paper/70 hover:text-paper transition">
-            <ArrowLeft size={16} />
-            All listings
-          </Link>
-          <div className="relative w-9 h-9">
-            <div className="w-9 h-9 rounded-full border-2 border-gold flex items-center justify-center">
-              <span className="font-display font-bold text-gold text-[9px] tracking-wide">MCM</span>
-            </div>
-            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-gold flex items-center justify-center">
-              <Handshake size={7} className="text-ink" strokeWidth={2.5} />
-            </div>
+    <div className="min-h-screen bg-canvas flex flex-col">
+      <BrandHeader color={COLORS.teal} wide right={backLink} />
+
+      <div className="flex-1 max-w-3xl w-full mx-auto px-5 pt-6 pb-8">
+        <div className="rounded-2xl overflow-hidden border border-ink/10 relative aspect-[4/3] sm:aspect-[16/9] bg-surface">
+          <div className={soldOut ? "grayscale opacity-70 w-full h-full" : "w-full h-full"}>
+            <Carousel images={images} alt={property.title} showCounter onImageClick={images.length ? setLightboxIndex : undefined} intervalMs={3500} />
           </div>
+          {soldOut && <SoldOutStamp size="lg" />}
         </div>
-      </div>
 
-      <div className="max-w-3xl mx-auto px-5 py-8">
-        <Reveal direction="up" distance={20}>
-          <div className="rounded-3xl overflow-hidden shadow-xl relative aspect-[4/3] sm:aspect-[16/9]">
-            <div className={soldOut ? "grayscale opacity-70 w-full h-full" : "w-full h-full"}>
-              <Carousel images={images} alt={property.title} showCounter onImageClick={images.length ? setLightboxIndex : undefined} intervalMs={3500} />
-            </div>
-            {soldOut && <SoldOutStamp size="lg" />}
-          </div>
-        </Reveal>
-
-        <Reveal direction="up" delay={120} distance={20} className="mt-6 space-y-3">
+        <div className="mt-6 space-y-4">
           {property.type && (
-            <span className="inline-block text-[11px] font-bold uppercase tracking-wide px-3 py-1 rounded-full bg-seller/10 text-seller">
+            <span
+              className="inline-block text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full"
+              style={{ color: COLORS.teal, backgroundColor: `color-mix(in srgb, ${COLORS.teal} 10%, white)` }}
+            >
               {property.type}
             </span>
           )}
-          <div>
-            <h1 className="font-display font-bold text-2xl sm:text-3xl text-ink leading-snug">{property.title}</h1>
-            <span className="block h-0.5 w-14 rounded-full bg-gold mt-2" />
-          </div>
+          <h1 className="font-display font-bold text-[1.7rem] sm:text-3xl text-ink leading-tight">{property.title}</h1>
+
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             {property.location && (
-              <p className="text-sm text-ink/50 flex items-center gap-1.5">
+              <p className="text-sm text-ink/60 flex items-center gap-1.5">
                 <MapPin size={14} className="shrink-0" />
                 {property.location}
               </p>
             )}
             {property.sqft && (
-              <p className="text-sm text-ink/50 flex items-center gap-1.5">
+              <p className="text-sm text-ink/60 flex items-center gap-1.5">
                 <Ruler size={14} className="shrink-0" />
                 {Number(property.sqft).toLocaleString()} sqft
               </p>
             )}
           </div>
-          {property.price && (
-            <p className={`font-display font-bold text-2xl ${soldOut ? "text-ink/40 line-through" : "text-ink"}`}>
-              {property.price}
-            </p>
-          )}
-          {property.description && <p className="text-sm text-ink/60">{property.description}</p>}
+
+          {property.description && <p className="text-[15px] text-ink/70 leading-relaxed">{property.description}</p>}
 
           {attrEntries.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2">
-              {attrEntries.map(([k, v]) => (
-                <div key={k} className="bg-white rounded-xl px-3 py-2.5 shadow-sm">
-                  <p className="text-[10px] uppercase tracking-wide text-ink/35 font-bold leading-none mb-1">{k}</p>
-                  <p className="text-sm text-ink/70 font-medium">{v}</p>
-                </div>
-              ))}
+            <div>
+              <h2 className="font-display font-bold text-ink text-[17px] mb-3 mt-2">Property details</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                {attrEntries.map(([k, v]) => (
+                  <div key={k} className="bg-surface border border-ink/10 rounded-xl px-3.5 py-3">
+                    <p className="text-[10px] uppercase tracking-wider text-ink/50 font-bold leading-none mb-1.5">{k}</p>
+                    <p className="text-sm text-ink/85 font-medium">{v}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
           {property.sellerNote && (
-            <div className="relative bg-gradient-to-br from-gold/10 to-seller/5 border-l-4 border-gold rounded-r-2xl pl-5 pr-4 py-4 my-1">
-              <Quote size={20} className="text-gold/50 absolute top-3 right-3.5" />
-              <p className="text-[10px] uppercase tracking-wide text-gold-dark font-bold mb-1.5">Seller's remark</p>
-              <p className="text-sm text-ink/70 italic leading-relaxed pr-6">{property.sellerNote}</p>
+            <div className="relative bg-[#F8F2E4] border-l-4 border-gold rounded-r-2xl pl-5 pr-4 py-4">
+              <Quote size={20} className="text-gold/60 absolute top-3 right-3.5" />
+              <p className="text-[10px] uppercase tracking-wider text-gold-dark font-bold mb-1.5">Seller's remark</p>
+              <p className="text-sm text-ink/75 italic leading-relaxed pr-6 whitespace-pre-line">{property.sellerNote}</p>
             </div>
           )}
+        </div>
+      </div>
 
-          <div className="pt-4">
-            {soldOut ? (
-              <span className="w-full py-3.5 text-sm text-center rounded-xl bg-ink/10 text-ink/40 font-semibold flex items-center justify-center">
-                No longer available
-              </span>
-            ) : (
-              <a
-                href={whatsappLink(
-                  ADMIN_WHATSAPP_NUMBER,
-                  `Hi, I'm interested in this property: ${property.title}${property.location ? ` (${property.location})` : ""} — ${property.price || ""}${property.refId ? `\n\nProperty ref: ${property.refId}` : ""}\n\nCan you share more details?`
-                )}
-                target="_blank"
-                rel="noreferrer"
-                className="btn-whatsapp w-full !py-3.5 text-base text-center block"
-              >
-                Show interest on WhatsApp
-              </a>
-            )}
+      {/* Pinned bar — price and the one action that matters stay in reach */}
+      <div
+        className="sticky bottom-0 z-20 bg-surface border-t border-ink/10"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        <div className="max-w-3xl mx-auto px-5 py-3 flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-wider text-ink/50 font-bold">Price</p>
+            <p className={`font-display font-bold text-xl truncate ${soldOut ? "text-ink/40 line-through" : "text-ink"}`}>
+              {property.price || "On request"}
+            </p>
           </div>
-        </Reveal>
+          {soldOut ? (
+            <span className="h-12 px-6 rounded-full bg-ink/10 text-ink/45 text-[12px] font-bold uppercase tracking-[0.12em] flex items-center justify-center">
+              No longer available
+            </span>
+          ) : (
+            <a
+              href={whatsappLink(
+                ADMIN_WHATSAPP_NUMBER,
+                `Hi, I'm interested in this property: ${property.title}${property.location ? ` (${property.location})` : ""} — ${property.price || ""}${property.refId ? `\n\nProperty ref: ${property.refId}` : ""}\n\nCan you share more details?`
+              )}
+              target="_blank"
+              rel="noreferrer"
+              className="h-12 px-6 sm:px-8 rounded-full bg-whatsapp text-white text-[12px] font-bold uppercase tracking-[0.12em] flex items-center justify-center shrink-0"
+            >
+              I'm interested
+            </a>
+          )}
+        </div>
       </div>
 
       {lightboxIndex !== null && (
