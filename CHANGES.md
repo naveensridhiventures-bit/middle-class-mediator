@@ -1,3 +1,35 @@
+# v8 — Gallery: first zip's opening page + second zip's inside pages (2026-10-03)
+
+Opening page (/gallery) is the animated design from the first zip, without
+the bottom button bar. Inside pages are the second zip's. Home page, forms
+and admin are untouched. Cumulative: includes all earlier updates.
+
+## Opening page
+- MCM header with back and search, "Property Gallery" rising into place, the
+  subtitle rolling through homes / flats / villas / plots / shops.
+- Icon chips that glide in one by one, Featured slider (slow push-in, rising
+  title words, progress dots, swipe), ribbon of area names, Recent listings
+  tiles with price, heart and photo count, count-up number, sort.
+- Price / size / facing filters now live inside the search panel (tap the
+  search button, then the sliders button), so the opening screen stays clean.
+  A note under the chips shows when filters are on, with "Clear filters".
+
+## Kept from the second zip (unchanged)
+- Property page, full-screen photo viewer, Photos and Location tabs, Enquiry
+  (opens WhatsApp with the message ready), Filters sheet, saved hearts,
+  return-to-same-place scrolling.
+
+## Removed
+- The bottom button bar (BottomNav), and the second zip's card/tile-strip
+  components that the opening page no longer uses
+  (`ListingCards.jsx`, `CategoryStrip.jsx`).
+
+## Fixed
+- Featured slider was narrower than the page on desktop (a height cap was
+  shrinking its width); it now fills the column.
+- Slider handles show their own focus ring instead of a box around the track.
+- Long chip names such as "Independent House" wrap onto two lines.
+
 # v7 — Gallery pages rebuilt to the new mockup (2026-10-03)
 
 Only the gallery changed. Home, Buyer, Seller, Mediator and the admin are

@@ -327,3 +327,12 @@
 @media (prefers-reduced-motion: no-preference) {
   .plus-pulse { animation: chatPulse 2.8s ease-out infinite; }
 }
+
+/* Soft entrance that gives control back to the element afterwards (so a
+   button's own press animation still works once it has settled in). */
+@media (prefers-reduced-motion: no-preference) {
+  .enter-up { animation: fadeUp 0.65s ease-out var(--d, 0ms) backwards; }
+}
+
+/* Slider: only the handle shows a focus ring, not a box around the whole track */
+.range-dual input[type="range"]:focus { outline: none; }
