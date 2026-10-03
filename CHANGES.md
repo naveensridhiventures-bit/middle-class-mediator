@@ -1,3 +1,42 @@
+# v7 — Gallery pages rebuilt to the new mockup (2026-10-03)
+
+Only the gallery changed. Home, Buyer, Seller, Mediator and the admin are
+untouched (the only other edits are two new routes in App.jsx and extra
+styles appended to index.css). Cumulative: includes all earlier updates.
+
+## Gallery list  (/gallery)
+- Light header (back, title, saved-hearts button), search box with a moving
+  placeholder ("Search homes… flats… plots…") and a Filters button with a
+  badge showing how many filters are on.
+- Dark strip of property-type tiles with icons.
+- Featured Properties: big cards with photo, title, area, price and a specs
+  row (built only from data the listing really has). "View All" jumps to the grid.
+- All Properties grid: photo with heart, then title, area and price; sort on the right.
+- Bottom bar: Home, Gallery, a gold "+" (list your property), Chat (WhatsApp)
+  and Saved (your hearts).
+- Returning from a listing puts you back exactly where you were.
+
+## Filters sheet
+- Property type tiles, area, price range slider (₹20 Lakhs to ₹5+ Crores),
+  size slider (500 to 5000+ Sq.ft), facing, Reset, and a live "Show Results (N)".
+
+## Property page  (/gallery/:id)
+- Full-width swipeable photo with back, heart, share and a photo counter;
+  title, area, price, specs cards, description, seller's remark, details.
+- Pinned Call and WhatsApp buttons. Tap the photo for the full-screen viewer.
+
+## New pages
+- Gallery view (full-screen viewer with thumbnails, swipe, keyboard).
+- /gallery/:id/photos: all photos in a grid, plus a Location tab with an area map.
+- /gallery/:id/enquiry: name, phone, message; opens WhatsApp with the message ready.
+
+## Fixed along the way
+- Price reader now understands ranges like "₹75 Lakhs–₹1 Crore" (it used to
+  read the 75 as crores, which skewed sorting).
+
+## Removed (replaced by the above)
+`components/gallery/FeaturedCarousel.jsx`, `PropertyTile.jsx`, `ShowcaseHeader.jsx`
+
 # v6 — New property gallery (2026-10-03)
 
 Cumulative: includes the home page, admin and public redesigns and the gallery

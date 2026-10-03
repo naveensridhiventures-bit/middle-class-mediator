@@ -1,137 +1,52 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import {
-  ArrowLeft, Search, X, LayoutGrid, House, Building2, MapPinned, Store, Heart, ChevronDown, AlertTriangle,
-} from "lucide-react";
-import { listPublicProperties } from "../lib/api";
-import { optimizedImageUrl } from "../lib/cloudinary";
+import { useNavigate } from "react-router-dom";
+import { Search, X, SlidersHorizontal, Heart, ChevronRight, ChevronDown, AlertTriangle } from "lucide-react";
+import useProperties from "../lib/useProperties";
 import useFavorites from "../lib/useFavorites";
+import { DEFAULT_FILTERS, activeFilterCount, applyFilters, sortListings } from "../lib/gallery";
 import Reveal from "../components/Reveal";
 import RotatingWords from "../components/home/RotatingWords";
-import Ticker from "../components/home/Ticker";
-import ShowcaseHeader, { headerBtnCls } from "../components/gallery/ShowcaseHeader";
-import FeaturedCarousel from "../components/gallery/FeaturedCarousel";
-import PropertyTile from "../components/gallery/PropertyTile";
+import TopBar, { roundBtn } from "../components/gallery/TopBar";
+import CategoryStrip from "../components/gallery/CategoryStrip";
+import { FeaturedCard, GridCard } from "../components/gallery/ListingCards";
+import FilterSheet from "../components/gallery/FilterSheet";
+import BottomNav from "../components/gallery/BottomNav";
 import CountUp from "../components/gallery/CountUp";
 
-function parseImageList(p) {
-  let urls = [];
-  if (p.images) {
-    try {
-      const parsed = JSON.parse(p.images);
-      if (Array.isArray(parsed) && parsed.length) urls = parsed.filter(Boolean);
-    } catch {
-      // fall through to the single imageUrl below
-    }
-  }
-  if (urls.length === 0 && p.imageUrl) urls = [p.imageUrl];
-  return urls;
-}
-
-const isSold = (p) => p.soldOut === "true" || p.soldOut === true;
-
-// Pulls the first meaningful number out of a free-text price like
-// "₹50,00,000" or "₹75 Lakhs–₹1 Crore", for sorting only.
-function priceValue(price) {
-  if (!price) return null;
-  const cleaned = String(price).toLowerCase();
-  const num = parseFloat(cleaned.replace(/[^0-9.]/g, ""));
-  if (isNaN(num)) return null;
-  if (cleaned.includes("crore")) return num * 10000000;
-  if (cleaned.includes("lakh")) return num * 100000;
-  return num;
-}
-
-// Short, friendly chip labels for the property types the forms use.
-const SHORT_TYPE = {
-  "Home / Independent House": "Independent House",
-  "Apartment / Flat": "Apartment",
-  "Plot / Land": "Plot",
-  "Land / Plot": "Plot",
-  "Shop / Retail": "Shop",
-  "Office / Commercial Space": "Office",
-};
-const shortType = (t) => SHORT_TYPE[t] || t;
-
-function typeIcon(t) {
-  const x = t.toLowerCase();
-  if (/apartment|flat/.test(x)) return Building2;
-  if (/plot|land/.test(x)) return MapPinned;
-  if (/shop|retail|office|commercial|hotel|restaurant|saloon/.test(x)) return Store;
-  return House;
-}
-
+const SCROLL_KEY = "mcm_gallery_scroll";
 const SORT_OPTIONS = [
   { key: "newest", label: "Newest first" },
   { key: "price-low", label: "Price: low to high" },
   { key: "price-high", label: "Price: high to low" },
 ];
-
-const CACHE_KEY = "mcm_gallery_cache_v2";
-const SCROLL_KEY = "mcm_gallery_scroll";
-const ROLLING = ["homes", "flats", "villas", "plots", "shops"];
-
-function Chip({ active, onClick, icon: Icon, children, count }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      data-active={active}
-      className={`chip shrink-0 h-12 pl-3.5 pr-4 rounded-2xl flex items-center gap-2 text-[14px] font-semibold transition-colors active:scale-95 ${
-        active ? "bg-ink text-white" : "bg-[#EDE8E0] text-ink/80 hover:bg-[#E4DED4]"
-      }`}
-    >
-      <Icon size={20} strokeWidth={1.8} className="chip-ico shrink-0" fill={active && Icon === Heart ? "currentColor" : "none"} />
-      <span className="whitespace-nowrap">{children}</span>
-      {count != null && <span className={`text-[12px] font-bold ${active ? "text-white/70" : "text-ink/45"}`}>{count}</span>}
-    </button>
-  );
-}
-
-function TileSkeleton() {
-  return <div className="rounded-2xl aspect-[4/3] skeleton" />;
-}
+const SEARCH_WORDS = ["homes", "flats", "plots", "villas", "shops", "areas"];
+const GOLD_TEXT = "#8A6218";
 
 export default function Gallery() {
   const navigate = useNavigate();
   const favorites = useFavorites();
-  const [properties, setProperties] = useState(() => {
-    try {
-      const cached = sessionStorage.getItem(CACHE_KEY);
-      return cached ? JSON.parse(cached) : null;
-    } catch {
-      return null;
-    }
-  });
-  const [error, setError] = useState("");
+  const { properties, error } = useProperties();
   const [query, setQuery] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [activeType, setActiveType] = useState("All"); // "All" | a property type | "Saved"
+  const [focused, setFocused] = useState(false);
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [sort, setSort] = useState("newest");
-  const [stuck, setStuck] = useState(false);
-  const sentinelRef = useRef(null);
+  const [savedOnly, setSavedOnly] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const restored = useRef(false);
 
+  // Come back from a listing to the same place in the list. The position is
+  // tracked while you scroll, because by the time this page unmounts the
+  // browser has already shortened it and reset scrollY.
+  const lastY = useRef(0);
   useEffect(() => {
-    listPublicProperties()
-      .then((data) => {
-        const list = [...data].reverse();
-        setProperties(list);
-        try {
-          sessionStorage.setItem(CACHE_KEY, JSON.stringify(list));
-        } catch {
-          // storage full or unavailable — not worth failing over
-        }
-      })
-      .catch((err) => setError(err.message));
-  }, []);
-
-  // Come back from a listing to the same place in the list.
-  useEffect(() => {
+    const onScroll = () => {
+      lastY.current = window.scrollY;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
+      window.removeEventListener("scroll", onScroll);
       try {
-        sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
+        sessionStorage.setItem(SCROLL_KEY, String(lastY.current));
       } catch {
         // ignore
       }
@@ -149,15 +64,6 @@ export default function Gallery() {
     }
   }, [properties]);
 
-  // The chip bar gets a soft shadow once it is stuck to the top.
-  useEffect(() => {
-    const node = sentinelRef.current;
-    if (!node || typeof IntersectionObserver === "undefined") return undefined;
-    const observer = new IntersectionObserver(([entry]) => setStuck(!entry.isIntersecting), { threshold: 0 });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-
   const types = useMemo(() => {
     if (!properties) return [];
     const counts = {};
@@ -166,158 +72,116 @@ export default function Gallery() {
     });
     return Object.entries(counts)
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .map(([type, n]) => ({ type, n }));
+      .map(([t]) => t);
   }, [properties]);
-
-  const savedCount = useMemo(
-    () => (properties ? properties.filter((p) => favorites.has(p.id)).length : 0),
-    [properties, favorites]
-  );
-
-  const visible = useMemo(() => {
-    if (!properties) return [];
-    const q = query.trim().toLowerCase();
-    let list = properties.filter((p) => {
-      const matchesQuery =
-        !q ||
-        p.title?.toLowerCase().includes(q) ||
-        p.location?.toLowerCase().includes(q) ||
-        p.type?.toLowerCase().includes(q);
-      const matchesType =
-        activeType === "All" ? true : activeType === "Saved" ? favorites.has(p.id) : p.type === activeType;
-      return matchesQuery && matchesType;
-    });
-    if (sort === "price-low" || sort === "price-high") {
-      list = [...list].sort((a, b) => {
-        const av = priceValue(a.price);
-        const bv = priceValue(b.price);
-        if (av === null && bv === null) return 0;
-        if (av === null) return 1;
-        if (bv === null) return -1;
-        return sort === "price-low" ? av - bv : bv - av;
-      });
-    }
-    return list.map((p) => ({ ...p, _images: parseImageList(p) }));
-  }, [properties, query, activeType, sort, favorites]);
-
-  const featured = useMemo(
-    () =>
-      visible
-        .filter((p) => !isSold(p) && p._images.length > 0)
-        .slice(0, 4)
-        .map((p) => ({
-          id: p.id,
-          title: p.title,
-          location: p.location,
-          price: p.price,
-          image: optimizedImageUrl(p._images[0], 1200),
-        })),
-    [visible]
-  );
 
   const areas = useMemo(() => {
     if (!properties) return [];
-    return [...new Set(properties.map((p) => (p.location || "").split(",")[0].trim()).filter(Boolean))].slice(0, 12);
+    return [...new Set(properties.map((p) => p.area).filter(Boolean))].sort();
   }, [properties]);
 
-  function clearFilters() {
-    setQuery("");
-    setActiveType("All");
-  }
+  const savedCount = useMemo(() => (properties ? properties.filter((p) => favorites.has(p.id)).length : 0), [properties, favorites]);
+
+  const visible = useMemo(() => {
+    if (!properties) return [];
+    return sortListings(applyFilters(properties, filters, query, savedOnly, favorites.has), sort);
+  }, [properties, filters, query, savedOnly, sort, favorites]);
+
+  const filterCount = activeFilterCount(filters);
+  const browsing = !query.trim() && filterCount === 0 && !savedOnly;
+  const featured = useMemo(() => (browsing ? visible.filter((l) => !l.sold && l.images.length > 0).slice(0, 3) : []), [browsing, visible]);
 
   function goBack() {
     if (window.history.length > 1) navigate(-1);
     else navigate("/");
   }
+  function resetAll() {
+    setQuery("");
+    setFilters(DEFAULT_FILTERS);
+    setSavedOnly(false);
+  }
+  function toggleSaved() {
+    setSavedOnly((s) => !s);
+    requestAnimationFrame(() => document.getElementById("all-properties")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
 
   const loading = properties === null && !error;
   const hasAny = properties !== null && properties.length > 0;
+  const showPlaceholder = !query && !focused;
 
   return (
-    <div className="min-h-screen bg-canvas">
-      <ShowcaseHeader
-        left={
-          <button type="button" onClick={goBack} aria-label="Go back" className={headerBtnCls}>
-            <ArrowLeft size={22} />
-          </button>
-        }
+    <div className="min-h-screen bg-canvas" style={{ paddingBottom: "calc(6.5rem + env(safe-area-inset-bottom))" }}>
+      <TopBar
+        title="Property Gallery"
+        onBack={goBack}
         right={
           <button
             type="button"
-            onClick={() => setSearchOpen((o) => !o)}
-            aria-label={searchOpen ? "Close search" : "Search listings"}
-            aria-expanded={searchOpen}
-            className={headerBtnCls}
+            onClick={toggleSaved}
+            aria-pressed={savedOnly}
+            aria-label={savedOnly ? "Show all properties" : "Show saved properties"}
+            className={`${roundBtn} ${savedOnly ? "bg-ink text-[#E6C173]" : "text-ink hover:bg-ink/5"}`}
           >
-            {searchOpen ? <X size={21} /> : <Search size={21} />}
-            {!searchOpen && query.trim() && <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-[#E6C173]" />}
+            <Heart size={21} fill={savedOnly ? "currentColor" : "none"} />
+            {savedCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-[#E5584A] text-white text-[10px] font-bold flex items-center justify-center">
+                {savedCount}
+              </span>
+            )}
           </button>
         }
       />
 
-      {/* Search slides open under the header */}
-      <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${searchOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
-        <div className="overflow-hidden">
-          <div className="max-w-6xl mx-auto px-4 pt-4">
-            <div className="relative">
-              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink/40" />
-              <input
-                autoFocus={searchOpen}
-                tabIndex={searchOpen ? 0 : -1}
-                className="w-full h-12 rounded-2xl border border-ink/10 bg-surface pl-11 pr-11 text-[15px] text-ink placeholder:text-ink/40 outline-none focus:border-[#98691F] focus:shadow-[0_0_0_3px_rgba(152,105,31,0.18)] transition"
-                placeholder="Search by title, area or type"
-                aria-label="Search listings"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              {query && (
-                <button
-                  type="button"
-                  onClick={() => setQuery("")}
-                  aria-label="Clear search"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full hover:bg-ink/5 flex items-center justify-center"
-                >
-                  <X size={16} className="text-ink/50" />
-                </button>
-              )}
-            </div>
+      <div className="max-w-6xl mx-auto px-4">
+        {/* Search + filters */}
+        <div className="mt-2 flex gap-2.5">
+          <div className="relative flex-1 min-w-0">
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink/45 pointer-events-none" />
+            <input
+              className="w-full h-12 rounded-2xl border border-ink/10 bg-surface pl-11 pr-10 text-[15px] text-ink outline-none transition focus:border-[#C99A4A] focus:shadow-[0_0_0_3px_rgba(201,154,74,0.22)]"
+              aria-label="Search properties and locations"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              type="text"
+              inputMode="search"
+              enterKeyHint="search"
+            />
+            {/* The placeholder itself moves: "Search homes… flats… plots…" */}
+            {showPlaceholder && (
+              <span className="absolute left-11 top-1/2 -translate-y-1/2 text-[15px] text-ink/45 pointer-events-none whitespace-nowrap" aria-hidden="true">
+                Search <RotatingWords words={SEARCH_WORDS} interval={2200} className="font-semibold text-ink/65" />, locations…
+              </span>
+            )}
+            {query && (
+              <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="absolute right-1.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full hover:bg-ink/5 flex items-center justify-center">
+                <X size={16} className="text-ink/50" />
+              </button>
+            )}
           </div>
+          <button
+            type="button"
+            onClick={() => setShowFilters(true)}
+            aria-label={filterCount ? `Filters, ${filterCount} active` : "Filters"}
+            className="relative shrink-0 w-12 h-12 rounded-2xl bg-ink-dark text-white flex items-center justify-center active:scale-95 transition-transform"
+          >
+            <SlidersHorizontal size={20} />
+            {filterCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[1.2rem] h-[1.2rem] px-1 rounded-full bg-[#C99A4A] text-ink-dark text-[11px] font-bold flex items-center justify-center">
+                {filterCount}
+              </span>
+            )}
+          </button>
         </div>
-      </div>
 
-      {/* Title + rolling subtitle */}
-      <div className="max-w-6xl mx-auto px-4 pt-6">
-        <h1 className="font-display font-bold text-ink text-[2.1rem] sm:text-5xl leading-[1.08] tracking-tight" aria-label="Property Gallery">
-          <span aria-hidden="true">
-            <span className="mask-word"><span className="mask-inner" style={{ "--d": "100ms" }}>Property</span></span>{" "}
-            <span className="mask-word"><span className="mask-inner" style={{ "--d": "220ms" }}>Gallery</span></span>
-          </span>
-        </h1>
-        <p className="fade-up mt-2 text-[15.5px] sm:text-lg text-ink/60 leading-relaxed" style={{ "--d": "450ms" }}>
-          Explore handpicked <RotatingWords words={ROLLING} className="font-bold text-[#98691F]" /> from our trusted sellers.
-        </p>
-      </div>
+        {/* Property-type tiles */}
+        {hasAny && (
+          <div className="mt-4">
+            <CategoryStrip types={types} active={filters.type} onChange={(t) => setFilters((f) => ({ ...f, type: t }))} />
+          </div>
+        )}
 
-      <div ref={sentinelRef} className="h-px" aria-hidden="true" />
-
-      {/* Category chips (stick to the top while you scroll) */}
-      <div className={`sticky top-0 z-30 bg-canvas transition-shadow duration-300 ${stuck ? "shadow-[0_10px_18px_-14px_rgba(27,42,74,0.45)]" : ""}`}>
-        <div className="max-w-6xl mx-auto px-4 py-3 flex gap-2.5 overflow-x-auto no-scrollbar" role="group" aria-label="Filter by property type">
-          <Chip active={activeType === "All"} onClick={() => setActiveType("All")} icon={LayoutGrid}>All</Chip>
-          {types.map(({ type, n }) => (
-            <Chip key={type} active={activeType === type} onClick={() => setActiveType(type)} icon={typeIcon(type)} count={n}>
-              {shortType(type)}
-            </Chip>
-          ))}
-          {(savedCount > 0 || activeType === "Saved") && (
-            <Chip active={activeType === "Saved"} onClick={() => setActiveType("Saved")} icon={Heart} count={savedCount}>
-              Saved
-            </Chip>
-          )}
-        </div>
-      </div>
-
-      <main className="max-w-6xl mx-auto px-4 pb-10">
         {error && (
           <p className="alert-error max-w-md mx-auto mt-6">
             <AlertTriangle size={15} className="shrink-0 mt-0.5" />
@@ -327,102 +191,103 @@ export default function Gallery() {
 
         {loading && (
           <>
-            <div className="mt-3 rounded-3xl aspect-[16/11] sm:aspect-[21/9] skeleton" />
-            <div className="mt-8 grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              {Array.from({ length: 6 }).map((_, i) => <TileSkeleton key={i} />)}
+            <div className="mt-5 h-6 w-48 rounded-md skeleton" />
+            <div className="mt-3 rounded-3xl h-72 skeleton" />
+            <div className="mt-6 grid grid-cols-2 lg:grid-cols-3 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => <div key={i} className="rounded-2xl h-48 skeleton" />)}
             </div>
           </>
         )}
 
-        {hasAny && featured.length > 0 && (
-          <div className="mt-3">
-            <FeaturedCarousel items={featured} />
-          </div>
-        )}
-
-        {hasAny && areas.length > 1 && (
-          <div className="mt-6" aria-label="Areas with listings">
-            <Ticker words={areas} light />
-          </div>
-        )}
-
         {properties !== null && !hasAny && !error && (
-          <div className="mt-10 rounded-3xl bg-surface border border-dashed border-ink/20 p-10 text-center">
-            <p className="font-display font-bold text-xl text-ink">No listings published yet</p>
-            <p className="text-sm text-ink/55 mt-1.5">New properties appear here as soon as they are shared. Check back soon.</p>
+          <div className="mt-8 rounded-3xl bg-surface border border-dashed border-ink/20 p-10 text-center">
+            <p className="font-display font-bold text-xl text-ink">No properties published yet</p>
+            <p className="text-sm text-ink/55 mt-1.5">New listings appear here as soon as they are shared. Check back soon.</p>
           </div>
         )}
 
+        {/* Featured properties */}
+        {featured.length > 0 && (
+          <section className="mt-6" aria-labelledby="featured-title">
+            <div className="flex items-center justify-between">
+              <h2 id="featured-title" className="font-display font-bold text-[1.35rem] text-ink">Featured Properties</h2>
+              <button
+                type="button"
+                onClick={() => document.getElementById("all-properties")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="flex items-center text-[14px] font-bold"
+                style={{ color: GOLD_TEXT }}
+              >
+                View All <ChevronRight size={16} />
+              </button>
+            </div>
+            <div className="mt-3 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {featured.map((l, i) => (
+                <Reveal key={l.id} delay={i * 110} distance={24} className="h-full">
+                  <FeaturedCard listing={l} saved={favorites.has(l.id)} onToggleSaved={favorites.toggle} />
+                </Reveal>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* All properties */}
         {hasAny && (
-          <>
-            <div className="mt-7 flex items-end justify-between gap-3">
-              <h2 className="font-display font-bold text-ink text-[1.6rem] sm:text-3xl leading-tight">
-                {activeType === "Saved" ? "Saved listings" : "Recent listings"}
-                <span className="ml-2 align-middle text-[13px] font-bold text-white bg-ink rounded-full px-2.5 py-0.5">
+          <section id="all-properties" className="mt-8 scroll-mt-4" aria-labelledby="all-title">
+            <div className="flex items-end justify-between gap-3">
+              <h2 id="all-title" className="font-display font-bold text-[1.35rem] text-ink">
+                {savedOnly ? "Saved" : browsing ? "All Properties" : "Results"}
+                <span className="ml-2 align-middle text-[12px] font-bold text-white bg-ink rounded-full px-2.5 py-0.5">
                   <CountUp value={visible.length} />
                 </span>
               </h2>
-              <label className="relative flex items-center text-[#98691F] font-semibold text-[15px] cursor-pointer">
-                <span className="sr-only">Sort listings</span>
-                <select
-                  value={sort}
-                  onChange={(e) => setSort(e.target.value)}
-                  className="appearance-none bg-transparent pr-6 text-right cursor-pointer outline-none focus-visible:underline"
-                >
+              <label className="relative flex items-center font-semibold text-[14px] cursor-pointer" style={{ color: GOLD_TEXT }}>
+                <span className="sr-only">Sort properties</span>
+                <select value={sort} onChange={(e) => setSort(e.target.value)} className="appearance-none bg-transparent pr-5 text-right cursor-pointer outline-none focus-visible:underline">
                   {SORT_OPTIONS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
                 </select>
-                <ChevronDown size={16} className="absolute right-0 pointer-events-none" />
+                <ChevronDown size={15} className="absolute right-0 pointer-events-none" />
               </label>
             </div>
 
             {visible.length === 0 ? (
-              <div className="mt-6 rounded-3xl bg-surface border border-dashed border-ink/20 p-10 text-center">
-                <p className="font-display font-bold text-lg text-ink">
-                  {activeType === "Saved" ? "Nothing saved yet" : "No listings match"}
-                </p>
+              <div className="mt-4 rounded-3xl bg-surface border border-dashed border-ink/20 p-10 text-center">
+                <p className="font-display font-bold text-lg text-ink">{savedOnly ? "Nothing saved yet" : "No properties match"}</p>
                 <p className="text-sm text-ink/55 mt-1.5">
-                  {activeType === "Saved" ? "Tap the heart on any property to keep it here." : "Try a different search or clear the filters."}
+                  {savedOnly ? "Tap the heart on any property to keep it here." : "Try a different search or loosen the filters."}
                 </p>
                 <button
                   type="button"
-                  onClick={clearFilters}
+                  onClick={resetAll}
                   className="mt-5 h-11 px-6 rounded-full border border-ink/20 text-ink text-[12px] font-bold uppercase tracking-[0.12em] hover:bg-ink/5 transition-colors"
                 >
-                  {activeType === "Saved" ? "Browse all listings" : "Clear filters"}
+                  {savedOnly ? "Browse all properties" : "Reset filters"}
                 </button>
               </div>
             ) : (
               <div className="mt-4 grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                {visible.map((p, i) => (
-                  <Reveal key={p.id} delay={(i % 2) * 90} distance={22}>
-                    <PropertyTile
-                      p={{ id: p.id, title: p.title, location: p.location, price: p.price, soldOut: isSold(p), images: p._images.map((u) => optimizedImageUrl(u, 600)) }}
-                      saved={favorites.has(p.id)}
-                      onToggleSaved={favorites.toggle}
-                    />
+                {visible.map((l, i) => (
+                  <Reveal key={l.id} delay={(i % 2) * 90} distance={22} className="h-full">
+                    <GridCard listing={l} saved={favorites.has(l.id)} onToggleSaved={favorites.toggle} />
                   </Reveal>
                 ))}
               </div>
             )}
-          </>
+          </section>
         )}
+      </div>
 
-        {/* Register prompt: sits at the end of the list, where interest is highest */}
-        {hasAny && (
-          <div className="mt-12 rounded-3xl bg-ink text-white p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-[0_18px_36px_-18px_rgba(10,17,36,0.7)]">
-            <div>
-              <p className="font-display font-bold text-xl">Have a property to sell, or looking to buy?</p>
-              <p className="text-sm text-white/65 mt-1">Get listed with Middle Class Mediator. It takes a minute.</p>
-            </div>
-            <Link
-              to="/"
-              className="shrink-0 h-12 px-7 rounded-full bg-coral text-white text-[12px] font-bold uppercase tracking-[0.12em] flex items-center justify-center hover:brightness-110 transition"
-            >
-              Register now
-            </Link>
-          </div>
-        )}
-      </main>
+      <BottomNav savedCount={savedCount} savedActive={savedOnly} onSaved={toggleSaved} />
+
+      {showFilters && (
+        <FilterSheet
+          filters={filters}
+          onChange={setFilters}
+          types={types}
+          areas={areas}
+          resultCount={visible.length}
+          onClose={() => setShowFilters(false)}
+        />
+      )}
     </div>
   );
 }

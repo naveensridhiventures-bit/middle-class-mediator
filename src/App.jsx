@@ -8,6 +8,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminFieldVisit from "./pages/AdminFieldVisit";
 import Gallery from "./pages/Gallery";
 import PropertyDetail from "./pages/PropertyDetail";
+import GalleryPhotos from "./pages/GalleryPhotos";
+import GalleryEnquiry from "./pages/GalleryEnquiry";
 
 export default function App() {
   return (
@@ -25,6 +27,8 @@ export default function App() {
           {/* Hidden public gallery — buyer-safe listing view, no phone/exact address */}
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/gallery/:id" element={<PropertyDetail />} />
+          <Route path="/gallery/:id/photos" element={<GalleryPhotos />} />
+          <Route path="/gallery/:id/enquiry" element={<GalleryEnquiry />} />
           <Route path="*" element={<Home />} />
         </Routes>
       </main>
