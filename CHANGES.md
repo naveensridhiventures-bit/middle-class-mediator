@@ -1,3 +1,26 @@
+# v11 — Premium Gallery (2026-10-08)
+
+Public gallery only. No new packages, no new Sheet columns, no Code.gs change.
+Cumulative: includes v9 and v10 and the Apps Script URL.
+
+Everything shown is real listing data. Nothing is invented (no fake "3 people viewing").
+
+**Gallery home**
+- Live stats strip (properties, areas, price range) with a gold hairline
+- One-tap budget pills (Under 30L … 1Cr+)
+- Curated shelves built from the data: Just listed, Under 50 Lakhs, East-facing, With parking, Brand new, Plots (a shelf only shows with 2+ listings)
+- Recently viewed shelf (this device only)
+- Compare saved: save 2–3 listings, compare side by side, best value highlighted
+- Tiles: "Just listed" badge, size and price per sq.ft
+
+**Listing page**
+- Price per sq.ft, "EMI from ₹X/mo", listed-ago
+- Trust highlights (approval, loan status, vacant, parking, facing) from the seller's details
+- EMI calculator: down payment, rate and tenure sliders, donut chart (indicative, assumptions editable)
+- Book a visit: pick day + time, opens WhatsApp with the request written
+- Similar properties shelf
+- Pinned bar: Call · Book a visit · WhatsApp
+
 # v10 — Pipeline Studio: Kanban board, Ctrl+K search, deal forecast (2026-10-08)
 
 Builds on v9 (Command Center). No new packages, no new Google Sheet columns,

@@ -1,5 +1,10 @@
 # Middle Class Mediator
 
+## v11 Premium Gallery (public)
+
+Budget pills, curated shelves, stats strip, recently viewed, compare saved,
+EMI calculator, trust highlights, Book a visit and similar properties. See CHANGES.md.
+
 ## v10 Pipeline Studio (admin)
 
 Every CRM has a **Cards / Board** switch: drag leads between pipeline stages

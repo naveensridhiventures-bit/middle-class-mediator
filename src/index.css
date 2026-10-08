@@ -408,3 +408,23 @@
     animation: mcm-sheen 3.4s ease-in-out infinite;
   }
 }
+
+/* ---- v11 premium gallery ---- */
+.gold-hair { position: relative; box-shadow: 0 10px 28px -22px rgba(10,17,36,.55); }
+.gold-hair::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 2px; border-radius: 16px 16px 0 0;
+  background: linear-gradient(90deg, transparent, #C99A4A 30%, #E6C173 50%, #C99A4A 70%, transparent);
+}
+.emi-range {
+  -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; outline: none;
+  background: linear-gradient(90deg, #A8782A var(--p, 50%), rgba(27,42,74,.12) var(--p, 50%));
+}
+.emi-range::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #fff;
+  border: 3px solid #A8782A; box-shadow: 0 2px 8px rgba(10,17,36,.3); cursor: pointer;
+}
+.emi-range::-moz-range-thumb {
+  width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 3px solid #A8782A;
+  box-shadow: 0 2px 8px rgba(10,17,36,.3); cursor: pointer;
+}
+.emi-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(168,120,42,.3); }

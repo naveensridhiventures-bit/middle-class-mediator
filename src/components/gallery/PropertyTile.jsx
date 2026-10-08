@@ -11,7 +11,7 @@ import SoldOutStamp from "../SoldOutStamp";
  * pushes in; on a phone it stays calm (no sticky hover). The heart saves the
  * listing on this device and gives a little pop when you tap it.
  *
- * p: { id, title, location, price, soldOut, images: [url, ...] }
+ * p: { id, title, location, price, soldOut, fresh, meta, images: [url, ...] }
  */
 export default function PropertyTile({ p, saved, onToggleSaved }) {
   const [hover, setHover] = useState(false);
@@ -44,7 +44,7 @@ export default function PropertyTile({ p, saved, onToggleSaved }) {
   return (
     <Link
       to={`/gallery/${p.id}`}
-      className="tile group relative isolate block overflow-hidden rounded-2xl bg-ink-dark aspect-[4/3] shadow-[0_8px_22px_-12px_rgba(10,17,36,0.55)] hover:shadow-[0_18px_34px_-14px_rgba(10,17,36,0.6)] transition-shadow active:scale-[0.985]"
+      className="tile group relative isolate block overflow-hidden rounded-2xl bg-ink-dark aspect-[4/4.3] sm:aspect-[4/3] shadow-[0_8px_22px_-12px_rgba(10,17,36,0.55)] hover:shadow-[0_18px_34px_-14px_rgba(10,17,36,0.6)] transition-shadow active:scale-[0.985]"
       onPointerEnter={(e) => {
         if (e.pointerType !== "mouse") return;
         setArmed(true);
@@ -77,8 +77,9 @@ export default function PropertyTile({ p, saved, onToggleSaved }) {
       <div className="absolute inset-0 -z-10 bg-gradient-to-t from-ink-dark/90 via-ink-dark/15 to-ink-dark/25" aria-hidden="true" />
 
       {p.price && !p.soldOut && (
-        <span className="absolute top-2.5 left-2.5 rounded-full bg-ink-dark/70 text-white text-[12px] font-bold px-2.5 py-1">
-          {p.price}
+        <span className="absolute top-2.5 left-2.5 flex flex-col items-start gap-1.5">
+          <span className="rounded-full bg-ink-dark/70 backdrop-blur-sm text-white text-[12px] font-bold px-2.5 py-1">{p.price}</span>
+          {p.fresh && <span className="rounded-full bg-[#C99A4A] text-ink-dark text-[10px] font-bold uppercase tracking-wide px-2 py-0.5">Just listed</span>}
         </span>
       )}
       {p.soldOut && <SoldOutStamp size="sm" />}
@@ -104,6 +105,7 @@ export default function PropertyTile({ p, saved, onToggleSaved }) {
               <span className="truncate">{p.location.split(",")[0].trim()}</span>
             </p>
           )}
+          {p.meta && <p className="mt-1 text-[11.5px] font-semibold text-[#E6C173] truncate">{p.meta}</p>}
         </div>
         {count > 0 && (
           <span className="shrink-0 flex items-center gap-1.5 rounded-full bg-ink-dark/65 text-white text-[12px] font-bold px-2.5 py-1">

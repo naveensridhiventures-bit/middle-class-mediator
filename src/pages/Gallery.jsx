@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, X, LayoutGrid, Heart, ChevronDown, SlidersHorizontal, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Search, X, LayoutGrid, Heart, ChevronDown, SlidersHorizontal, AlertTriangle, GitCompareArrows } from "lucide-react";
 import { optimizedImageUrl } from "../lib/cloudinary";
 import useFavorites from "../lib/useFavorites";
 import useProperties from "../lib/useProperties";
-import { DEFAULT_FILTERS, activeFilterCount, applyFilters, shortType, sortListings } from "../lib/gallery";
+import useRecent from "../lib/useRecent";
+import { DEFAULT_FILTERS, activeFilterCount, applyFilters, collectionsFor, inrShort, isNew, shortType, sortListings } from "../lib/gallery";
 import Reveal from "../components/Reveal";
 import RotatingWords from "../components/home/RotatingWords";
 import Ticker from "../components/home/Ticker";
@@ -13,6 +14,10 @@ import FeaturedCarousel from "../components/gallery/FeaturedCarousel";
 import PropertyTile from "../components/gallery/PropertyTile";
 import FilterSheet from "../components/gallery/FilterSheet";
 import CountUp from "../components/gallery/CountUp";
+import BudgetPills from "../components/gallery/BudgetPills";
+import StatsStrip from "../components/gallery/StatsStrip";
+import CollectionRail from "../components/gallery/CollectionRail";
+import CompareSheet from "../components/gallery/CompareSheet";
 import { iconForType } from "../components/gallery/typeIcons";
 
 const SORT_OPTIONS = [
@@ -43,7 +48,7 @@ function Chip({ active, onClick, icon: Icon, children, count, delay = 0 }) {
 }
 
 function TileSkeleton() {
-  return <div className="rounded-2xl aspect-[4/3] skeleton" />;
+  return <div className="rounded-2xl aspect-[4/4.3] sm:aspect-[4/3] skeleton" />;
 }
 
 export default function Gallery() {
@@ -57,6 +62,8 @@ export default function Gallery() {
   const [sort, setSort] = useState("newest");
   const [showFilters, setShowFilters] = useState(false);
   const [stuck, setStuck] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
+  const recent = useRecent();
   const sentinelRef = useRef(null);
   const restored = useRef(false);
   const lastY = useRef(0);
@@ -141,6 +148,18 @@ export default function Gallery() {
   );
 
   const filterCount = activeFilterCount(filters);
+
+  // Curated shelves only on the clean home view, so they never fight a search.
+  const browsing = filterCount === 0 && !query.trim() && !savedOnly && filters.type === "All";
+  const collections = useMemo(() => (properties && browsing ? collectionsFor(properties) : []), [properties, browsing]);
+  const recentItems = useMemo(() => {
+    if (!properties || !browsing) return [];
+    return recent.ids.map((id) => properties.find((p) => p.id === id)).filter((l) => l && !l.sold && l.images.length > 0).slice(0, 8);
+  }, [properties, browsing, recent.ids]);
+  const compareItems = useMemo(
+    () => (properties ? properties.filter((p) => favorites.has(p.id) && !p.sold).slice(0, 3) : []),
+    [properties, favorites]
+  );
 
   function pickType(type) {
     setSavedOnly(false);
@@ -274,6 +293,13 @@ export default function Gallery() {
       </div>
 
       <main className="max-w-6xl mx-auto px-4 pb-10">
+        {hasAny && (
+          <div className="pt-1 pb-1 space-y-3">
+            <BudgetPills value={filters.budget} onChange={(budget) => setFilters((f) => ({ ...f, budget }))} />
+            {browsing && <StatsStrip properties={properties} />}
+          </div>
+        )}
+
         {error && (
           <p className="alert-error max-w-md mx-auto mt-6">
             <AlertTriangle size={15} className="shrink-0 mt-0.5" />
@@ -311,6 +337,13 @@ export default function Gallery() {
           </div>
         )}
 
+        {recentItems.length >= 1 && (
+          <CollectionRail eyebrow="Pick up where you left off" title="Recently viewed" items={recentItems} />
+        )}
+        {collections.map((c, i) => (
+          <CollectionRail key={c.key} eyebrow={i === 0 ? "Curated for you" : undefined} title={c.title} subtitle={c.subtitle} items={c.items} />
+        ))}
+
         {properties !== null && !hasAny && !error && (
           <div className="mt-10 rounded-3xl bg-surface border border-dashed border-ink/20 p-10 text-center">
             <p className="font-display font-bold text-xl text-ink">No listings published yet</p>
@@ -322,7 +355,7 @@ export default function Gallery() {
           <>
             <div className="mt-7 flex items-end justify-between gap-3">
               <h2 className="font-display font-bold text-ink text-[1.6rem] sm:text-3xl leading-tight">
-                {savedOnly ? "Saved listings" : "Recent listings"}
+                {savedOnly ? "Saved listings" : browsing ? "All listings" : "Matching listings"}
                 <span className="ml-2 align-middle text-[13px] font-bold text-white bg-ink rounded-full px-2.5 py-0.5">
                   <CountUp value={visible.length} />
                 </span>
@@ -359,7 +392,7 @@ export default function Gallery() {
                 {visible.map((l, i) => (
                   <Reveal key={l.id} delay={(i % 2) * 90} distance={22}>
                     <PropertyTile
-                      p={{ id: l.id, title: l.title, location: l.location, price: l.price, soldOut: l.sold, images: l.images.map((u) => optimizedImageUrl(u, 600)) }}
+                      p={{ id: l.id, title: l.title, location: l.location, price: l.price, soldOut: l.sold, fresh: isNew(l), meta: [l.sqft ? `${l.sqft.toLocaleString("en-IN")} sq.ft` : "", l.pricePerSqft ? `${inrShort(l.pricePerSqft)}/sq.ft` : ""].filter(Boolean).join(" · "), images: l.images.map((u) => optimizedImageUrl(u, 600)) }}
                       saved={favorites.has(l.id)}
                       onToggleSaved={favorites.toggle}
                     />
@@ -386,6 +419,18 @@ export default function Gallery() {
           </div>
         )}
       </main>
+
+      {compareItems.length >= 2 && !compareOpen && (
+        <button
+          type="button"
+          onClick={() => setCompareOpen(true)}
+          className="fixed z-40 left-1/2 -translate-x-1/2 bottom-5 h-12 pl-4 pr-5 rounded-full bg-ink-dark text-white text-[13.5px] font-bold flex items-center gap-2 shadow-[0_14px_30px_-10px_rgba(10,17,36,0.7)] ring-1 ring-[#C99A4A]/50 enter-up active:scale-95 transition-transform"
+          style={{ marginBottom: "env(safe-area-inset-bottom)" }}
+        >
+          <GitCompareArrows size={18} className="text-[#E6C173]" /> Compare {compareItems.length} saved
+        </button>
+      )}
+      {compareOpen && <CompareSheet items={compareItems} onClose={() => setCompareOpen(false)} />}
 
       {showFilters && (
         <FilterSheet

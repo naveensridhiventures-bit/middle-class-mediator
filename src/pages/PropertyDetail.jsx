@@ -1,9 +1,10 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { MapPin, ArrowLeft, Heart, Share2, Check, Images, Phone, MessageCircle, Quote, ChevronRight, Send } from "lucide-react";
+import { MapPin, ArrowLeft, Heart, Share2, Check, Images, Phone, MessageCircle, Quote, ChevronRight, Send, CalendarCheck, Clock } from "lucide-react";
 import useProperties from "../lib/useProperties";
 import useFavorites from "../lib/useFavorites";
-import { specsFor } from "../lib/gallery";
+import useRecent from "../lib/useRecent";
+import { specsFor, highlightsFor, emiFrom, inr, listedAgo, similarTo } from "../lib/gallery";
 import { optimizedImageUrl } from "../lib/cloudinary";
 import { whatsappLink, callLink } from "../lib/whatsapp";
 import { ADMIN_WHATSAPP_NUMBER } from "../lib/config";
@@ -11,6 +12,10 @@ import SoldOutStamp from "../components/SoldOutStamp";
 import PhotoSlider from "../components/gallery/PhotoSlider";
 import ImmersiveViewer from "../components/gallery/ImmersiveViewer";
 import TopBar from "../components/gallery/TopBar";
+import Highlights from "../components/gallery/Highlights";
+import EmiCalculator from "../components/gallery/EmiCalculator";
+import VisitSheet from "../components/gallery/VisitSheet";
+import CollectionRail from "../components/gallery/CollectionRail";
 
 const heroBtn =
   "pointer-events-auto w-10 h-10 rounded-full bg-ink-dark/55 text-white flex items-center justify-center hover:bg-ink-dark/75 transition-colors active:scale-95";
@@ -27,9 +32,16 @@ export default function PropertyDetail() {
   const [photoIndex, setPhotoIndex] = useState(0);
   const [viewerIndex, setViewerIndex] = useState(null);
   const [shared, setShared] = useState(false);
+  const [visitOpen, setVisitOpen] = useState(false);
+  const recent = useRecent();
+  const recordRecent = recent.record;
   const onIndex = useCallback((i) => setPhotoIndex(i), []);
 
   const listing = properties ? properties.find((p) => p.id === id) || null : undefined;
+  const listingId = listing ? listing.id : null;
+  useEffect(() => {
+    if (listingId) recordRecent(listingId);
+  }, [listingId, recordRecent]);
 
   if (error) {
     return (
@@ -81,6 +93,10 @@ export default function PropertyDetail() {
   const attrEntries = Object.entries(l.attrs).filter(([, v]) => v);
   const heroImages = l.images.map((u) => optimizedImageUrl(u, 1200));
   const count = l.images.length;
+  const highlights = highlightsFor(l);
+  const emiMonthly = emiFrom(l);
+  const ago = listedAgo(l);
+  const similar = similarTo(l, properties);
   const enquiryText = `Hi, I'm interested in this property: ${l.title}${l.location ? ` (${l.location})` : ""}${l.price ? ` — ${l.price}` : ""}${l.refId ? `\n\nProperty ref: ${l.refId}` : ""}\n\nCan you share more details?`;
 
   // Share sheet on phones; copies the link everywhere else.
@@ -153,12 +169,20 @@ export default function PropertyDetail() {
               {l.location}
             </p>
           )}
-          <p
-            className={`fade-up mt-2 font-display font-bold ${l.price ? "text-[1.45rem]" : "text-[1.05rem] !font-semibold text-ink/50"} ${l.sold ? "text-ink/40 line-through" : l.price ? "text-ink" : ""}`}
-            style={{ "--d": "160ms" }}
-          >
-            {l.price || "Price on request"}
-          </p>
+          <div className="fade-up mt-2 flex items-baseline flex-wrap gap-x-3 gap-y-1" style={{ "--d": "160ms" }}>
+            <p className={`font-display font-bold ${l.price ? "text-[1.6rem]" : "text-[1.05rem] !font-semibold text-ink/50"} ${l.sold ? "text-ink/40 line-through" : l.price ? "text-ink" : ""}`}>
+              {l.price || "Price on request"}
+            </p>
+            {l.pricePerSqft && !l.sold && <span className="text-[13px] font-semibold text-ink/55">{inr(l.pricePerSqft)} / sq.ft</span>}
+          </div>
+          {(emiMonthly > 0 || ago) && (
+            <p className="fade-up mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-ink/55" style={{ "--d": "200ms" }}>
+              {emiMonthly > 0 && <a href="#emi" className="font-semibold text-[#8A6218] underline underline-offset-2">EMI from {inr(emiMonthly)}/mo</a>}
+              {ago && !l.sold && <span className="flex items-center gap-1"><Clock size={13} />{ago}</span>}
+            </p>
+          )}
+
+          {highlights.length > 0 && <div className="mt-4"><Highlights items={highlights} /></div>}
 
           {specs.length > 0 && (
             <ul className="mt-4 grid gap-2.5" style={{ gridTemplateColumns: `repeat(${specs.length}, minmax(0, 1fr))` }}>
@@ -204,6 +228,10 @@ export default function PropertyDetail() {
             </section>
           )}
 
+          {!l.sold && l.priceNum >= 500000 && (
+            <div id="emi" className="mt-7 scroll-mt-4"><EmiCalculator price={l.priceNum} /></div>
+          )}
+
           <div className="mt-6 grid gap-2.5">
             {count > 0 && (
               <Link to={`/gallery/${l.id}/photos`} className="flex items-center gap-3 rounded-2xl bg-surface ring-1 ring-ink/[0.07] px-4 py-3.5 hover:ring-ink/20 transition">
@@ -227,35 +255,46 @@ export default function PropertyDetail() {
               </Link>
             )}
           </div>
+
+          {similar.length >= 2 && (
+            <CollectionRail eyebrow="You may also like" title="Similar properties" subtitle="Close in type, area and budget" items={similar} />
+          )}
         </div>
       </div>
 
       {/* Pinned bar: the two actions that matter stay in reach */}
       <div className="sticky bottom-0 z-20 bg-surface border-t border-ink/10" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-        <div className="max-w-3xl mx-auto px-4 py-3 grid grid-cols-2 gap-3">
+        <div className="max-w-3xl mx-auto px-4 py-3 grid grid-cols-[1fr_1.5fr_1fr] gap-2.5">
           {l.sold ? (
-            <span className="col-span-2 h-14 rounded-2xl bg-ink/10 text-ink/45 text-[13px] font-bold uppercase tracking-[0.12em] flex items-center justify-center">
+            <span className="col-span-3 h-14 rounded-2xl bg-ink/10 text-ink/45 text-[13px] font-bold uppercase tracking-[0.12em] flex items-center justify-center">
               No longer available
             </span>
           ) : (
             <>
-              <a href={callLink(ADMIN_WHATSAPP_NUMBER)} className="h-14 rounded-2xl bg-ink-dark text-white font-semibold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
+              <a href={callLink(ADMIN_WHATSAPP_NUMBER)} className="h-14 rounded-2xl bg-ink-dark text-white font-semibold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform" aria-label="Call">
                 <Phone size={19} />
-                Call
+                <span className="hidden min-[400px]:inline">Call</span>
               </a>
+              <button type="button" onClick={() => setVisitOpen(true)} className={`h-14 rounded-2xl ${GOLD_BTN} font-semibold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98] transition-[transform,background-color] shadow-[0_8px_20px_-8px_rgba(168,120,42,0.8)]`}>
+                <CalendarCheck size={19} />
+                Book a visit
+              </button>
               <a
                 href={whatsappLink(ADMIN_WHATSAPP_NUMBER, enquiryText)}
                 target="_blank"
                 rel="noreferrer"
-                className={`h-14 rounded-2xl ${GOLD_BTN} font-semibold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98] transition-[transform,background-color]`}
+                aria-label="WhatsApp"
+                className="h-14 rounded-2xl bg-whatsapp text-white font-semibold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
               >
                 <MessageCircle size={19} />
-                WhatsApp
+                <span className="hidden min-[400px]:inline">Chat</span>
               </a>
             </>
           )}
         </div>
       </div>
+
+      {visitOpen && <VisitSheet listing={l} onClose={() => setVisitOpen(false)} />}
 
       {viewerIndex !== null && (
         <ImmersiveViewer
