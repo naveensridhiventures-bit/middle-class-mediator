@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Clock, User, X, SlidersHorizontal, Camera, MapPin, Check, Search, Phone,
-  MessageCircle, ChevronRight, Trash2, FileText, Link2, Share2,
+  MessageCircle, ChevronRight, Trash2, FileText, Link2, Share2, LayoutGrid, Columns3,
 } from "lucide-react";
 import Carousel from "../Carousel";
 import SoldOutStamp from "../SoldOutStamp";
@@ -13,6 +13,7 @@ import { downloadReport, downloadBrochure } from "../../lib/report";
 import { uploadImage, optimizedImageUrl } from "../../lib/cloudinary";
 import { leadScore, isOverdue as isRoleOverdue, parseDay } from "../../lib/insights";
 import { ScoreBadge, WhatsAppMenu, CallButton } from "./insightUi";
+import KanbanBoard from "./KanbanBoard";
 
 // Each role has its own custom pipeline (set in AdminDashboard.jsx's
 // CRM_CONFIG), so colours are assigned by position in that list rather than
@@ -1081,13 +1082,17 @@ function FiltersSheet({ accent, resultCount, areas, selectedAreas, onToggleArea,
 
 // ---------- Main board ----------
 
-export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, facetFields = [], statuses, statuses2, status2Label, password, adminName }) {
+export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, facetFields = [], statuses, statuses2, status2Label, password, adminName, initialOpenId = null, onOpenHandled }) {
   const [leads, setLeads] = useState(null);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [activeStatus, setActiveStatus] = useState("All");
   const [activeStatus2, setActiveStatus2] = useState("All");
-  const [openLeadId, setOpenLeadId] = useState(null);
+  const [openLeadId, setOpenLeadId] = useState(initialOpenId);
+  const [view, setView] = useState(() => {
+    try { return localStorage.getItem("mcm_crm_view") === "board" ? "board" : "list"; } catch { return "list"; }
+  });
+  const [moveError, setMoveError] = useState("");
   const [showNewVisit, setShowNewVisit] = useState(false);
 
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -1108,7 +1113,7 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
   useEffect(() => {
     setLeads(null);
     setError("");
-    setOpenLeadId(null);
+    setOpenLeadId(initialOpenId);
     setActiveStatus("All");
     setActiveStatus2("All");
     setSelectedAreas([]);
@@ -1117,6 +1122,30 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
+
+  // The command palette / Overview can ask for a specific lead to be opened.
+  useEffect(() => {
+    if (initialOpenId) setOpenLeadId(initialOpenId);
+  }, [initialOpenId]);
+
+  function chooseView(v) {
+    setView(v);
+    try { localStorage.setItem("mcm_crm_view", v); } catch { /* storage may be unavailable */ }
+  }
+
+  // Optimistic: the card jumps columns instantly, and snaps back with a
+  // message if the sheet rejects the change.
+  async function moveLead(id, status) {
+    const before = leads;
+    setMoveError("");
+    setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)));
+    try {
+      await adminUpdateLead(password, sheet, id, { status });
+    } catch (err) {
+      setLeads(before);
+      setMoveError(err.message || "Couldn't move that lead — it has been put back.");
+    }
+  }
 
   const onChanged = {
     updateMeta: async (id, patch) => {
@@ -1211,7 +1240,7 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
         l.name?.toLowerCase().includes(q) ||
         String(l.phone || "").includes(q) ||
         l.id?.toLowerCase().includes(q);
-      const matchesStatus = activeStatus === "All" || (l.status || statuses[0]) === activeStatus;
+      const matchesStatus = view === "board" || activeStatus === "All" || (l.status || statuses[0]) === activeStatus;
       const matchesStatus2 = !statuses2 || activeStatus2 === "All" || l.status2 === activeStatus2;
       const matchesArea = selectedAreas.length === 0 || selectedAreas.includes(l.area);
       const budget = Number(l.budgetValue);
@@ -1242,7 +1271,7 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
       priority: (l) => -(Number(l.priority) || 0),
     }[sortBy];
     return by ? [...out].sort((a, b) => by(a) - by(b)) : out;
-  }, [leads, query, activeStatus, activeStatus2, selectedAreas, budgetMin, budgetMax, sqftMin, sqftMax, selectedFacets, statuses, statuses2, getFacetValue, sortBy, type]);
+  }, [leads, query, activeStatus, activeStatus2, selectedAreas, budgetMin, budgetMax, sqftMin, sqftMax, selectedFacets, statuses, statuses2, getFacetValue, sortBy, type, view]);
 
   const counts = useMemo(() => {
     const c = { All: leads?.length || 0 };
@@ -1354,7 +1383,8 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
         </div>
       </div>
 
-      {/* Pipeline filter */}
+      {/* Pipeline filter (the board view shows every stage as a column instead) */}
+      {view !== "board" && (
       <div className="mt-4 flex gap-2 overflow-x-auto no-scrollbar pb-1" role="group" aria-label="Filter by status">
         {["All", ...statuses].map((s) => (
           <Chip key={s} active={activeStatus === s} onClick={() => setActiveStatus(s)} dot={s === "All" ? null : getStatusStyle(s, statuses).dot}>
@@ -1362,6 +1392,7 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
           </Chip>
         ))}
       </div>
+      )}
 
       {statuses2 && (
         <div className="mt-2 flex gap-2 overflow-x-auto no-scrollbar pb-1 items-center" role="group" aria-label={status2Label || "Second pipeline"}>
@@ -1386,6 +1417,19 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
+        <div className="flex shrink-0 rounded-xl border border-ink/10 bg-surface p-1 gap-1" role="group" aria-label="Choose list or board view">
+          {[["list", LayoutGrid, "Cards"], ["board", Columns3, "Board"]].map(([k, Icon, l]) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => chooseView(k)}
+              aria-pressed={view === k}
+              className={`h-10 px-3 rounded-lg text-[12.5px] font-semibold flex items-center gap-1.5 transition-colors ${view === k ? "bg-ink text-white" : "text-ink/60 hover:text-ink"}`}
+            >
+              <Icon size={15} /> <span className="hidden sm:inline">{l}</span>
+            </button>
+          ))}
+        </div>
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
@@ -1404,7 +1448,7 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
           }`}
         >
           <SlidersHorizontal size={15} />
-          Filters
+          <span className="hidden sm:inline">Filters</span>
           {advancedActiveCount > 0 && <span className="bg-white/20 rounded-full px-1.5 text-[11px]">{advancedActiveCount}</span>}
         </button>
       </div>
@@ -1439,8 +1483,22 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
           </div>
         )}
 
+        {moveError && <p className="alert-error mb-3">{moveError}</p>}
+
+        {view === "board" && leads !== null && !nothingYet && (
+          <KanbanBoard
+            role={type}
+            leads={filtered}
+            statuses={statuses}
+            styleFor={(st) => getStatusStyle(st, statuses)}
+            accent={accent}
+            onMove={moveLead}
+            onOpen={(id) => setOpenLeadId(id)}
+          />
+        )}
+
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
-          {filtered.map((lead) => (
+          {view !== "board" && filtered.map((lead) => (
             <LeadCard key={lead.id} lead={lead} role={type} adminName={adminName} accent={accent} onOpen={() => setOpenLeadId(lead.id)} statuses={statuses} statuses2={statuses2} />
           ))}
         </div>
@@ -1456,7 +1514,7 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
           statuses={statuses}
           statuses2={statuses2}
           status2Label={status2Label}
-          onClose={() => setOpenLeadId(null)}
+          onClose={() => { setOpenLeadId(null); if (onOpenHandled) onOpenHandled(); }}
           onSaveDetails={onChanged.updateMeta}
           onAddRemark={onChanged.addRemark}
           onShareGallery={onChanged.shareToGallery}

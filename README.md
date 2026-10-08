@@ -1,5 +1,13 @@
 # Middle Class Mediator
 
+## v10 Pipeline Studio (admin)
+
+Every CRM has a **Cards / Board** switch: drag leads between pipeline stages
+(or use the stage dropdown on a phone). **Ctrl+K** opens a search-and-commands
+palette that finds any lead and jumps straight to it. The Overview adds a
+**Deal forecast** (expected commission), **Recent activity**, **Data health**
+(duplicates, missing phones) and **CSV export**. See `CHANGES.md`.
+
 ## v9 Command Center (admin)
 
 The dashboard now opens on **Overview** (KPIs, intake chart, pipelines,

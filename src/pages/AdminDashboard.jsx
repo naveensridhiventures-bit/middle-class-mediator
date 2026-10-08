@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { MapPin, Image as ImageIcon, LogOut, Pencil } from "lucide-react";
+import { MapPin, Image as ImageIcon, LogOut, Pencil, Search } from "lucide-react";
 import CRMBoard from "../components/admin/CRMBoard";
 import PropertiesTab from "../components/admin/PropertiesTab";
 import CommandCenter from "../components/admin/CommandCenter";
 import TodayBoard from "../components/admin/TodayBoard";
 import MatchesBoard from "../components/admin/MatchesBoard";
 import useAllLeads from "../lib/useAllLeads";
-import { buildTasks } from "../lib/insights";
+import { buildTasks, leadsToCsv } from "../lib/insights";
+import { downloadCsv } from "../lib/exportCsv";
+import CommandPalette from "../components/admin/CommandPalette";
 import BrandHeader from "../components/wizard/BrandHeader";
 import { adminInputCls, btnDark } from "../components/admin/styles";
 import { COLORS } from "../lib/theme";
@@ -173,6 +175,25 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const insights = useAllLeads(password);
   const refreshInsights = insights.refresh;
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [jump, setJump] = useState(null); // { tab, id } — open this lead after switching tab
+
+  // Ctrl/⌘+K opens the search & command palette from anywhere in the dashboard.
+  useEffect(() => {
+    function onKey(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  function openLead(role, id) {
+    setJump({ tab: role, id });
+    setTab(role);
+  }
 
   // Edits made in the Sellers/Buyers/Mediators boards, so re-sync whenever
   // the person comes back to one of the insight views.
@@ -211,6 +232,15 @@ export default function AdminDashboard() {
   }
 
   if (!password) return null;
+
+  const paletteActions = [
+    { id: "refresh", label: "Refresh all data", run: refreshInsights },
+    { id: "csv-seller", label: "Export sellers to CSV", run: () => downloadCsv(`mcm-sellers-${new Date().toISOString().slice(0, 10)}.csv`, leadsToCsv("seller", insights.data.seller || [])) },
+    { id: "csv-buyer", label: "Export buyers to CSV", run: () => downloadCsv(`mcm-buyers-${new Date().toISOString().slice(0, 10)}.csv`, leadsToCsv("buyer", insights.data.buyer || [])) },
+    { id: "field", label: "New field visit", run: () => navigate("/control/field-visit") },
+    { id: "gallery", label: "Open buyer gallery", run: () => navigate("/gallery") },
+    { id: "logout", label: "Log out", run: logout },
+  ];
 
   const active = CRM_CONFIG[tab];
   const tabColor = TABS.find((t) => t.key === tab)?.color || COLORS.teal;
@@ -253,6 +283,15 @@ export default function AdminDashboard() {
               </button>
             )}
           </div>
+          <button
+            onClick={() => setPaletteOpen(true)}
+            className="h-11 pl-4 pr-3 rounded-full bg-surface border border-ink/15 hover:border-ink/40 text-[13px] text-ink/60 flex items-center gap-3 transition-colors"
+            aria-label="Search leads and commands"
+          >
+            <Search size={15} />
+            <span className="hidden sm:inline">Search leads…</span>
+            <kbd className="hidden sm:block text-[10.5px] font-bold text-ink/45 border border-ink/15 rounded-md px-1.5 py-0.5">Ctrl K</kbd>
+          </button>
         </div>
 
         {editingName && (
@@ -288,7 +327,7 @@ export default function AdminDashboard() {
                 key={t.key}
                 role="tab"
                 aria-selected={on}
-                onClick={() => setTab(t.key)}
+                onClick={() => { setTab(t.key); setJump(null); }}
                 className={`shrink-0 h-11 px-5 rounded-full text-[14px] font-semibold border flex items-center gap-2 transition-colors ${
                   on ? "bg-ink text-white border-ink" : "bg-surface text-ink/70 border-ink/15 hover:border-ink/40"
                 }`}
@@ -312,6 +351,7 @@ export default function AdminDashboard() {
               adminName={adminName}
               statusesByRole={STATUSES_BY_ROLE}
               onNavigate={setTab}
+              onOpenLead={openLead}
             />
           )}
           {tab === "today" && <TodayBoard {...insights} password={password} adminName={adminName} />}
@@ -331,11 +371,23 @@ export default function AdminDashboard() {
               status2Label={active.status2Label}
               password={password}
               adminName={adminName}
+              initialOpenId={jump && jump.tab === tab ? jump.id : null}
+              onOpenHandled={() => setJump(null)}
             />
           )}
           {tab === "properties" && <PropertiesTab password={password} />}
         </div>
       </div>
+
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        data={{ seller: insights.data.seller || [], buyer: insights.data.buyer || [], mediator: insights.data.mediator || [] }}
+        tabs={TABS}
+        actions={paletteActions}
+        onGo={(k) => { setTab(k); setJump(null); }}
+        onOpenLead={openLead}
+      />
     </div>
   );
 }

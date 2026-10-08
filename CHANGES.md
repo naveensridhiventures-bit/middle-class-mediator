@@ -1,3 +1,47 @@
+# v10 — Pipeline Studio: Kanban board, Ctrl+K search, deal forecast (2026-10-08)
+
+Builds on v9 (Command Center). No new packages, no new Google Sheet columns,
+no Code.gs change. This zip is cumulative: it contains v9 and the new Apps
+Script URL as well, so you can apply it on its own.
+
+## Kanban pipeline board
+- Every CRM (Sellers, Buyers, Mediators) now has a **Cards / Board** switch.
+  Board shows one column per pipeline stage with the hottest leads on top.
+- **Drag a card to another column** to change its stage. On a phone, use the
+  stage dropdown on the card instead. The card moves instantly, and if the
+  sheet rejects the change it snaps back with an error message.
+- Each card shows the lead score, follow-up date (red when overdue), priority
+  stars, latest note, plus one-tap WhatsApp, Call and Open.
+- Your choice (cards or board) is remembered.
+
+## Ctrl/Cmd + K search & commands
+- Press **Ctrl+K** (or ⌘K) anywhere in the dashboard, or tap the search pill.
+- Find any lead across all three CRMs by name, phone, ID or area; jump to any
+  tab; or run quick actions (refresh, export CSV, field visit, gallery,
+  log out). Arrow keys + Enter, Esc to close.
+- Picking a lead switches to the right tab and opens its detail panel.
+
+## Overview additions
+- **Deal forecast** — expected and best-case commission from live seller
+  leads, weighted by lead score, with your commission % (remembered). The top
+  five deals are listed with their likelihood bar.
+- **Recent activity** — a live feed of registrations, notes and site visits.
+  Click any row to open that lead.
+- **Data health** — duplicate phone numbers (and people who are both buyer and
+  seller), active leads with no phone, and active leads with no follow-up
+  date. Click a name to open it.
+- **Export CSV** for Sellers, Buyers and Mediators (opens in Excel, includes
+  each lead's score and last note).
+
+## Also included from v9 (cumulative)
+Overview / Today / Matches tabs, Hot-Warm-Cold lead score, WhatsApp template
+menu, sort options, overdue-logic fix, lazy-loaded pages and PDF library, and
+the new Apps Script URL in src/lib/config.js.
+
+## New files
+`src/components/admin/KanbanBoard.jsx`, `CommandPalette.jsx`,
+`OverviewExtras.jsx`, `src/lib/exportCsv.js`
+
 # v9 — Command Center: insights, daily follow-up queue, smart matching (2026-10-08)
 
 Adds three new admin views and a lead-scoring engine on top of v8. No new

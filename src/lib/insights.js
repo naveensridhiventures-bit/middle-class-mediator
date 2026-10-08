@@ -541,3 +541,149 @@ export function gapInsights(rows, noun) {
   if (spare) out.push({ tone: "good", text: `${spare.supply} listings in ${spare.label} but ${spare.demand} ${spare.demand === 1 ? "buyer" : "buyers"} — promote these on Instagram to pull in buyers.` });
   return out;
 }
+
+// ─────────────────────────────────────────────────────────────
+// v10 additions: duplicates, activity feed, commission forecast,
+// CSV export and cross-role search.
+// ─────────────────────────────────────────────────────────────
+
+/** Last 10 digits of a phone number, or "" if there aren't enough to compare. */
+export function normPhone(p) {
+  const d = String(p || "").replace(/\D/g, "");
+  return d.length >= 10 ? d.slice(-10) : "";
+}
+
+/**
+ * Groups leads that share a phone number. "duplicate" = the same number
+ * registered twice in the same role (a real duplicate); "cross" = one person
+ * who is, say, both a buyer and a seller (worth knowing, not an error).
+ */
+export function findDuplicates(data) {
+  const map = {};
+  ["seller", "buyer", "mediator"].forEach((role) => {
+    (data[role] || []).forEach((lead) => {
+      const k = normPhone(lead.phone);
+      if (!k) return;
+      if (!map[k]) map[k] = [];
+      map[k].push({ role, lead });
+    });
+  });
+  return Object.entries(map)
+    .filter(([, items]) => items.length > 1)
+    .map(([phone, items]) => {
+      const roles = new Set(items.map((i) => i.role));
+      return { phone, items, kind: roles.size < items.length ? "duplicate" : "cross" };
+    })
+    .sort((a, b) => (a.kind === "duplicate" ? 0 : 1) - (b.kind === "duplicate" ? 0 : 1) || b.items.length - a.items.length);
+}
+
+export function timeAgo(ms) {
+  const m = Math.floor((Date.now() - ms) / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return d < 30 ? `${d}d ago` : new Date(ms).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}
+
+/** Newest-first feed of registrations, remarks and site visits across every lead. */
+export function recentActivity(data, limit = 8) {
+  const out = [];
+  ["seller", "buyer", "mediator"].forEach((role) => {
+    (data[role] || []).forEach((lead) => {
+      const t = new Date(lead.timestamp).getTime();
+      if (!isNaN(t)) out.push({ at: t, role, lead, kind: "new", text: "Registered" });
+      getRemarks(lead).forEach((r) => {
+        const a = new Date(r.at).getTime();
+        if (!isNaN(a)) out.push({ at: a, role, lead, kind: "remark", text: r.text, by: r.by });
+      });
+      getVisits(lead).forEach((v) => {
+        const a = new Date(v.at).getTime();
+        if (!isNaN(a)) out.push({ at: a, role, lead, kind: "visit", text: v.address || "Site visit logged", by: v.by });
+      });
+    });
+  });
+  return out.sort((a, b) => b.at - a.at).slice(0, limit);
+}
+
+function sellerPrice(lead) {
+  const r = sellerRange(lead);
+  if (!r) return 0;
+  return r[1] === Infinity ? r[0] * 1.25 : (r[0] + r[1]) / 2;
+}
+
+/**
+ * Estimated commission across live seller leads. "Potential" assumes every
+ * listing sells; "expected" weights each by its lead score, so a hot,
+ * well-documented seller counts for much more than a cold one.
+ */
+export function commissionForecast(data, pct) {
+  const rate = Math.max(0, Number(pct) || 0) / 100;
+  const deals = (data.seller || [])
+    .filter((s) => !isClosed("seller", s))
+    .map((lead) => {
+      const price = sellerPrice(lead);
+      if (!price) return null;
+      const score = leadScore("seller", lead);
+      const prob = Math.max(0.05, score.score / 100);
+      const commission = price * rate;
+      return { lead, price, score, prob, commission, expected: commission * prob };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.expected - a.expected);
+  return {
+    deals,
+    potential: deals.reduce((a, d) => a + d.commission, 0),
+    expected: deals.reduce((a, d) => a + d.expected, 0),
+  };
+}
+
+const CSV_HIDE = ["photos", "galleryFields", "visitLog", "customFields", "remarksLog"];
+
+/** Excel-friendly CSV (UTF-8 with BOM so ₹ and Tamil names open correctly). */
+export function leadsToCsv(role, leads) {
+  const keys = [];
+  leads.forEach((l) => Object.keys(l).forEach((k) => {
+    if (!CSV_HIDE.includes(k) && !keys.includes(k)) keys.push(k);
+  }));
+  const cols = [...keys, "lastRemark", "leadScore", "leadTier"];
+  const esc = (v) => {
+    const s = String(v ?? "");
+    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const rows = leads.map((l) => {
+    const sc = leadScore(role, l);
+    const last = [...getRemarks(l)].sort((a, b) => new Date(b.at) - new Date(a.at))[0];
+    return cols.map((c) => (c === "lastRemark" ? last?.text : c === "leadScore" ? sc.score : c === "leadTier" ? sc.tier : l[c])).map(esc).join(",");
+  });
+  return "﻿" + [cols.join(","), ...rows].join("\r\n");
+}
+
+/** Cross-role lead search used by the command palette. */
+export function searchLeads(data, q, limit = 8) {
+  const s = String(q || "").trim().toLowerCase();
+  if (!s) return [];
+  const out = [];
+  ["seller", "buyer", "mediator"].forEach((role) => {
+    (data[role] || []).forEach((lead) => {
+      const hay = `${lead.name} ${lead.phone} ${lead.id} ${lead.area || ""} ${lead.propertyType || ""} ${lead.propertyLocation || ""} ${lead.preferredLocation || ""}`.toLowerCase();
+      if (hay.includes(s)) out.push({ role, lead, rank: String(lead.name || "").toLowerCase().startsWith(s) ? 0 : 1 });
+    });
+  });
+  return out.sort((a, b) => a.rank - b.rank).slice(0, limit);
+}
+
+/** Active leads that are missing something the follow-up engine needs. */
+export function dataHealth(data) {
+  let noPhone = 0;
+  let noFollowUp = 0;
+  ["seller", "buyer", "mediator"].forEach((role) => {
+    (data[role] || []).forEach((lead) => {
+      if (isClosed(role, lead)) return;
+      if (!normPhone(lead.phone)) noPhone += 1;
+      if (!parseDay(lead.followUpDate)) noFollowUp += 1;
+    });
+  });
+  return { noPhone, noFollowUp, duplicates: findDuplicates(data) };
+}

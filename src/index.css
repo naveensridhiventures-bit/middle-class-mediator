@@ -395,6 +395,8 @@
   .mcm-bar-stack { animation: mcm-grow 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
   .mcm-hbar { animation: mcm-grow-x 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
   .mcm-spark { animation: mcm-draw 1.1s ease-out both; }
+  @keyframes mcm-fade { from { opacity: 0; } to { opacity: 1; } }
+  .mcm-fade { animation: mcm-fade 0.18s ease-out both; }
   .mcm-pop { animation: mcm-pop 0.16s ease-out both; }
   .mcm-pulse { animation: mcm-pulse 1.8s ease-out infinite; }
   .mcm-sheen::after {

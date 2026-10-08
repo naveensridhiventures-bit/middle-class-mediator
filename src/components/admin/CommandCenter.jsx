@@ -5,6 +5,7 @@ import { computeOverview, greeting, dueLabel, formatINR, gapInsights } from "../
 import { ROLE_META } from "../../lib/roles";
 import { Panel, ScoreRing, RolePill, WhatsAppMenu, CallButton, SkeletonBlock, EmptyNote } from "./insightUi";
 import { btnDark } from "./styles";
+import { DealForecast, ActivityFeed, DataHealth } from "./OverviewExtras";
 
 // ---------- small visuals ----------
 
@@ -237,7 +238,7 @@ function PersonRow({ role, lead, score, line, adminName }) {
 
 // ---------- main ----------
 
-export default function CommandCenter({ data, loading, error, refresh, refreshing, updatedAt, adminName, statusesByRole, onNavigate }) {
+export default function CommandCenter({ data, loading, error, refresh, refreshing, updatedAt, adminName, statusesByRole, onNavigate, onOpenLead }) {
   const overview = useMemo(() => (loading ? null : computeOverview(data, statusesByRole)), [data, loading, statusesByRole]);
 
   if (loading && !error) {
@@ -350,6 +351,11 @@ export default function CommandCenter({ data, loading, error, refresh, refreshin
         <DemandSupply overview={o} />
       </Panel>
 
+      <div className="grid lg:grid-cols-5 gap-4">
+        <DealForecast className="lg:col-span-3" data={data} onOpenLead={onOpenLead} delay={220} />
+        <ActivityFeed className="lg:col-span-2" data={data} onOpenLead={onOpenLead} delay={250} />
+      </div>
+
       {/* Action lists */}
       <div className="grid lg:grid-cols-2 gap-4">
         <Panel
@@ -396,6 +402,8 @@ export default function CommandCenter({ data, loading, error, refresh, refreshin
           </button>
         </Panel>
       </div>
+
+      <DataHealth data={data} onOpenLead={onOpenLead} delay={290} />
     </div>
   );
 }
