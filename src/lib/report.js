@@ -2,8 +2,11 @@
 // contact details, priority, follow-up date, and the full dated remarks
 // history) using jsPDF + jspdf-autotable, then triggers a download.
 
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
+// jsPDF is large, so it is loaded only when a PDF is actually requested.
+async function loadPdf() {
+  const [{ jsPDF }, { default: autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
+  return { jsPDF, autoTable };
+}
 import { whatsappLink } from "./whatsapp";
 import { ADMIN_WHATSAPP_NUMBER } from "./config";
 
@@ -146,6 +149,7 @@ async function toDataUrl(url) {
 }
 
 export async function downloadBrochure(property) {
+  const { jsPDF, autoTable } = await loadPdf();
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -351,6 +355,7 @@ export async function downloadBrochure(property) {
 }
 
 export async function downloadReport({ roleLabel, accent, fields, leads, filterLabel, statuses }) {
+  const { jsPDF, autoTable } = await loadPdf();
   const [r, g, b] = hexToRgb(accent);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();

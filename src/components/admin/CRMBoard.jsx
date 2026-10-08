@@ -11,6 +11,8 @@ import { adminUpdateLead, adminAddRemark, adminAddVisit, adminDeleteLead, addSel
 import { whatsappLink, callLink } from "../../lib/whatsapp";
 import { downloadReport, downloadBrochure } from "../../lib/report";
 import { uploadImage, optimizedImageUrl } from "../../lib/cloudinary";
+import { leadScore, isOverdue as isRoleOverdue, parseDay } from "../../lib/insights";
+import { ScoreBadge, WhatsAppMenu, CallButton } from "./insightUi";
 
 // Each role has its own custom pipeline (set in AdminDashboard.jsx's
 // CRM_CONFIG), so colours are assigned by position in that list rather than
@@ -160,15 +162,6 @@ async function reverseGeocode(lat, lng) {
   return data.display_name || "";
 }
 
-function isOverdue(followUpDate, status) {
-  if (!followUpDate || status === "Closed" || status === "Dropped") return false;
-  const d = new Date(followUpDate);
-  if (isNaN(d)) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return d < today;
-}
-
 function StarRating({ value, onChange, disabled, size = "text-lg" }) {
   const stars = [1, 2, 3, 4, 5];
   return (
@@ -217,10 +210,11 @@ function ContactButtons({ phone, name, compact = false }) {
   );
 }
 
-function LeadCard({ lead, accent, onOpen, statuses, statuses2 }) {
+function LeadCard({ lead, role, adminName, accent, onOpen, statuses, statuses2 }) {
   const status = lead.status || statuses[0];
   const priority = Number(lead.priority) || 0;
-  const overdue = isOverdue(lead.followUpDate, status);
+  const overdue = isRoleOverdue(role, lead);
+  const score = leadScore(role, lead);
   const sStyle = getStatusStyle(status, statuses);
   const remarksLog = parseRemarksLog(lead);
   const customFields = parseCustomFields(lead);
@@ -276,8 +270,11 @@ function LeadCard({ lead, accent, onOpen, statuses, statuses2 }) {
           {String(lead.phone || "").trim() ? lead.phone : <span className="text-ink/40 italic">No phone added yet</span>}
         </p>
 
-        <div className="flex items-center justify-between gap-2">
-          <StarRating value={priority} />
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2.5">
+            <StarRating value={priority} />
+            <ScoreBadge result={score} />
+          </div>
           {lead.followUpDate && (
             <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${overdue ? "bg-coral/15 text-coral" : "bg-ink/5 text-ink/60"}`}>
               {overdue ? "Overdue · " : "Follow up "}
@@ -306,7 +303,10 @@ function LeadCard({ lead, accent, onOpen, statuses, statuses2 }) {
         )}
 
         <div className="mt-auto pt-1 space-y-2">
-          <ContactButtons phone={lead.phone} name={lead.name} compact />
+          <div className="grid grid-cols-2 gap-2">
+            <WhatsAppMenu role={role} lead={lead} adminName={adminName} compact />
+            <CallButton phone={lead.phone} compact />
+          </div>
           <button onClick={onOpen} className={`${btnDark} w-full`}>
             Open details
             {remarksLog.length > 0 && <span className="opacity-70 normal-case tracking-normal font-semibold">· {remarksLog.length} remark{remarksLog.length === 1 ? "" : "s"}</span>}
@@ -1097,6 +1097,7 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
   const [sqftMin, setSqftMin] = useState("");
   const [sqftMax, setSqftMax] = useState("");
   const [selectedFacets, setSelectedFacets] = useState({});
+  const [sortBy, setSortBy] = useState("newest");
 
   function load() {
     fetcher(password)
@@ -1204,7 +1205,7 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
   const filtered = useMemo(() => {
     if (!leads) return [];
     const q = query.trim().toLowerCase();
-    return leads.filter((l) => {
+    const out = leads.filter((l) => {
       const matchesQuery =
         !q ||
         l.name?.toLowerCase().includes(q) ||
@@ -1231,7 +1232,17 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
       });
       return matchesQuery && matchesStatus && matchesStatus2 && matchesArea && matchesBudget && matchesSqft && matchesFacets;
     });
-  }, [leads, query, activeStatus, activeStatus2, selectedAreas, budgetMin, budgetMax, sqftMin, sqftMax, selectedFacets, statuses, statuses2, getFacetValue]);
+    if (sortBy === "newest") return out; // `leads` is already newest-first
+    const by = {
+      hottest: (l) => -leadScore(type, l).score,
+      followup: (l) => {
+        const d = parseDay(l.followUpDate);
+        return d ? d.getTime() : Infinity;
+      },
+      priority: (l) => -(Number(l.priority) || 0),
+    }[sortBy];
+    return by ? [...out].sort((a, b) => by(a) - by(b)) : out;
+  }, [leads, query, activeStatus, activeStatus2, selectedAreas, budgetMin, budgetMax, sqftMin, sqftMax, selectedFacets, statuses, statuses2, getFacetValue, sortBy, type]);
 
   const counts = useMemo(() => {
     const c = { All: leads?.length || 0 };
@@ -1364,8 +1375,8 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
       )}
 
       {/* Search + filters */}
-      <div className="mt-3 flex gap-2.5">
-        <div className="relative flex-1 min-w-0">
+      <div className="mt-3 flex flex-wrap gap-2.5">
+        <div className="relative flex-1 min-w-0 basis-full sm:basis-0">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/35" />
           <input
             className={`${adminInputCls} !pl-10 !bg-surface`}
@@ -1375,6 +1386,17 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          aria-label="Sort leads"
+          className="flex-1 sm:flex-none sm:shrink-0 h-[3rem] px-3 rounded-xl border border-ink/10 bg-surface text-[13px] font-semibold text-ink/75 outline-none focus:border-[color:var(--accent)]"
+        >
+          <option value="newest">Newest</option>
+          <option value="hottest">Hottest first</option>
+          <option value="followup">Follow-up soonest</option>
+          <option value="priority">Highest priority</option>
+        </select>
         <button
           onClick={() => setShowAdvanced(true)}
           className={`shrink-0 h-[3rem] px-4 rounded-xl border text-[13px] font-semibold flex items-center gap-2 transition-colors ${
@@ -1419,7 +1441,7 @@ export default function CRMBoard({ type, label, accent, sheet, fetcher, fields, 
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
           {filtered.map((lead) => (
-            <LeadCard key={lead.id} lead={lead} accent={accent} onOpen={() => setOpenLeadId(lead.id)} statuses={statuses} statuses2={statuses2} />
+            <LeadCard key={lead.id} lead={lead} role={type} adminName={adminName} accent={accent} onOpen={() => setOpenLeadId(lead.id)} statuses={statuses} statuses2={statuses2} />
           ))}
         </div>
       </div>

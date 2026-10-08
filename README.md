@@ -1,5 +1,13 @@
 # Middle Class Mediator
 
+## v9 Command Center (admin)
+
+The dashboard now opens on **Overview** (KPIs, intake chart, pipelines,
+demand vs supply), with a **Today** follow-up queue and a **Matches** tab
+that pairs buyers with properties. Every lead card shows a Hot / Warm / Cold
+score, a WhatsApp template menu and a sort option. See `CHANGES.md` for the
+full list.
+
 ## Gallery presentation fixes
 
 - **Exact price on the gallery** — the price badge now prefers the seller's

@@ -1,8 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { MapPin, Image as ImageIcon, LogOut, Pencil } from "lucide-react";
 import CRMBoard from "../components/admin/CRMBoard";
 import PropertiesTab from "../components/admin/PropertiesTab";
+import CommandCenter from "../components/admin/CommandCenter";
+import TodayBoard from "../components/admin/TodayBoard";
+import MatchesBoard from "../components/admin/MatchesBoard";
+import useAllLeads from "../lib/useAllLeads";
+import { buildTasks } from "../lib/insights";
 import BrandHeader from "../components/wizard/BrandHeader";
 import { adminInputCls, btnDark } from "../components/admin/styles";
 import { COLORS } from "../lib/theme";
@@ -138,21 +143,47 @@ const CRM_CONFIG = {
 };
 
 const TABS = [
+  { key: "overview", label: "Overview", color: "#C89B3C" },
+  { key: "today", label: "Today", color: "#C4503F" },
   { key: "seller", label: "Sellers", color: COLORS.teal },
   { key: "buyer", label: "Buyers", color: COLORS.coral },
   { key: "mediator", label: "Mediators", color: COLORS.steel },
+  { key: "matches", label: "Matches", color: "#7A5BB0" },
   { key: "properties", label: "Published listings", color: COLORS.sage },
 ];
+
+// Tabs that read from the shared all-leads fetch rather than fetching on their own.
+const INSIGHT_TABS = ["overview", "today", "matches"];
+
+// Pipeline stages per role, handed to the Overview funnels.
+const STATUSES_BY_ROLE = {
+  seller: SELLER_STATUSES,
+  buyer: BUYER_STATUSES,
+  mediator: MEDIATOR_STATUSES,
+};
 
 const headerLink =
   "h-10 px-3 rounded-full bg-white/10 hover:bg-white/20 text-white text-[12px] font-semibold flex items-center gap-1.5 transition-colors";
 
 export default function AdminDashboard() {
-  const [tab, setTab] = useState("seller");
+  const [tab, setTab] = useState("overview");
   const [password, setPassword] = useState(null);
   const [adminName, setAdminName] = useState(() => localStorage.getItem("mcm_admin_name") || "");
   const [editingName, setEditingName] = useState(false);
   const navigate = useNavigate();
+  const insights = useAllLeads(password);
+  const refreshInsights = insights.refresh;
+
+  // Edits made in the Sellers/Buyers/Mediators boards, so re-sync whenever
+  // the person comes back to one of the insight views.
+  useEffect(() => {
+    if (INSIGHT_TABS.includes(tab)) refreshInsights();
+  }, [tab, refreshInsights]);
+
+  const urgentCount = useMemo(() => {
+    if (insights.loading) return 0;
+    return buildTasks(insights.data).filter((t) => t.bucket === "overdue" || t.bucket === "today").length;
+  }, [insights.data, insights.loading]);
 
   useEffect(() => {
     const pw = sessionStorage.getItem("mcm_admin_pw");
@@ -264,12 +295,27 @@ export default function AdminDashboard() {
               >
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: on ? "#fff" : t.color }} />
                 {t.label}
+                {t.key === "today" && urgentCount > 0 && (
+                  <span className={`min-w-5 h-5 px-1.5 rounded-full text-[11px] font-bold flex items-center justify-center ${on ? "bg-white text-ink" : "bg-coral text-white"}`}>
+                    {urgentCount}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
 
         <div className="mt-5">
+          {tab === "overview" && (
+            <CommandCenter
+              {...insights}
+              adminName={adminName}
+              statusesByRole={STATUSES_BY_ROLE}
+              onNavigate={setTab}
+            />
+          )}
+          {tab === "today" && <TodayBoard {...insights} password={password} adminName={adminName} />}
+          {tab === "matches" && <MatchesBoard {...insights} adminName={adminName} />}
           {active && (
             <CRMBoard
               key={tab}

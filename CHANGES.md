@@ -1,3 +1,56 @@
+# v9 — Command Center: insights, daily follow-up queue, smart matching (2026-10-08)
+
+Adds three new admin views and a lead-scoring engine on top of v8. No new
+packages, no new Google Sheet columns, no backend (Code.gs) change — it all
+runs on the data you already collect. Public pages and the gallery are
+untouched. Cumulative: includes all earlier updates.
+
+## New admin tabs (Dashboard)
+- **Overview** — animated hero with a plain-English summary of your day, six
+  KPI tiles (total leads, new this week vs last, hot leads, follow-ups due,
+  combined listing value, ready matches), 14-day lead-intake chart, a
+  pipeline funnel for each role, and a **Demand vs supply** panel (by
+  property type, budget band and area) that spells out the gaps, e.g. "2
+  buyers want Office space but only 0 sellers are listed". Plus "Hottest
+  leads" and "Needs you today" with one-tap WhatsApp / Call.
+- **Today** — the daily follow-up queue: Overdue, Due today, Coming up (next
+  3 days) and "Needs a follow-up date" (hot or going cold with nothing
+  scheduled). Each row has WhatsApp (with message templates), Call, and a
+  **Log** panel: add a note, pick Tomorrow / 3 days / 1 week / 2 weeks (or a
+  date) and save — the note goes into the remarks history and a "New" lead
+  moves to Contacted. A badge on the tab shows how many need you now.
+- **Matches** — pairs every active buyer with properties (and every property
+  with buyers) on type, budget, area and how soon both sides can move, with
+  a 0–100 score and the reasons. "Send to <buyer>" opens WhatsApp with the
+  pitch pre-written (includes the gallery link when the property is
+  published; never includes the owner's name, phone or exact address).
+
+## Lead cards
+- **Lead score** badge (Hot / Warm / Cold · 0–100) on every card; hover shows
+  why. Based on timeline urgency, priority stars, budget stated, how
+  complete the details are, reachability and recent activity.
+- **WhatsApp template menu** on every card (follow-up, price check, site
+  visit, ask for photos, loan help, welcome…), pre-filled with the lead's
+  details. Nothing is ever sent automatically.
+- **Sort** — Newest, Hottest first, Follow-up soonest, Highest priority.
+
+## Fixed
+- **Overdue logic**: a Buyer marked "Worthless" (or a Mediator "Visited" /
+  "Not worth", or a sold-out Seller) no longer shows "Overdue" forever. The
+  old check only knew the retired "Closed"/"Dropped" stages.
+
+## Faster
+- Every page except the home page now loads on demand (route splitting).
+- The PDF library (jsPDF) loads only when you actually download a PDF: the
+  admin bundle dropped from about 550 kB to about 120 kB.
+- Overview, Today and Matches share one parallel fetch of all three sheets
+  and refresh quietly every 2 minutes.
+
+## New files
+`src/lib/insights.js`, `src/lib/useAllLeads.js`, `src/lib/roles.js`,
+`src/components/admin/CommandCenter.jsx`, `TodayBoard.jsx`,
+`MatchesBoard.jsx`, `insightUi.jsx`
+
 # v8 — Gallery: first zip's opening page + second zip's inside pages (2026-10-03)
 
 Opening page (/gallery) is the animated design from the first zip, without
