@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Heart, MapPin, Images } from "lucide-react";
+import Burst from "./Burst";
 import SoldOutStamp from "../SoldOutStamp";
 
 /**
@@ -18,6 +19,7 @@ export default function PropertyTile({ p, saved, onToggleSaved }) {
   const [photo, setPhoto] = useState(0);
   const [armed, setArmed] = useState(false); // load extra photos only after the first hover
   const [popping, setPopping] = useState(false);
+  const [burst, setBurst] = useState(0);
   const count = p.images.length;
   const shown = armed ? p.images : p.images.slice(0, 1);
 
@@ -37,7 +39,10 @@ export default function PropertyTile({ p, saved, onToggleSaved }) {
   function onHeart(e) {
     e.preventDefault();
     e.stopPropagation();
-    if (!saved) setPopping(true);
+    if (!saved) {
+      setPopping(true);
+      setBurst((n) => n + 1);
+    }
     onToggleSaved(p.id);
   }
 
@@ -94,6 +99,7 @@ export default function PropertyTile({ p, saved, onToggleSaved }) {
         } ${popping ? "heart-pop" : ""} ${p.soldOut ? "!hidden" : ""}`}
       >
         <Heart size={19} fill={saved ? "currentColor" : "none"} strokeWidth={2.2} />
+        <Burst fire={burst} count={10} spread={38} />
       </button>
 
       <div className="absolute inset-x-3 bottom-2.5 flex items-end justify-between gap-2 pointer-events-none">

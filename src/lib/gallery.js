@@ -298,7 +298,7 @@ export function highlightsFor(l) {
   if (/vacant/i.test(find(/rental/i))) out.push({ icon: KeyRound, text: "Vacant, ready to move in" });
   if (/brand new/i.test(l.description)) out.push({ icon: Sparkles, text: "Brand new" });
   const parking = find(/parking/i);
-  if (parking && !/^no\b/i.test(parking)) out.push({ icon: Car, text: parking });
+  if (parking && !/^no\b/i.test(parking)) out.push({ icon: Car, text: /^(yes|available|y)$/i.test(parking) ? "Parking available" : parking });
   if (l.facing) out.push({ icon: Compass, text: `${l.facing} facing` });
   return out.slice(0, 6);
 }

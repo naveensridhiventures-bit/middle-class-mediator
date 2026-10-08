@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { CalendarCheck, MessageCircle } from "lucide-react";
 import Sheet from "./Sheet";
+import SuccessCheck from "./SuccessCheck";
 import { whatsappLink } from "../../lib/whatsapp";
 import { ADMIN_WHATSAPP_NUMBER } from "../../lib/config";
 
@@ -26,12 +27,33 @@ export default function VisitSheet({ listing, onClose }) {
   const [day, setDay] = useState(days[1].key);
   const [slot, setSlot] = useState(SLOTS[0]);
   const [name, setName] = useState("");
+  const [sent, setSent] = useState(false);
   const chosen = days.find((d) => d.key === day);
 
   const message = `Hi, I'd like to visit this property: ${listing.title}${listing.location ? ` (${listing.location})` : ""}${listing.price ? ` — ${listing.price}` : ""}${listing.refId ? `\nRef: ${listing.refId}` : ""}\n\nPreferred time: ${chosen.long}, ${slot}${name.trim() ? `\nName: ${name.trim()}` : ""}\n\nPlease confirm if this works.`;
 
   const pill = (on) =>
-    `rounded-2xl border-2 text-center transition-colors active:scale-95 ${on ? "border-[#C99A4A] bg-[#F7EBD2] text-ink" : "border-transparent bg-[#F1ECE3] text-ink/75 hover:bg-[#EAE4D9]"}`;
+    `rip rounded-2xl border-2 text-center transition-[background-color,transform] active:scale-95 ${on ? "pill-pick border-[#C99A4A] bg-[#F7EBD2] text-ink" : "border-transparent bg-[#F1ECE3] text-ink/75 hover:bg-[#EAE4D9]"}`;
+
+  const when = `${chosen.dow === "Today" || chosen.dow === "Tomorrow" ? chosen.dow : `${chosen.dow} ${chosen.num} ${chosen.mon}`}, ${slot}`;
+
+  if (sent) {
+    return (
+      <Sheet title="Request ready" subtitle={listing.title} onClose={onClose}>
+        <div className="flex flex-col items-center text-center pt-4 pb-2">
+          <SuccessCheck />
+          <h3 className="mt-5 font-display font-bold text-[1.4rem] text-ink">WhatsApp is opening</h3>
+          <p className="mt-1.5 text-[14.5px] text-ink/60 leading-relaxed max-w-xs">
+            Your visit request for <b className="text-ink">{when}</b> is written. Press send there and we'll confirm.
+          </p>
+          <a href={whatsappLink(ADMIN_WHATSAPP_NUMBER, message)} target="_blank" rel="noreferrer" className="rip mt-5 h-12 w-full rounded-2xl border border-ink/20 text-ink text-[14px] font-semibold flex items-center justify-center hover:bg-ink/5">
+            Open WhatsApp again
+          </a>
+          <button type="button" onClick={onClose} className="rip mt-2.5 h-12 w-full rounded-2xl bg-ink-dark text-white text-[14px] font-semibold">Done</button>
+        </div>
+      </Sheet>
+    );
+  }
 
   return (
     <Sheet title="Book a visit" subtitle={listing.title} onClose={onClose}>
@@ -69,10 +91,10 @@ export default function VisitSheet({ listing, onClose }) {
         href={whatsappLink(ADMIN_WHATSAPP_NUMBER, message)}
         target="_blank"
         rel="noreferrer"
-        onClick={onClose}
-        className="mt-6 h-14 rounded-2xl bg-[#A8782A] hover:bg-[#946820] text-white font-semibold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98] transition"
+        onClick={() => setSent(true)}
+        className="rip btn-shine mt-6 h-14 rounded-2xl bg-[#A8782A] hover:bg-[#946820] text-white font-semibold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98] transition"
       >
-        <MessageCircle size={19} /> Request {chosen.dow === "Today" || chosen.dow === "Tomorrow" ? chosen.dow.toLowerCase() : `${chosen.dow} ${chosen.num} ${chosen.mon}`}, {slot}
+        <MessageCircle size={19} /> Request {when}
       </a>
       <p className="mt-3 text-[12px] text-ink/50 flex items-start gap-1.5 leading-snug">
         <CalendarCheck size={14} className="mt-0.5 shrink-0" />

@@ -428,3 +428,52 @@
   box-shadow: 0 2px 8px rgba(10,17,36,.3); cursor: pointer;
 }
 .emi-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(168,120,42,.3); }
+
+/* ---- v12 click & submit animations ---- */
+.rip { position: relative; overflow: hidden; -webkit-tap-highlight-color: transparent; }
+.rip-wave {
+  position: absolute; border-radius: 9999px; pointer-events: none;
+  background: radial-gradient(circle, rgba(255,255,255,.55), rgba(255,255,255,0) 70%);
+  transform: scale(0); opacity: .9; animation: ripWave .65s ease-out forwards;
+}
+@keyframes ripWave { to { transform: scale(1); opacity: 0; } }
+
+.burst-bit {
+  position: absolute; width: var(--w, 6px); height: var(--h, 6px); border-radius: 2px; background: var(--c);
+  opacity: 0; animation: burstOut .85s cubic-bezier(.15,.8,.3,1) forwards;
+}
+.burst-bit:not(.burst-big) { border-radius: 9999px; }
+@keyframes burstOut {
+  0% { opacity: 1; transform: translate(0,0) scale(.4) rotate(0); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), calc(var(--dy) + var(--fall, 0px))) scale(1) rotate(var(--rot, 0deg)); }
+}
+.success-ring { stroke-dasharray: 145; stroke-dashoffset: 145; animation: drawIt .6s ease-out .05s forwards; }
+.success-tick { stroke-dasharray: 40; stroke-dashoffset: 40; animation: drawIt .4s ease-out .55s forwards; }
+.success-pop { animation: successPop .6s cubic-bezier(.2,1.6,.4,1) both; }
+@keyframes drawIt { to { stroke-dashoffset: 0; } }
+@keyframes successPop { from { transform: scale(.5); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.sheet-pop { animation: sheetPop .42s cubic-bezier(.2,1.15,.3,1) both; }
+@keyframes sheetPop { from { transform: translateY(46px) scale(.97); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.btn-shine { position: relative; overflow: hidden; }
+.btn-shine::after {
+  content: ""; position: absolute; inset: 0; width: 45%; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.35), transparent);
+  transform: translateX(-130%); animation: btnShine 3.8s ease-in-out 1.2s infinite;
+}
+@keyframes btnShine { 0%, 60% { transform: translateX(-130%); } 100% { transform: translateX(330%); } }
+
+.pill-pick { animation: pillPick .35s cubic-bezier(.2,1.6,.4,1); }
+@keyframes pillPick { 0% { transform: scale(.9); } 100% { transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .burst-bit, .btn-shine::after, .rip-wave { display: none; }
+  .sheet-pop, .success-pop, .pill-pick { animation: none; }
+  .success-ring, .success-tick { animation: none; stroke-dashoffset: 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .heart-beat { animation: heartBeat .6s cubic-bezier(.2,1.7,.4,1); }
+  @keyframes heartBeat { 0% { transform: scale(.6); } 55% { transform: scale(1.35); } 100% { transform: scale(1); } }
+}

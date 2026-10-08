@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { MapPin, ArrowLeft, Heart, Share2, Check, Images, Phone, MessageCircle, Quote, ChevronRight, Send, CalendarCheck, Clock } from "lucide-react";
+import { MapPin, ArrowLeft, Heart, Share2, Check, Images, Phone, MessageCircle, ChevronRight, Send, CalendarCheck, Clock } from "lucide-react";
 import useProperties from "../lib/useProperties";
 import useFavorites from "../lib/useFavorites";
 import useRecent from "../lib/useRecent";
@@ -15,10 +15,12 @@ import TopBar from "../components/gallery/TopBar";
 import Highlights from "../components/gallery/Highlights";
 import EmiCalculator from "../components/gallery/EmiCalculator";
 import VisitSheet from "../components/gallery/VisitSheet";
+import AboutProperty from "../components/gallery/AboutProperty";
+import Burst from "../components/gallery/Burst";
 import CollectionRail from "../components/gallery/CollectionRail";
 
 const heroBtn =
-  "pointer-events-auto w-10 h-10 rounded-full bg-ink-dark/55 text-white flex items-center justify-center hover:bg-ink-dark/75 transition-colors active:scale-95";
+  "relative pointer-events-auto w-10 h-10 rounded-full bg-ink-dark/55 text-white flex items-center justify-center hover:bg-ink-dark/75 transition-colors active:scale-95";
 const GOLD_BTN = "bg-[#A8782A] hover:bg-[#946820] text-white";
 
 function PageShell({ children }) {
@@ -33,6 +35,7 @@ export default function PropertyDetail() {
   const [viewerIndex, setViewerIndex] = useState(null);
   const [shared, setShared] = useState(false);
   const [visitOpen, setVisitOpen] = useState(false);
+  const [burst, setBurst] = useState(0);
   const recent = useRecent();
   const recordRecent = recent.record;
   const onIndex = useCallback((i) => setPhotoIndex(i), []);
@@ -135,12 +138,16 @@ export default function PropertyDetail() {
               {!l.sold && (
                 <button
                   type="button"
-                  onClick={() => favorites.toggle(l.id)}
+                  onClick={() => {
+                    if (!saved) setBurst((n) => n + 1);
+                    favorites.toggle(l.id);
+                  }}
                   aria-pressed={saved}
                   aria-label={saved ? "Remove from saved" : "Save this property"}
                   className={`${heroBtn} ${saved ? "!bg-white !text-[#E5584A]" : ""}`}
                 >
-                  <Heart size={20} fill={saved ? "currentColor" : "none"} />
+                  <Heart size={20} fill={saved ? "currentColor" : "none"} className={burst && saved ? "heart-beat" : ""} />
+                  <Burst fire={burst} count={10} spread={40} />
                 </button>
               )}
               <button type="button" onClick={handleShare} aria-label="Share this property" className={heroBtn}>
@@ -199,20 +206,7 @@ export default function PropertyDetail() {
             </ul>
           )}
 
-          {l.description && (
-            <section className="mt-6">
-              <h2 className="font-display font-bold text-[1.1rem] text-ink">Description</h2>
-              <p className="mt-1.5 text-[15px] leading-relaxed text-ink/70 whitespace-pre-line">{l.description}</p>
-            </section>
-          )}
-
-          {l.sellerNote && (
-            <div className="relative mt-6 bg-[#F8F2E4] border-l-4 border-gold rounded-r-2xl pl-5 pr-4 py-4">
-              <Quote size={20} className="text-gold/60 absolute top-3 right-3.5" />
-              <p className="text-[10px] uppercase tracking-wider text-gold-dark font-bold mb-1.5">Seller's remark</p>
-              <p className="text-sm text-ink/75 italic leading-relaxed pr-6 whitespace-pre-line">{l.sellerNote}</p>
-            </div>
-          )}
+          <AboutProperty description={l.description} sellerNote={l.sellerNote} />
 
           {attrEntries.length > 0 && (
             <section className="mt-6">
@@ -271,11 +265,11 @@ export default function PropertyDetail() {
             </span>
           ) : (
             <>
-              <a href={callLink(ADMIN_WHATSAPP_NUMBER)} className="h-14 rounded-2xl bg-ink-dark text-white font-semibold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform" aria-label="Call">
+              <a href={callLink(ADMIN_WHATSAPP_NUMBER)} className="rip h-14 rounded-2xl bg-ink-dark text-white font-semibold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform" aria-label="Call">
                 <Phone size={19} />
                 <span className="hidden min-[400px]:inline">Call</span>
               </a>
-              <button type="button" onClick={() => setVisitOpen(true)} className={`h-14 rounded-2xl ${GOLD_BTN} font-semibold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98] transition-[transform,background-color] shadow-[0_8px_20px_-8px_rgba(168,120,42,0.8)]`}>
+              <button type="button" onClick={() => setVisitOpen(true)} className={`rip btn-shine h-14 rounded-2xl ${GOLD_BTN} font-semibold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98] transition-[transform,background-color] shadow-[0_8px_20px_-8px_rgba(168,120,42,0.8)]`}>
                 <CalendarCheck size={19} />
                 Book a visit
               </button>
@@ -284,7 +278,7 @@ export default function PropertyDetail() {
                 target="_blank"
                 rel="noreferrer"
                 aria-label="WhatsApp"
-                className="h-14 rounded-2xl bg-whatsapp text-white font-semibold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+                className="rip h-14 rounded-2xl bg-whatsapp text-white font-semibold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
               >
                 <MessageCircle size={19} />
                 <span className="hidden min-[400px]:inline">Chat</span>

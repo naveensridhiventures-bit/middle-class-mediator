@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { User, Phone, MessageSquareText, Send, Check, MapPin } from "lucide-react";
+import { User, Phone, MessageSquareText, Send, MapPin } from "lucide-react";
 import useProperties from "../lib/useProperties";
 import { isValidPhone } from "../lib/validate";
 import { optimizedImageUrl } from "../lib/cloudinary";
 import { whatsappLink } from "../lib/whatsapp";
 import { ADMIN_WHATSAPP_NUMBER } from "../lib/config";
+import SuccessCheck from "../components/gallery/SuccessCheck";
 import TopBar from "../components/gallery/TopBar";
 
 const fieldWrap = "relative";
@@ -94,10 +95,8 @@ export default function GalleryEnquiry() {
         {l.sold ? (
           <p className="mt-6 rounded-2xl bg-ink/5 px-4 py-4 text-sm text-ink/60 text-center">This property has been sold, so it can't take enquiries any more.</p>
         ) : opened ? (
-          <div className="mt-6 rounded-3xl bg-surface ring-1 ring-ink/[0.07] p-6 text-center animate-step">
-            <span className="w-14 h-14 rounded-full bg-sage mx-auto flex items-center justify-center">
-              <Check size={28} className="text-white" strokeWidth={3} />
-            </span>
+          <div className="mt-6 rounded-3xl bg-surface ring-1 ring-ink/[0.07] p-6 text-center sheet-pop">
+            <span className="inline-flex"><SuccessCheck /></span>
             <h2 className="mt-4 font-display font-bold text-[1.3rem] text-ink">WhatsApp is open</h2>
             <p className="mt-1.5 text-sm text-ink/60 leading-relaxed">
               Your message is ready. Press send in WhatsApp and our team will reply there.
@@ -162,7 +161,7 @@ export default function GalleryEnquiry() {
 
             <button
               type="submit"
-              className="w-full h-14 rounded-2xl bg-[#A8782A] hover:bg-[#946820] text-white font-display font-semibold text-[1.05rem] flex items-center justify-center gap-2.5 active:scale-[0.99] transition-[transform,background-color]"
+              className="rip btn-shine w-full h-14 rounded-2xl bg-[#A8782A] hover:bg-[#946820] text-white font-display font-semibold text-[1.05rem] flex items-center justify-center gap-2.5 active:scale-[0.99] transition-[transform,background-color]"
             >
               <Send size={19} />
               Send Enquiry

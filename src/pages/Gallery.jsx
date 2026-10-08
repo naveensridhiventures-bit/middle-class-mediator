@@ -36,7 +36,7 @@ function Chip({ active, onClick, icon: Icon, children, count, delay = 0 }) {
       aria-pressed={active}
       data-active={active}
       style={{ "--d": `${delay}ms` }}
-      className={`chip enter-up shrink-0 h-12 pl-3.5 pr-4 rounded-2xl flex items-center gap-2 text-[14px] font-semibold transition-colors active:scale-95 ${
+      className={`rip chip enter-up shrink-0 h-12 pl-3.5 pr-4 rounded-2xl flex items-center gap-2 text-[14px] font-semibold transition-colors active:scale-95 ${
         active ? "bg-ink text-white" : "bg-[#EDE8E0] text-ink/80 hover:bg-[#E4DED4]"
       }`}
     >
@@ -424,7 +424,7 @@ export default function Gallery() {
         <button
           type="button"
           onClick={() => setCompareOpen(true)}
-          className="fixed z-40 left-1/2 -translate-x-1/2 bottom-5 h-12 pl-4 pr-5 rounded-full bg-ink-dark text-white text-[13.5px] font-bold flex items-center gap-2 shadow-[0_14px_30px_-10px_rgba(10,17,36,0.7)] ring-1 ring-[#C99A4A]/50 enter-up active:scale-95 transition-transform"
+          className="rip fixed z-40 left-1/2 -translate-x-1/2 bottom-5 h-12 pl-4 pr-5 rounded-full bg-ink-dark text-white text-[13.5px] font-bold flex items-center gap-2 shadow-[0_14px_30px_-10px_rgba(10,17,36,0.7)] ring-1 ring-[#C99A4A]/50 enter-up active:scale-95 transition-transform"
           style={{ marginBottom: "env(safe-area-inset-bottom)" }}
         >
           <GitCompareArrows size={18} className="text-[#E6C173]" /> Compare {compareItems.length} saved

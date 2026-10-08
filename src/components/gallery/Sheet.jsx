@@ -26,7 +26,7 @@ export default function Sheet({ title, subtitle, onClose, children, wide = false
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`bg-surface w-full ${wide ? "sm:max-w-3xl" : "sm:max-w-lg"} max-h-[92dvh] rounded-t-[1.75rem] sm:rounded-[1.75rem] shadow-2xl flex flex-col animate-step`}
+        className={`bg-surface w-full ${wide ? "sm:max-w-3xl" : "sm:max-w-lg"} max-h-[92dvh] rounded-t-[1.75rem] sm:rounded-[1.75rem] shadow-2xl flex flex-col sheet-pop`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">

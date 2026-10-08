@@ -1,3 +1,14 @@
+# v12 — Cleaner description + click/submit animations (2026-10-08)
+
+Public gallery only. Cumulative: includes v9–v11. No Code.gs / Sheet change.
+
+- **"About this property"** replaces the long Description + Seller's remark boxes. The seller's pasted text is cleaned (emoji and shouting removed) into a short intro with "Read more" and a tick-list of features with "Show all".
+- **Tap ripple** on buttons, pills and chips.
+- **Heart burst**: saving a property pops a spark burst and a springy heart.
+- **Success moments**: Book a visit and Send Enquiry end with a self-drawing tick and confetti.
+- Sheets spring up; gold buttons have a soft shine; budget pills pop when picked.
+- All motion is switched off for visitors who prefer reduced motion.
+
 # v11 — Premium Gallery (2026-10-08)
 
 Public gallery only. No new packages, no new Sheet columns, no Code.gs change.

@@ -12,7 +12,7 @@ export default function BudgetPills({ value, onChange }) {
             type="button"
             aria-pressed={on}
             onClick={() => onChange(b.key)}
-            className={`shrink-0 h-9 px-3.5 rounded-full text-[13px] font-semibold border transition-colors active:scale-95 ${
+            className={`rip shrink-0 h-9 px-3.5 rounded-full text-[13px] font-semibold border transition-colors active:scale-95 ${
               on ? "bg-[#A8782A] border-[#A8782A] text-white" : "bg-surface border-ink/12 text-ink/70 hover:border-ink/30"
             }`}
           >
