@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Handshake, User, Search, Image as ImageIcon, ChevronRight, MessageCircle } from "lucide-react";
+import { Handshake, User, Search, Image as ImageIcon, ChevronRight, MessageCircle, ArrowRight, Lock, UserCheck, ClipboardCheck } from "lucide-react";
 import Reveal from "../components/Reveal";
 import RotatingWords from "../components/home/RotatingWords";
 import Particles from "../components/home/Particles";
 import Ticker from "../components/home/Ticker";
+import SearchDock from "../components/home/SearchDock";
+import FreshRail from "../components/home/FreshRail";
+import LiveStats from "../components/home/LiveStats";
+import useTilt from "../components/home/useTilt";
+import useProperties from "../lib/useProperties";
 import useInView from "../lib/useInView";
 import { whatsappLink } from "../lib/whatsapp";
 import { ADMIN_WHATSAPP_NUMBER } from "../lib/config";
@@ -54,9 +59,11 @@ const STEPS = [
 
 function RoleCard({ role }) {
   const { to, title, desc, Icon, tile, bg, titleColor, chevBg } = role;
+  const tilt = useTilt(5);
   return (
     <Link
       to={to}
+      {...tilt}
       className="role-card group relative h-full overflow-hidden flex items-center gap-3 sm:gap-4 rounded-3xl p-3.5 sm:p-5 md:flex-col md:items-start md:gap-5 md:p-6 md:pb-[4.75rem] shadow-[0_10px_28px_-14px_rgba(27,42,74,0.35)] active:scale-[0.985] transition-transform"
       style={{ background: bg, "--tile": tile }}
     >
@@ -81,6 +88,54 @@ function RoleCard({ role }) {
         <ChevronRight size={22} strokeWidth={2.6} />
       </span>
     </Link>
+  );
+}
+
+const WHY = [
+  { Icon: ClipboardCheck, title: "Read by our team", text: "Every request and listing is reviewed by a person before anything happens.", tint: "#145A57" },
+  { Icon: Lock, title: "Your details stay private", text: "Listings never show a seller's phone number or exact address.", tint: "#0F4C8A" },
+  { Icon: UserCheck, title: "A real person on WhatsApp", text: "Ask questions, share requirements and move ahead without a call centre.", tint: "#B5452F" },
+];
+
+function WhyUs() {
+  return (
+    <section className="mt-14" aria-labelledby="why-title">
+      <h2 id="why-title" className="font-display font-bold text-[1.6rem] sm:text-3xl leading-tight text-center text-ink">Why people use us</h2>
+      <div className="mt-7 grid gap-3.5 md:grid-cols-3">
+        {WHY.map(({ Icon, title, text, tint }, i) => (
+          <Reveal key={title} delay={i * 110} distance={24} className="h-full">
+            <div className="why-card h-full rounded-3xl bg-surface ring-1 ring-ink/[0.06] p-5 shadow-[0_14px_30px_-22px_rgba(27,42,74,0.5)] hover:shadow-[0_22px_40px_-20px_rgba(27,42,74,0.5)] transition-shadow">
+              <span className="why-ico w-12 h-12 rounded-2xl flex items-center justify-center text-white" style={{ background: tint }}>
+                <Icon size={23} strokeWidth={2} />
+              </span>
+              <h3 className="mt-4 font-display font-bold text-[1.15rem] text-ink leading-snug">{title}</h3>
+              <p className="mt-1.5 text-[14.5px] leading-relaxed text-ink/60">{text}</p>
+            </div>
+          </Reveal>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function FinalCta() {
+  return (
+    <Reveal distance={30} className="mt-16">
+      <section className="relative isolate overflow-hidden rounded-[2rem] bg-ink-dark text-white px-6 py-10 sm:px-12 sm:py-14 text-center shadow-[0_28px_60px_-28px_rgba(10,17,36,0.85)]">
+        <span className="cta-orb absolute -z-10 -top-24 -right-16 w-72 h-72 rounded-full bg-[radial-gradient(circle,rgba(224,183,92,0.35),transparent_68%)]" aria-hidden="true" />
+        <span className="cta-orb absolute -z-10 -bottom-28 -left-20 w-80 h-80 rounded-full bg-[radial-gradient(circle,rgba(229,88,74,0.25),transparent_68%)]" style={{ animationDelay: "-4s" }} aria-hidden="true" />
+        <h2 className="font-display font-bold text-[1.8rem] sm:text-4xl leading-tight text-balance">Ready to buy, sell or join the network?</h2>
+        <p className="mt-3 text-white/65 text-[15px] sm:text-lg max-w-md mx-auto text-balance">Fill in a short form. We read every request and reply on WhatsApp.</p>
+        <div className="mt-7 flex flex-col sm:flex-row gap-3 justify-center">
+          <Link to="/buyer" className="rip btn-shine h-13 py-3.5 px-8 rounded-full bg-[#C99A4A] text-ink-dark font-bold text-[15px] flex items-center justify-center gap-2 active:scale-95 transition-transform">
+            Tell us what you need <ArrowRight size={18} />
+          </Link>
+          <Link to="/seller" className="rip py-3.5 px-8 rounded-full border border-white/30 text-white font-semibold text-[15px] flex items-center justify-center hover:bg-white/10 active:scale-95 transition">
+            List my property
+          </Link>
+        </div>
+      </section>
+    </Reveal>
   );
 }
 
@@ -114,6 +169,8 @@ function HowItWorks() {
 
 export default function Home() {
   const heroRef = useRef(null);
+  const { properties, error } = useProperties();
+  const hasListings = !!properties && properties.some((p) => !p.sold && p.images.length > 0);
   const [showChat, setShowChat] = useState(false);
 
   // Parallax: the photo drifts slower than the page, the text lifts and fades
@@ -203,9 +260,23 @@ export default function Home() {
             <span className="diamond-in w-2.5 h-2.5 rotate-45 border border-gold" />
             <span className="line-grow origin-left h-px w-16 sm:w-24 bg-gradient-to-l from-transparent to-gold/80" />
           </div>
+
+          <div className="cta-in mt-7 flex flex-wrap items-center justify-center gap-3" style={{ "--d": "1900ms" }}>
+            <Link to="/gallery" className="rip btn-shine h-12 px-7 rounded-full bg-[#C99A4A] text-ink-dark font-bold text-[14.5px] flex items-center gap-2 active:scale-95 transition-transform shadow-[0_12px_28px_-10px_rgba(201,154,74,0.9)]">
+              Browse properties <ArrowRight size={17} />
+            </Link>
+            <a
+              href={whatsappLink(ADMIN_WHATSAPP_NUMBER, "Hi, I'd like to know more about Middle Class Mediator.")}
+              target="_blank"
+              rel="noreferrer"
+              className="rip h-12 px-6 rounded-full border border-white/30 bg-white/10 backdrop-blur-sm text-white font-semibold text-[14.5px] flex items-center gap-2 hover:bg-white/20 active:scale-95 transition"
+            >
+              <MessageCircle size={18} /> Chat with us
+            </a>
+          </div>
         </div>
 
-        <div className="mb-9 sm:mb-12">
+        <div className="mb-24 sm:mb-28">
           <Ticker />
         </div>
       </section>
@@ -213,7 +284,13 @@ export default function Home() {
       {/* ---------- Cream sheet rising over the hero ---------- */}
       <section className="relative z-10 -mt-8 bg-canvas rounded-t-[2rem] pt-9 pb-24">
         <div className="max-w-5xl mx-auto px-4 sm:px-5">
-          <Reveal direction="up" distance={14}>
+          <div className="relative z-20 -mt-[5.25rem] sm:-mt-[6rem] mb-2">
+            <SearchDock properties={properties} />
+          </div>
+          <FreshRail properties={properties} />
+          <LiveStats properties={properties} />
+
+          <Reveal direction="up" distance={14} className="mt-14">
             <h2 className="font-display font-bold text-[1.75rem] sm:text-4xl leading-tight text-center text-ink">
               How can we help you today?
             </h2>
@@ -228,6 +305,7 @@ export default function Home() {
             ))}
           </div>
 
+          {(error || (properties && !hasListings)) && (
           <Reveal delay={120} distance={26} className="mt-4">
             <Link
               to="/gallery"
@@ -256,10 +334,19 @@ export default function Home() {
               </span>
             </Link>
           </Reveal>
+          )}
 
+          <WhyUs />
           <HowItWorks />
+          <FinalCta />
 
-          <p className="text-center text-xs text-ink/45 mt-14">
+          <nav className="mt-14 flex flex-wrap justify-center gap-x-6 gap-y-2 text-[14px] font-semibold text-ink/65" aria-label="Footer">
+            <Link to="/gallery" className="hover:text-ink">Property gallery</Link>
+            <Link to="/seller" className="hover:text-ink">Sell a property</Link>
+            <Link to="/buyer" className="hover:text-ink">Buy a property</Link>
+            <Link to="/mediator" className="hover:text-ink">Join as mediator</Link>
+          </nav>
+          <p className="text-center text-xs text-ink/45 mt-5">
             © {new Date().getFullYear()} Middle Class Mediator. Trusted mediation for Chennai properties.
           </p>
         </div>

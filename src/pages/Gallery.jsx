@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Search, X, LayoutGrid, Heart, ChevronDown, SlidersHorizontal, AlertTriangle, GitCompareArrows } from "lucide-react";
 import { optimizedImageUrl } from "../lib/cloudinary";
 import useFavorites from "../lib/useFavorites";
 import useProperties from "../lib/useProperties";
 import useRecent from "../lib/useRecent";
-import { DEFAULT_FILTERS, activeFilterCount, applyFilters, collectionsFor, inrShort, isNew, shortType, sortListings } from "../lib/gallery";
+import { BUDGET_BANDS, DEFAULT_FILTERS, activeFilterCount, applyFilters, collectionsFor, inrShort, isNew, shortType, sortListings } from "../lib/gallery";
 import Reveal from "../components/Reveal";
 import RotatingWords from "../components/home/RotatingWords";
 import Ticker from "../components/home/Ticker";
@@ -57,7 +57,13 @@ export default function Gallery() {
   const { properties, error } = useProperties();
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [params] = useSearchParams();
+  const [filters, setFilters] = useState(() => ({
+    ...DEFAULT_FILTERS,
+    type: params.get("type") || "All",
+    area: params.get("area") || "All",
+    budget: BUDGET_BANDS.some((b) => b.key === params.get("budget")) ? params.get("budget") : "any",
+  }));
   const [savedOnly, setSavedOnly] = useState(false);
   const [sort, setSort] = useState("newest");
   const [showFilters, setShowFilters] = useState(false);

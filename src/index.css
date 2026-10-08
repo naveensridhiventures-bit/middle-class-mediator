@@ -477,3 +477,24 @@
   .heart-beat { animation: heartBeat .6s cubic-bezier(.2,1.7,.4,1); }
   @keyframes heartBeat { 0% { transform: scale(.6); } 55% { transform: scale(1.35); } 100% { transform: scale(1); } }
 }
+
+/* ---- v13 home page ---- */
+.role-card {
+  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform .25s ease-out, box-shadow .3s;
+}
+.role-card::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .3s;
+  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,.75), transparent 65%);
+}
+@media (hover: hover) { .role-card:hover::before { opacity: 1; } .role-card:hover { box-shadow: 0 22px 40px -18px rgba(27,42,74,.5); } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .dock-pop { animation: dockPop .9s cubic-bezier(.2,1.25,.35,1) 1.9s both; }
+  .cta-in { animation: fadeUp .8s ease-out var(--d, 0ms) both; }
+  .cta-orb { animation: orbDrift 9s ease-in-out infinite alternate; }
+  .why-ico { transition: transform .5s cubic-bezier(.2,1.6,.4,1); }
+  .why-card:hover .why-ico { transform: rotate(-8deg) scale(1.12); }
+}
+@keyframes dockPop { from { opacity: 0; transform: translateY(46px) scale(.93); } to { opacity: 1; transform: none; } }
+@keyframes orbDrift { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(-8%, 10%, 0) scale(1.25); } }

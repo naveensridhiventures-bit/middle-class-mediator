@@ -1,3 +1,16 @@
+# v13 — Premium home page (2026-10-08)
+
+Public home page only. Cumulative: includes v9–v12. No Code.gs / Sheet change.
+
+- **Search dock** that pops up across the edge of the hero: pick type, budget and area, and the gallery opens already filtered (`/gallery?type=…&budget=…&area=…`).
+- Hero buttons: Browse properties and Chat with us.
+- **New on the market**: a swipeable rail of the newest real listings (hidden when there are none).
+- **Live stats** counted up when scrolled into view (listings, areas, price range). Real data only.
+- Role cards tilt in 3D with a light that follows the mouse.
+- "Why people use us": three plain facts that match how the app works.
+- Closing call-to-action band with slow drifting light, and footer links.
+- Motion respects reduced-motion settings.
+
 # v12 — Cleaner description + click/submit animations (2026-10-08)
 
 Public gallery only. Cumulative: includes v9–v11. No Code.gs / Sheet change.
