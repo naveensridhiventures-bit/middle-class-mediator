@@ -43,7 +43,7 @@ const steps = [
     valid: (f) => f.name.trim() && isValidPhone(f.phone),
     render: (f, set) => (
       <>
-        <TextField label="Full name" required autoComplete="name" placeholder="Your name" value={f.name} onChange={(e) => set("name", e.target.value)} />
+        <TextField label="Full name" required valid={f.name.trim().length > 1} autoComplete="name" placeholder="Your name" value={f.name} onChange={(e) => set("name", e.target.value)} />
         <PhoneField value={f.phone} onChange={(v) => set("phone", v)} />
       </>
     ),
@@ -51,6 +51,7 @@ const steps = [
   {
     label: "Profession",
     title: "What do you do?",
+    auto: true,
     valid: (f) => f.profession,
     render: (f, set) => <ChoiceGroup options={PROFESSIONS} value={f.profession} onChange={(v) => set("profession", v)} required />,
   },
@@ -80,6 +81,7 @@ const steps = [
     label: "Our promise",
     title: "Do you share only genuine property leads?",
     hint: "Our network only works when every lead is real.",
+    auto: true,
     valid: (f) => f.genuineLeads,
     render: (f, set) => <ChoiceGroup options={YES_NO} value={f.genuineLeads} onChange={(v) => set("genuineLeads", v)} required />,
   },
@@ -92,6 +94,7 @@ export default function Mediator() {
       initialForm={initialForm}
       landing={landing}
       steps={steps}
+      chips={(f) => [f.name.trim() && f.name.trim().split(" ")[0], f.profession, f.workingArea && f.workingArea.replace(" Chennai", ""), f.propertyCategory, f.experience]}
       reviewTitle="Review your details"
       reviewNote="Check everything looks right. Tap any row to change it."
       reviewRows={(f) => [
@@ -107,8 +110,13 @@ export default function Mediator() {
       submit={(f) => addMediatorLead({ ...f, name: f.name.trim() })}
       submitLabel="Submit registration"
       success={{
-        title: "Registration submitted successfully",
+        title: "Welcome to the network",
         text: (f) => `Thanks, ${f.name.trim()}. Our team will review your registration and get in touch with you directly.`,
+        next: [
+          { title: "Our team reviews your registration", text: "We check your area, category and experience." },
+          { title: "We get in touch with you directly", text: "Expect a WhatsApp message from our team." },
+          { title: "Genuine leads start coming your way", text: "Buyer and seller leads that match your work." },
+        ],
         againLabel: "Register another",
       }}
     />

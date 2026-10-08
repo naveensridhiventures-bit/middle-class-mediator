@@ -1,3 +1,22 @@
+# v14 — Registration flows feel alive (Seller, Buyer, Mediator) (2026-10-08)
+
+Cumulative: includes v9–v13. No Code.gs / Sheet change; the same fields are saved.
+
+Shared by all three forms
+- Slides forward and back between questions; choice cards rise in one by one, ripple, pop and draw their tick.
+- Single-tap questions move on by themselves after a beat (property type, timeline, profession, promise).
+- Progress is a glowing track with "Step 2 of 5" and a friendly time left.
+- A "so far" strip: your answers drop in as chips as you go.
+- Name and phone get a tick when valid; phone shows +91 and a live 7/10 counter.
+- Pressing Continue too early shakes and says what's missing, instead of a dead button.
+- Answers are saved on this device while you fill, with a "Welcome back, continue?" card if you leave.
+- Saving shows a sweeping loader. Success draws a ring and tick with confetti, a "What we received" summary and a three-step "what happens next".
+- Optional steps have "Skip the rest and review".
+
+Seller form: 12 screens became 7
+- Required questions are done by screen 4; the rest are optional extras.
+- A "Listing strength" meter rises as optional details are added.
+
 # v13 — Premium home page (2026-10-08)
 
 Public home page only. Cumulative: includes v9–v12. No Code.gs / Sheet change.

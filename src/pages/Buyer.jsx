@@ -35,6 +35,8 @@ const landing = {
   ],
 };
 
+const short = (t) => (t ? t.split(" / ")[0] : "");
+
 const steps = [
   {
     label: "Personal details",
@@ -43,7 +45,7 @@ const steps = [
     valid: (f) => f.name.trim() && isValidPhone(f.phone),
     render: (f, set) => (
       <>
-        <TextField label="Full name" required autoComplete="name" placeholder="Your name" value={f.name} onChange={(e) => set("name", e.target.value)} />
+        <TextField label="Full name" required valid={f.name.trim().length > 1} autoComplete="name" placeholder="Your name" value={f.name} onChange={(e) => set("name", e.target.value)} />
         <PhoneField value={f.phone} onChange={(v) => set("phone", v)} />
       </>
     ),
@@ -51,6 +53,7 @@ const steps = [
   {
     label: "Property type",
     title: "What property are you looking for?",
+    auto: true,
     valid: (f) => f.propertyType,
     render: (f, set) => <ChoiceGroup options={PROPERTY_TYPES} value={f.propertyType} onChange={(v) => set("propertyType", v)} required />,
   },
@@ -79,6 +82,7 @@ const steps = [
   {
     label: "Timeline",
     title: "When are you planning to buy?",
+    auto: true,
     valid: (f) => f.timeline,
     render: (f, set) => <ChoiceGroup options={TIMELINE} value={f.timeline} onChange={(v) => set("timeline", v)} required />,
   },
@@ -91,6 +95,7 @@ export default function Buyer() {
       initialForm={initialForm}
       landing={landing}
       steps={steps}
+      chips={(f) => [f.name.trim() && f.name.trim().split(" ")[0], short(f.propertyType), f.purpose, f.budget, f.preferredLocation && f.preferredLocation.replace(" Chennai", "")]}
       reviewTitle="Review your requirements"
       reviewNote="Check everything looks right. Tap any row to change it."
       reviewRows={(f) => [
@@ -106,8 +111,13 @@ export default function Buyer() {
       submit={(f) => addBuyerLead({ ...f, name: f.name.trim() })}
       submitLabel="Submit requirement"
       success={{
-        title: "Requirement submitted successfully",
+        title: "We have your requirement",
         text: (f) => `Thanks, ${f.name.trim()}. Our team will review your requirements and contact you with matching properties.`,
+        next: [
+          { title: "Our team reads your requirements", text: "We look at your budget, area and timeline." },
+          { title: "We match properties to you", text: "You'll hear from us on WhatsApp with options that fit." },
+          { title: "Visit and decide", text: "Book a visit to the ones you like, with a real person to help." },
+        ],
         againLabel: "Register another",
       }}
     />
