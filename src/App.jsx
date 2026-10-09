@@ -11,6 +11,7 @@ const Buyer = lazy(() => import("./pages/Buyer"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AdminFieldVisit = lazy(() => import("./pages/AdminFieldVisit"));
+const QuickNotes = lazy(() => import("./pages/QuickNotes"));
 const Gallery = lazy(() => import("./pages/Gallery"));
 const PropertyDetail = lazy(() => import("./pages/PropertyDetail"));
 const GalleryPhotos = lazy(() => import("./pages/GalleryPhotos"));
@@ -37,6 +38,8 @@ export default function App() {
             {/* Hidden admin routes — not linked from anywhere in the public UI */}
             <Route path="/control" element={<AdminLogin />} />
             <Route path="/control/dashboard" element={<AdminDashboard />} />
+            {/* Hidden: fast call-note capture (number, name, voice) for the admin */}
+            <Route path="/quick" element={<QuickNotes />} />
             <Route path="/control/field-visit" element={<AdminFieldVisit />} />
             {/* Hidden public gallery — buyer-safe listing view, no phone/exact address */}
             <Route path="/gallery" element={<Gallery />} />

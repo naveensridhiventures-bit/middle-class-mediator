@@ -1,3 +1,20 @@
+# v15 — Quick call notes (hidden page for voice + number + name) (2026-10-09)
+
+Cumulative: includes v9–v14. **This one needs a Code.gs update** (see below).
+
+Open `/quick` on your phone (no link to it exists anywhere on the public site; also in the admin Ctrl+K menu as "Quick call notes").
+
+- Type the number (a pasted +91 number is cleaned up), optional name, tap the mic, speak, tap stop, Save call. About 5 seconds.
+- Saves on the phone first, so nothing is lost if the signal drops. Uploads in the background whenever there's signal; no duplicates if a retry happens.
+- Voice recordings are stored privately in your Google Drive folder "MCM Voice Notes" (small, about 200 KB a minute). The number, name and note go in a new "QuickNotes" sheet tab.
+- When you're free: a work list (oldest first) with play, 1x/1.5x/2x speed, Play all, "Not heard yet" markers, Call, WhatsApp, Copy, edit, and "Find in CRM", which opens the CRM search on that number so you can update the lead. Tick the circle when it's done.
+- Undo right after saving, delete, offline indicator, works from any device you sign in on.
+
+Apps Script (one time)
+1. Replace everything in Code.gs with the new `apps-script/Code.gs`.
+2. Select **authorizeVoiceNotes** in the function dropdown and click Run. Allow the Drive permission it asks for. (Do NOT run `setup` again: it resets your admin password.)
+3. Deploy > Manage deployments > pencil icon > Version: **New version** > Deploy. The URL stays the same.
+
 # v14 — Registration flows feel alive (Seller, Buyer, Mediator) (2026-10-08)
 
 Cumulative: includes v9–v13. No Code.gs / Sheet change; the same fields are saved.

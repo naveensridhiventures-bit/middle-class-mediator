@@ -5,7 +5,7 @@
  * then deploy as a Web App (see README.md for the full walkthrough).
  *
  * Sheet tabs used (created automatically the first time they're needed):
- *   Mediators, Sellers, Buyers, Properties
+ *   Mediators, Sellers, Buyers, Properties, QuickNotes
  *
  * NOTE ON UPGRADES: if you already had this sheet running before priority /
  * follow-up / remarks-history existed, you don't need to do anything special —
@@ -24,6 +24,7 @@ const SHEETS = {
   Mediators: ["id", "timestamp", "name", "phone", "profession", "workingArea", "propertyCategory", "experience", "dealType", "genuineLeads", "status", "status2", "priority", "followUpDate", "area", "customFields", "remarksLog"],
   Sellers: ["id", "timestamp", "name", "phone", "propertyType", "propertyLocation", "propertyStatus", "expectedPrice", "exactPrice", "ownership", "purpose", "propertyAge", "buildingType", "landArea", "builtUpArea", "frontageLength", "frontageBreadth", "roadWidth", "facing", "propertyUsage", "pattaApproval", "approvalStatus", "parking", "rentalStatus", "loanStatus", "photosShared", "sellerRemarks", "listingTitle", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "galleryFields", "photos", "exactAddress", "mapLink", "visitLog", "remarksLog"],
   Buyers: ["id", "timestamp", "name", "phone", "propertyType", "purpose", "budget", "preferredLocation", "loanRequirement", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "remarksLog"],
+  QuickNotes: ["id", "timestamp", "clientId", "name", "phone", "note", "audioFileId", "audioMime", "durationSec", "peaks", "status"],
   Properties: ["id", "timestamp", "title", "type", "location", "price", "sqft", "description", "imageUrl", "images", "attributes", "sellerNote", "contactPhone", "refId", "soldOut"],
 };
 
@@ -34,6 +35,7 @@ const WRITE_ACTIONS = {
   addMediator: true, addSeller: true, addBuyer: true,
   updateLead: true, addRemark: true, addVisit: true, deleteLead: true,
   addProperty: true, updateProperty: true, deleteProperty: true,
+  addQuickNote: true, updateQuickNote: true, deleteQuickNote: true,
 };
 
 function doGet() {
@@ -155,6 +157,27 @@ function route(action, p) {
     case "deleteProperty":
       checkPassword(p.password);
       return deleteRow("Properties", p.id);
+
+    // ---- Quick call notes (voice + number + name saved right after a call) ----
+    case "addQuickNote":
+      checkPassword(p.password);
+      return addQuickNote(p);
+
+    case "listQuickNotes":
+      checkPassword(p.password);
+      return readSheet("QuickNotes");
+
+    case "getQuickAudio":
+      checkPassword(p.password);
+      return getQuickAudio(p.id);
+
+    case "updateQuickNote":
+      checkPassword(p.password);
+      return updateRow("QuickNotes", p.id, quickPatch(p.patch));
+
+    case "deleteQuickNote":
+      checkPassword(p.password);
+      return deleteQuickNote(p.id);
 
     default:
       throw new Error("Unknown action: " + action);
@@ -342,6 +365,81 @@ function deleteRow(sheetName, id) {
   return { id: id };
 }
 
+// ---------- Quick call notes ----------
+
+var VOICE_FOLDER_NAME = "MCM Voice Notes";
+
+// The private Drive folder the voice recordings live in (created on first use).
+function getVoiceFolder() {
+  var it = DriveApp.getFoldersByName(VOICE_FOLDER_NAME);
+  return it.hasNext() ? it.next() : DriveApp.createFolder(VOICE_FOLDER_NAME);
+}
+
+// Saves one note. Safe to retry: the phone sends a clientId, and if a row with
+// that clientId already exists (the first try worked but the reply was lost)
+// the existing note is returned instead of saving a duplicate.
+function addQuickNote(p) {
+  if (!p.clientId) throw new Error("clientId is required.");
+  var prepared = prepareSheet("QuickNotes");
+  var idCol = prepared.headers.indexOf("clientId");
+  var values = prepared.sheet.getDataRange().getValues();
+  for (var i = 1; i < values.length; i++) {
+    if (values[i][idCol] === p.clientId) return { id: values[i][0], duplicate: true };
+  }
+  var fileId = "";
+  var mime = "";
+  if (p.audioBase64) {
+    mime = String(p.audioMime || "audio/webm");
+    var ext = mime.indexOf("mp4") !== -1 ? "m4a" : mime.indexOf("ogg") !== -1 ? "ogg" : "webm";
+    var stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd_HH-mm-ss");
+    var blob = Utilities.newBlob(Utilities.base64Decode(p.audioBase64), mime, stamp + "_" + String(p.phone || "note") + "." + ext);
+    fileId = getVoiceFolder().createFile(blob).getId();
+  }
+  return addRow("QuickNotes", {
+    clientId: p.clientId, name: p.name, phone: p.phone, note: p.note,
+    audioFileId: fileId, audioMime: mime, durationSec: p.durationSec || "", peaks: p.peaks || "", status: "new",
+  });
+}
+
+// Returns a recording as base64. Only files that belong to a QuickNotes row can
+// be read, so this can never be used to open other files in the Drive.
+function getQuickAudio(id) {
+  var rows = readSheet("QuickNotes");
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].id === id && rows[i].audioFileId) {
+      var blob = DriveApp.getFileById(rows[i].audioFileId).getBlob();
+      return { mime: rows[i].audioMime || blob.getContentType(), base64: Utilities.base64Encode(blob.getBytes()) };
+    }
+  }
+  throw new Error("No recording for this note.");
+}
+
+// Only these fields can be changed on a note after it is saved.
+function quickPatch(patch) {
+  var out = {};
+  ["name", "phone", "note", "status"].forEach(function (k) {
+    if (patch && patch[k] !== undefined) out[k] = patch[k];
+  });
+  return out;
+}
+
+function deleteQuickNote(id) {
+  var prepared = prepareSheet("QuickNotes");
+  var rowIndex = findRowIndexById(prepared.sheet, id);
+  if (rowIndex === -1) return { id: id }; // already gone
+  var fileCol = prepared.headers.indexOf("audioFileId");
+  var fileId = prepared.sheet.getRange(rowIndex, fileCol + 1).getValue();
+  prepared.sheet.deleteRow(rowIndex);
+  if (fileId) {
+    try {
+      DriveApp.getFileById(fileId).setTrashed(true);
+    } catch (e) {
+      // file already removed: nothing to do
+    }
+  }
+  return { id: id };
+}
+
 function checkPassword(password) {
   var expected = PropertiesService.getScriptProperties().getProperty("ADMIN_PASSWORD");
   if (!expected) throw new Error("Admin password not configured — run setup() once in the Apps Script editor.");
@@ -359,6 +457,18 @@ function jsonResponse(obj) {
  */
 function setup() {
   PropertiesService.getScriptProperties().setProperty("ADMIN_PASSWORD", "changeme123");
-  ["Mediators", "Sellers", "Buyers", "Properties"].forEach(getSheet);
+  ["Mediators", "Sellers", "Buyers", "Properties", "QuickNotes"].forEach(getSheet);
   Logger.log("Setup complete. Admin password set — remember to change it!");
+}
+
+/**
+ * Run this ONCE (select "authorizeVoiceNotes", click Run) after pasting the
+ * new Code.gs. It asks Google for permission to keep voice recordings in your
+ * Drive and creates the "MCM Voice Notes" folder + the QuickNotes sheet.
+ * It does NOT touch your admin password (do not re-run setup()).
+ */
+function authorizeVoiceNotes() {
+  getVoiceFolder();
+  getSheet("QuickNotes");
+  Logger.log("Ready. Voice notes will be saved in the Drive folder: " + VOICE_FOLDER_NAME);
 }

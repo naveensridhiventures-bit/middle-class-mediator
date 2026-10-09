@@ -1,5 +1,10 @@
 # Middle Class Mediator
 
+## v15 Quick call notes (admin, hidden)
+
+Open `/quick` on your phone: save a number, name and voice note after each call, then listen and update the CRM later.
+Needs the updated `apps-script/Code.gs` (see CHANGES.md for the 3 steps).
+
 ## v11 Premium Gallery (public)
 
 Budget pills, curated shelves, stats strip, recently viewed, compare saved,

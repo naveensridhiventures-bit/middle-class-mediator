@@ -7,7 +7,7 @@ import { RolePill } from "./insightUi";
  * Ctrl/⌘+K launcher: jump to any tab, find any lead across Sellers, Buyers and
  * Mediators by name, phone, ID or area, or run a quick action.
  */
-export default function CommandPalette({ open, onClose, data, tabs, actions, onGo, onOpenLead }) {
+export default function CommandPalette({ open, onClose, data, tabs, actions, onGo, onOpenLead, initialQuery = "" }) {
   const [q, setQ] = useState("");
   const [idx, setIdx] = useState(0);
   const inputRef = useRef(null);
@@ -15,13 +15,13 @@ export default function CommandPalette({ open, onClose, data, tabs, actions, onG
 
   useEffect(() => {
     if (open) {
-      setQ("");
+      setQ(initialQuery);
       setIdx(0);
       const t = setTimeout(() => inputRef.current?.focus(), 30);
       return () => clearTimeout(t);
     }
     return undefined;
-  }, [open]);
+  }, [open, initialQuery]);
 
   const items = useMemo(() => {
     const term = q.trim().toLowerCase();

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { MapPin, Image as ImageIcon, LogOut, Pencil, Search } from "lucide-react";
 import CRMBoard from "../components/admin/CRMBoard";
 import PropertiesTab from "../components/admin/PropertiesTab";
@@ -176,6 +176,8 @@ export default function AdminDashboard() {
   const insights = useAllLeads(password);
   const refreshInsights = insights.refresh;
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState("");
+  const [params, setParams] = useSearchParams();
   const [jump, setJump] = useState(null); // { tab, id } — open this lead after switching tab
 
   // Ctrl/⌘+K opens the search & command palette from anywhere in the dashboard.
@@ -215,6 +217,15 @@ export default function AdminDashboard() {
     setPassword(pw);
   }, [navigate]);
 
+  // Arriving from the call-notes page with ?find=<number> opens search on that number.
+  const findParam = params.get("find");
+  useEffect(() => {
+    if (!findParam || !password) return;
+    setPaletteQuery(findParam);
+    setPaletteOpen(true);
+    setParams({}, { replace: true });
+  }, [findParam, password, setParams]);
+
   useEffect(() => {
     if (!adminName) setEditingName(true);
   }, [adminName]);
@@ -237,6 +248,7 @@ export default function AdminDashboard() {
     { id: "refresh", label: "Refresh all data", run: refreshInsights },
     { id: "csv-seller", label: "Export sellers to CSV", run: () => downloadCsv(`mcm-sellers-${new Date().toISOString().slice(0, 10)}.csv`, leadsToCsv("seller", insights.data.seller || [])) },
     { id: "csv-buyer", label: "Export buyers to CSV", run: () => downloadCsv(`mcm-buyers-${new Date().toISOString().slice(0, 10)}.csv`, leadsToCsv("buyer", insights.data.buyer || [])) },
+    { id: "quick", label: "Quick call notes", run: () => navigate("/quick") },
     { id: "field", label: "New field visit", run: () => navigate("/control/field-visit") },
     { id: "gallery", label: "Open buyer gallery", run: () => navigate("/gallery") },
     { id: "logout", label: "Log out", run: logout },
@@ -381,7 +393,8 @@ export default function AdminDashboard() {
 
       <CommandPalette
         open={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
+        onClose={() => { setPaletteOpen(false); setPaletteQuery(""); }}
+        initialQuery={paletteQuery}
         data={{ seller: insights.data.seller || [], buyer: insights.data.buyer || [], mediator: insights.data.mediator || [] }}
         tabs={TABS}
         actions={paletteActions}

@@ -100,3 +100,11 @@ export const adminUpdateProperty = (password, id, payload) =>
 
 export const adminDeleteProperty = (password, id) =>
   callApi("deleteProperty", { password, id });
+
+// ---------- Quick call notes (voice + number + name) ----------
+
+export const adminAddQuickNote = (password, note) => callApi("addQuickNote", { password, ...note });
+export const adminListQuickNotes = (password) => callApi("listQuickNotes", { password });
+export const adminGetQuickAudio = (password, id) => callApi("getQuickAudio", { password, id });
+export const adminUpdateQuickNote = (password, id, patch) => callApi("updateQuickNote", { password, id, patch });
+export const adminDeleteQuickNote = (password, id) => callApi("deleteQuickNote", { password, id });
