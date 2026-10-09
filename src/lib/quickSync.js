@@ -1,15 +1,20 @@
-import { adminAddQuickNote, adminListQuickNotes, adminUpdateQuickNote, adminDeleteQuickNote, adminGetQuickAudio } from "./api";
+import { adminAttachQuickAudio, adminAddQuickNote, adminListQuickNotes, adminUpdateQuickNote, adminDeleteQuickNote, adminGetQuickAudio } from "./api";
 import { getAllNotes, getNote, putNote, removeNote, blobToBase64, base64ToBlob } from "./quickStore";
 
 const isAuthError = (e) => /wrong password/i.test(e?.message || "");
 
 /** Sends every waiting change to the sheet, oldest first. Stops at the first network problem. */
 export async function pushChanges(password) {
-  const list = (await getAllNotes()).filter((n) => n.op).sort((a, b) => a.createdAt - b.createdAt);
+  const list = (await getAllNotes()).filter((n) => n.op || n.audioPending).sort((a, b) => a.createdAt - b.createdAt);
   let pushed = 0;
   for (const n of list) {
     try {
-      if (n.op === "create") {
+      if (!n.op && n.audioPending) {
+        // the number and name are already saved: finish attaching the recording
+        if (n.blob && n.remoteId) await adminAttachQuickAudio(password, n.remoteId, { phone: n.phone, audioMime: n.mime || "", audioBase64: await blobToBase64(n.blob) });
+        const cur = await getNote(n.id);
+        if (cur) await putNote({ ...cur, audioPending: false });
+      } else if (n.op === "create") {
         const res = await adminAddQuickNote(password, {
           clientId: n.id,
           name: n.name,
@@ -18,7 +23,6 @@ export async function pushChanges(password) {
           durationSec: n.durationSec || "",
           peaks: n.peaks?.length ? JSON.stringify(n.peaks) : "",
           audioMime: n.mime || "",
-          audioBase64: n.blob ? await blobToBase64(n.blob) : "",
         });
         const cur = await getNote(n.id);
         if (!cur || cur.op === "delete") {
@@ -28,7 +32,13 @@ export async function pushChanges(password) {
         } else {
           // keep any edits made during the upload (they become an update)
           const edited = cur.name !== n.name || cur.phone !== n.phone || cur.note !== n.note || cur.status !== n.status;
-          await putNote({ ...cur, remoteId: res.id, op: edited ? "update" : null });
+          await putNote({ ...cur, remoteId: res.id, op: edited ? "update" : null, audioPending: !!n.blob });
+          // the row is on the sheet now (other phones can see the number and name); add the recording
+          if (n.blob) {
+            await adminAttachQuickAudio(password, res.id, { phone: n.phone, audioMime: n.mime || "", audioBase64: await blobToBase64(n.blob) });
+            const after = await getNote(n.id);
+            if (after) await putNote({ ...after, audioPending: false });
+          }
         }
       } else if (n.op === "update") {
         if (n.remoteId) await adminUpdateQuickNote(password, n.remoteId, { name: n.name, phone: n.phone, note: n.note, status: n.status });

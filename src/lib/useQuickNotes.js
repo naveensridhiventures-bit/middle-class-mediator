@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getAllNotes, getNote, putNote, removeNote, newId, keepStorage } from "./quickStore";
 import { pushChanges, pullRemote } from "./quickSync";
+import { adminQuickVersion } from "./api";
 
 /**
  * All the state for the call-notes page. Notes are read from the phone first
@@ -24,19 +25,28 @@ export default function useQuickNotes(password) {
     setReady(true);
   }, []);
 
-  const runSync = useCallback(async () => {
+  const again = useRef(null); // a sync was asked for while one was running
+  const runSync = useCallback(async (opts = {}) => {
     const pw = passRef.current;
     if (!pw) {
       setSync("auth");
       return;
     }
-    if (busy.current) return;
+    if (busy.current) {
+      // don't wait for the slow sheet read: run again straight after this one
+      again.current = { ...(again.current || {}), ...opts, pull: !!(again.current?.pull || opts.pull) };
+      return;
+    }
     busy.current = true;
     setSync("syncing");
     try {
       const push = await pushChanges(pw);
       if (push.error) {
         setSync(push.error === "auth" ? "auth" : "offline");
+        return;
+      }
+      if (opts.pushOnly) {
+        setSync("idle");
         return;
       }
       const pull = await pullRemote(pw);
@@ -49,6 +59,9 @@ export default function useQuickNotes(password) {
     } finally {
       busy.current = false;
       await reload();
+      const next = again.current;
+      again.current = null;
+      if (next) runSync({ pushOnly: !next.pull });
     }
   }, [reload]);
 
@@ -61,7 +74,7 @@ export default function useQuickNotes(password) {
   // comes back to the front, and every 30 seconds while it's open.
   useEffect(() => {
     runSync();
-    const tick = setInterval(runSync, 30000);
+    const tick = setInterval(() => runSync(), 30000);
     const onOnline = () => runSync();
     const onVisible = () => document.visibilityState === "visible" && runSync();
     window.addEventListener("online", onOnline);
@@ -73,6 +86,34 @@ export default function useQuickNotes(password) {
     };
   }, [runSync, password]);
 
+  // Watch for notes saved on another logged-in phone/computer: a tiny check
+  // every 3 seconds while this page is visible; the full list is only fetched
+  // when something actually changed.
+  const seenVersion = useRef(null);
+  useEffect(() => {
+    if (!password) return undefined;
+    let stop = false;
+    let running = false;
+    async function check() {
+      if (stop || running || document.visibilityState !== "visible" || busy.current) return;
+      running = true;
+      try {
+        const { v } = await adminQuickVersion(password);
+        if (seenVersion.current !== null && v !== seenVersion.current) runSync({ pull: true });
+        seenVersion.current = v;
+      } catch {
+        // offline or wrong password: the normal sync reports it
+      } finally {
+        running = false;
+      }
+    }
+    const t = setInterval(check, 3000);
+    return () => {
+      stop = true;
+      clearInterval(t);
+    };
+  }, [password, runSync]);
+
   const addNote = useCallback(
     async ({ name, phone, note, audio }) => {
       const n = {
@@ -80,23 +121,23 @@ export default function useQuickNotes(password) {
         durationSec: audio?.durationSec || 0, peaks: audio?.peaks || [], mime: audio?.mime || "",
         blob: audio?.blob || null, hasAudio: !!audio?.blob, status: "new", op: "create", remoteId: "", played: true,
       };
-      await putNote(n);
-      await reload();
-      runSync();
+      // show it at once; the phone's storage and the upload catch up behind it
+      setNotes((cur) => [n, ...cur]);
+      putNote(n).then(() => runSync({ pushOnly: true }));
       return n;
     },
-    [reload, runSync]
+    [runSync]
   );
 
   const patchNote = useCallback(
     async (id, patch) => {
+      setNotes((list) => list.map((x) => (x.id === id ? { ...x, ...patch, op: x.op === "create" ? "create" : "update" } : x)));
       const cur = await getNote(id);
       if (!cur || cur.op === "delete") return;
       await putNote({ ...cur, ...patch, op: cur.op === "create" ? "create" : "update" });
-      await reload();
-      runSync();
+      runSync({ pushOnly: true });
     },
-    [reload, runSync]
+    [runSync]
   );
 
   // "played" is only a local marker, so it never needs to reach the sheet.
@@ -113,6 +154,7 @@ export default function useQuickNotes(password) {
 
   const deleteNote = useCallback(
     async (id) => {
+      setNotes((list) => list.filter((x) => x.id !== id));
       const cur = await getNote(id);
       if (!cur) return;
       if (!cur.remoteId && cur.op !== "create") {
@@ -123,10 +165,9 @@ export default function useQuickNotes(password) {
       } else {
         await putNote({ ...cur, op: "delete" });
       }
-      await reload();
-      runSync();
+      runSync({ pushOnly: true });
     },
-    [reload, runSync]
+    [runSync]
   );
 
   return { notes, ready, sync, lastSync, addNote, patchNote, markPlayed, deleteNote, runSync, reload };

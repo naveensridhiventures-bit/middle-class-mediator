@@ -108,3 +108,5 @@ export const adminListQuickNotes = (password) => callApi("listQuickNotes", { pas
 export const adminGetQuickAudio = (password, id) => callApi("getQuickAudio", { password, id });
 export const adminUpdateQuickNote = (password, id, patch) => callApi("updateQuickNote", { password, id, patch });
 export const adminDeleteQuickNote = (password, id) => callApi("deleteQuickNote", { password, id });
+export const adminQuickVersion = (password) => callApi("quickVersion", { password });
+export const adminAttachQuickAudio = (password, id, audio) => callApi("attachQuickAudio", { password, id, ...audio });

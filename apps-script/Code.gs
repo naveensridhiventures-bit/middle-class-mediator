@@ -35,7 +35,7 @@ const WRITE_ACTIONS = {
   addMediator: true, addSeller: true, addBuyer: true,
   updateLead: true, addRemark: true, addVisit: true, deleteLead: true,
   addProperty: true, updateProperty: true, deleteProperty: true,
-  addQuickNote: true, updateQuickNote: true, deleteQuickNote: true,
+  addQuickNote: true, attachQuickAudio: true, updateQuickNote: true, deleteQuickNote: true,
 };
 
 function doGet() {
@@ -163,6 +163,14 @@ function route(action, p) {
       checkPassword(p.password);
       return addQuickNote(p);
 
+    case "quickVersion":
+      checkPassword(p.password);
+      return { v: PropertiesService.getScriptProperties().getProperty("QUICK_V") || "0" };
+
+    case "attachQuickAudio":
+      checkPassword(p.password);
+      return attachQuickAudio(p);
+
     case "listQuickNotes":
       checkPassword(p.password);
       return readSheet("QuickNotes");
@@ -173,11 +181,15 @@ function route(action, p) {
 
     case "updateQuickNote":
       checkPassword(p.password);
-      return updateRow("QuickNotes", p.id, quickPatch(p.patch));
+      var upd = updateRow("QuickNotes", p.id, quickPatch(p.patch));
+      bumpQuickVersion();
+      return upd;
 
     case "deleteQuickNote":
       checkPassword(p.password);
-      return deleteQuickNote(p.id);
+      var del = deleteQuickNote(p.id);
+      bumpQuickVersion();
+      return del;
 
     default:
       throw new Error("Unknown action: " + action);
@@ -371,8 +383,16 @@ var VOICE_FOLDER_NAME = "MCM Voice Notes";
 
 // The private Drive folder the voice recordings live in (created on first use).
 function getVoiceFolder() {
+  // remember the folder so later saves skip the (slow) search by name
+  var props = PropertiesService.getScriptProperties();
+  var saved = props.getProperty("VOICE_FOLDER_ID");
+  if (saved) {
+    try { return DriveApp.getFolderById(saved); } catch (e) { /* deleted: look again */ }
+  }
   var it = DriveApp.getFoldersByName(VOICE_FOLDER_NAME);
-  return it.hasNext() ? it.next() : DriveApp.createFolder(VOICE_FOLDER_NAME);
+  var folder = it.hasNext() ? it.next() : DriveApp.createFolder(VOICE_FOLDER_NAME);
+  props.setProperty("VOICE_FOLDER_ID", folder.getId());
+  return folder;
 }
 
 // Saves one note. Safe to retry: the phone sends a clientId, and if a row with
@@ -382,9 +402,13 @@ function addQuickNote(p) {
   if (!p.clientId) throw new Error("clientId is required.");
   var prepared = prepareSheet("QuickNotes");
   var idCol = prepared.headers.indexOf("clientId");
-  var values = prepared.sheet.getDataRange().getValues();
-  for (var i = 1; i < values.length; i++) {
-    if (values[i][idCol] === p.clientId) return { id: values[i][0], duplicate: true };
+  var lastRow = prepared.sheet.getLastRow();
+  if (lastRow > 1) {
+    // read just the two columns needed (much faster than the whole sheet)
+    var ids = prepared.sheet.getRange(2, 1, lastRow - 1, idCol + 1).getValues();
+    for (var i = 0; i < ids.length; i++) {
+      if (ids[i][idCol] === p.clientId) return { id: ids[i][0], duplicate: true };
+    }
   }
   var fileId = "";
   var mime = "";
@@ -395,10 +419,36 @@ function addQuickNote(p) {
     var blob = Utilities.newBlob(Utilities.base64Decode(p.audioBase64), mime, stamp + "_" + String(p.phone || "note") + "." + ext);
     fileId = getVoiceFolder().createFile(blob).getId();
   }
-  return addRow("QuickNotes", {
+  var added = addRow("QuickNotes", {
     clientId: p.clientId, name: p.name, phone: p.phone, note: p.note,
     audioFileId: fileId, audioMime: mime, durationSec: p.durationSec || "", peaks: p.peaks || "", status: "new",
   });
+  bumpQuickVersion();
+  return added;
+}
+
+// Other phones check this tiny counter every few seconds and only fetch the
+// list when it changes, so a new call shows up on every logged-in device fast.
+function bumpQuickVersion() {
+  PropertiesService.getScriptProperties().setProperty("QUICK_V", String(Date.now()));
+}
+
+// Second step of a save: the number and name are stored first (fast), then the
+// recording is attached to that row.
+function attachQuickAudio(p) {
+  var prepared = prepareSheet("QuickNotes");
+  var rowIndex = findRowIndexById(prepared.sheet, p.id);
+  if (rowIndex === -1) throw new Error("Record not found: " + p.id);
+  var fileCol = prepared.headers.indexOf("audioFileId");
+  if (prepared.sheet.getRange(rowIndex, fileCol + 1).getValue()) return { id: p.id, duplicate: true };
+  var mime = String(p.audioMime || "audio/webm");
+  var ext = mime.indexOf("mp4") !== -1 ? "m4a" : mime.indexOf("ogg") !== -1 ? "ogg" : "webm";
+  var stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd_HH-mm-ss");
+  var blob = Utilities.newBlob(Utilities.base64Decode(p.audioBase64), mime, stamp + "_" + String(p.phone || "note") + "." + ext);
+  var fileId = getVoiceFolder().createFile(blob).getId();
+  updateRow("QuickNotes", p.id, { audioFileId: fileId, audioMime: mime });
+  bumpQuickVersion();
+  return { id: p.id };
 }
 
 // Returns a recording as base64. Only files that belong to a QuickNotes row can

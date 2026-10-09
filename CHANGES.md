@@ -414,3 +414,13 @@ no new errors or warnings introduced.
 The admin CRM (`src/components/admin/CRMBoard.jsx`) — large, internal-only
 tool, intentionally left alone to avoid risk. Happy to do a dedicated pass
 on it if you'd like matching animations there too.
+
+## v15.2 — instant saving
+- Saving a call shows at once; storage and upload finish in the background (no waiting on the network).
+- A save during a running sync no longer waits for it; it uploads right after, and skips the slow full-list read.
+- Apps Script: faster duplicate check (reads one column) and remembers the voice-notes folder.
+
+## v15.3 — shared across logged-in devices
+- Saving sends number + name first (fast), then attaches the recording, so other devices see the call within seconds.
+- Every open /quick page checks a tiny version counter every 3 s (only while visible) and fetches the list only when it changed.
+- Apps Script: quickVersion, attachQuickAudio actions; version bumps on add/update/delete.
