@@ -424,3 +424,6 @@ on it if you'd like matching animations there too.
 - Saving sends number + name first (fast), then attaches the recording, so other devices see the call within seconds.
 - Every open /quick page checks a tiny version counter every 3 s (only while visible) and fetches the list only when it changed.
 - Apps Script: quickVersion, attachQuickAudio actions; version bumps on add/update/delete.
+
+## v15.4
+- Apps Script URL updated to the new deployment.
