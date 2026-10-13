@@ -1,0 +1,10 @@
+{
+  "enabled": true,
+  "apps_script_url": "https://script.google.com/macros/s/AKfycbwSYDkmS5eSBFci-kgOUi_zu0aSA4pgFde3xaGFz3azZNHksrvgCQHvUV6NuXiWR4QV/exec",
+  "agent_key": "PASTE_AGENT_KEY_HERE",
+  "agent_id": "",
+  "poll_seconds": 15,
+  "countdown_seconds": 30,
+  "daily_limit": 60,
+  "allowed_hours": "09:00-20:00"
+}
