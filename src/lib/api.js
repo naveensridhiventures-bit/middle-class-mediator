@@ -110,3 +110,10 @@ export const adminUpdateQuickNote = (password, id, patch) => callApi("updateQuic
 export const adminDeleteQuickNote = (password, id) => callApi("deleteQuickNote", { password, id });
 export const adminQuickVersion = (password) => callApi("quickVersion", { password });
 export const adminAttachQuickAudio = (password, id, audio) => callApi("attachQuickAudio", { password, id, ...audio });
+
+// ---------- Broadcast queue (sent by the Adverzo Dispatch Console on the admin's PC) ----------
+
+export const adminQueueBroadcast = (password, payload) => callApi("queueBroadcast", { password, ...payload });
+export const adminListBroadcasts = (password) => callApi("listBroadcasts", { password });
+export const adminGetBroadcast = (password, id) => callApi("getBroadcast", { password, id });
+export const adminCancelBroadcast = (password, id) => callApi("cancelBroadcast", { password, id });

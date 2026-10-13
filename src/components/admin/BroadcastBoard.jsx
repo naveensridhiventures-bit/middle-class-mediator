@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import {
   Send, Users, MessageSquareText, Filter, Check, Save, Trash2, Download,
-  Copy, RotateCcw, ShieldAlert, Terminal, ChevronDown, Search, Phone,
+  Copy, RotateCcw, ShieldAlert, Terminal, ChevronDown, Search, Phone, Monitor, Smartphone,
 } from "lucide-react";
 import {
   ROLES, SHEET, VARIABLES, STARTER_TEMPLATES, DEFAULT_FILTERS,
@@ -11,6 +11,7 @@ import {
   recordRun, loadRuns,
 } from "../../lib/broadcast";
 import { adminUpdateLead } from "../../lib/api";
+import PcSender from "./PcSender";
 import { downloadCsv } from "../../lib/exportCsv";
 import { ROLE_META } from "../../lib/roles";
 import { Chip } from "./ui";
@@ -58,6 +59,7 @@ export default function BroadcastBoard({ data, loading, error, refresh, adminNam
   const [markContacted, setMarkContacted] = useState(true);
   const [marked, setMarked] = useState(0);
   const [limit, setLimit] = useState(PAGE);
+  const [mode, setMode] = useState("pc"); // "pc" = Dispatch Console sends | "manual" = tap-to-send
   const [runs, setRuns] = useState(() => loadRuns());
   const taRef = useRef(null);
   const runId = useRef(`run-${Date.now().toString(36)}`);
@@ -423,7 +425,32 @@ export default function BroadcastBoard({ data, loading, error, refresh, adminNam
       </Panel>
 
       {/* ───────── 3 · Send ───────── */}
-      <Panel title={<StepTitle n="3" icon={Send}>Send</StepTitle>} subtitle="WhatsApp opens with the message ready for each person — you tap Send, then come back here.">
+      <Panel
+        title={<StepTitle n="3" icon={Send}>Send</StepTitle>}
+        subtitle={mode === "pc" ? "Your Dispatch Console on the PC sends every message automatically." : "WhatsApp opens with the message ready for each person — you tap Send, then come back here."}
+      >
+        <div className="mb-4 grid grid-cols-2 gap-1 rounded-2xl bg-ink/[0.06] p-1" role="tablist" aria-label="How to send">
+          {[["pc", Monitor, "Auto-send from PC"], ["manual", Smartphone, "Tap to send"]].map(([k, Icon, label]) => (
+            <button key={k} type="button" role="tab" aria-selected={mode === k} onClick={() => setMode(k)}
+              className={`h-10 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-1.5 transition-colors ${mode === k ? "bg-white text-ink shadow-sm" : "text-ink/55 hover:text-ink"}`}>
+              <Icon size={15} /> {label}
+            </button>
+          ))}
+        </div>
+        {mode === "pc" && (
+          <>
+            <PcSender queue={queue} template={template} adminName={adminName} password={password} audience={audienceLabel()} markContacted={markContacted} />
+            <label className="mt-3 flex items-center gap-2.5 text-[13px] text-ink/75 cursor-pointer select-none">
+              <input type="checkbox" className="w-4 h-4 accent-[color:var(--accent)]" checked={markContacted} onChange={(e) => setMarkContacted(e.target.checked)} />
+              Move “New” leads to “Contacted” once they are sent
+            </label>
+            {earlier > 0 && (
+              <p className="mt-2 text-[12px] text-ink/55">
+                {earlier} {earlier === 1 ? "person already received" : "people already received"} this exact message this week, so they're unticked below.
+              </p>
+            )}
+          </>
+        )}
         {rows.length === 0 ? (
           <EmptyNote title="Nobody matches these filters" text="Loosen a filter above, or pick another group of people." />
         ) : (
@@ -437,6 +464,7 @@ export default function BroadcastBoard({ data, loading, error, refresh, adminNam
               </div>
             )}
 
+            {mode === "manual" && (<>
             <div className="rounded-2xl border border-ink/10 bg-white p-4">
               <div className="flex items-end justify-between gap-3">
                 <div>
@@ -478,6 +506,7 @@ export default function BroadcastBoard({ data, loading, error, refresh, adminNam
                 <Terminal size={14} /> Dispatch Console files
               </button>
             </div>
+            </>)}
 
             <div className="mt-5 flex items-center justify-between gap-3">
               <p className="text-[11px] font-bold uppercase tracking-wider text-ink/50">Recipients · {queue.length} ticked</p>
@@ -516,7 +545,7 @@ export default function BroadcastBoard({ data, loading, error, refresh, adminNam
                     </div>
                     {!r.wa ? (
                       <span className="text-[11px] font-bold text-coral shrink-0">Invalid number</span>
-                    ) : done ? (
+                    ) : mode === "pc" ? null : done ? (
                       <button type="button" onClick={() => undoOne(r)} className="shrink-0 h-8 px-3 rounded-full text-[12px] font-bold text-whatsapp bg-whatsapp/10 flex items-center gap-1" title="Tap to undo">
                         <Check size={13} strokeWidth={3} /> Sent
                       </button>

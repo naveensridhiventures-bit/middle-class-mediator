@@ -5,7 +5,7 @@
  * then deploy as a Web App (see README.md for the full walkthrough).
  *
  * Sheet tabs used (created automatically the first time they're needed):
- *   Mediators, Sellers, Buyers, Properties, QuickNotes
+ *   Mediators, Sellers, Buyers, Properties, QuickNotes, Broadcasts, BroadcastItems
  *
  * NOTE ON UPGRADES: if you already had this sheet running before priority /
  * follow-up / remarks-history existed, you don't need to do anything special —
@@ -25,6 +25,9 @@ const SHEETS = {
   Sellers: ["id", "timestamp", "name", "phone", "propertyType", "propertyLocation", "propertyStatus", "expectedPrice", "exactPrice", "ownership", "purpose", "propertyAge", "buildingType", "landArea", "builtUpArea", "frontageLength", "frontageBreadth", "roadWidth", "facing", "propertyUsage", "pattaApproval", "approvalStatus", "parking", "rentalStatus", "loanStatus", "photosShared", "sellerRemarks", "listingTitle", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "galleryFields", "photos", "exactAddress", "mapLink", "visitLog", "remarksLog"],
   Buyers: ["id", "timestamp", "name", "phone", "propertyType", "purpose", "budget", "preferredLocation", "loanRequirement", "timeline", "status", "priority", "followUpDate", "area", "budgetValue", "sqft", "customFields", "remarksLog"],
   QuickNotes: ["id", "timestamp", "clientId", "name", "phone", "note", "audioFileId", "audioMime", "durationSec", "peaks", "status"],
+  // PC-agent broadcast queue: one row per broadcast, one row per recipient.
+  Broadcasts: ["id", "timestamp", "name", "message", "audience", "total", "sent", "failed", "status", "claimedBy", "updatedAt"],
+  BroadcastItems: ["id", "jobId", "idx", "role", "leadId", "name", "phone", "text", "status", "error", "updatedAt"],
   Properties: ["id", "timestamp", "title", "type", "location", "price", "sqft", "description", "imageUrl", "images", "attributes", "sellerNote", "contactPhone", "refId", "soldOut"],
 };
 
@@ -36,6 +39,7 @@ const WRITE_ACTIONS = {
   updateLead: true, addRemark: true, addVisit: true, deleteLead: true,
   addProperty: true, updateProperty: true, deleteProperty: true,
   addQuickNote: true, attachQuickAudio: true, updateQuickNote: true, deleteQuickNote: true,
+  queueBroadcast: true, cancelBroadcast: true, agentReport: true, agentPoll: true,
 };
 
 function doGet() {
@@ -190,6 +194,31 @@ function route(action, p) {
       var del = deleteQuickNote(p.id);
       bumpQuickVersion();
       return del;
+
+    // ---- Broadcast queue: admin queues, the PC console (agent) sends ----
+    case "queueBroadcast":
+      checkPassword(p.password);
+      return queueBroadcast(p);
+
+    case "listBroadcasts":
+      checkPassword(p.password);
+      return listBroadcasts();
+
+    case "getBroadcast":
+      checkPassword(p.password);
+      return getBroadcast(p.id);
+
+    case "cancelBroadcast":
+      checkPassword(p.password);
+      return cancelBroadcast(p.id);
+
+    case "agentPoll":
+      checkAgent(p);
+      return agentPoll(p);
+
+    case "agentReport":
+      checkAgent(p);
+      return agentReport(p);
 
     default:
       throw new Error("Unknown action: " + action);
@@ -490,6 +519,202 @@ function deleteQuickNote(id) {
   return { id: id };
 }
 
+// ---------- Broadcast queue ----------
+//
+// The admin page queues a broadcast here (one row in "Broadcasts" plus one
+// row per person in "BroadcastItems", each with their own ready-to-send
+// text). The Adverzo Dispatch Console running on your PC polls agentPoll,
+// sends each message with its mouse/keyboard automation, and reports back
+// with agentReport. Nothing here sends WhatsApp messages itself.
+
+var MAX_BROADCAST_ITEMS = 500;
+
+function queueBroadcast(p) {
+  var items = p.items || [];
+  if (!items.length) throw new Error("Nobody to send to.");
+  if (items.length > MAX_BROADCAST_ITEMS) throw new Error("Too many recipients in one broadcast (max " + MAX_BROADCAST_ITEMS + ").");
+
+  var seen = {};
+  var clean = [];
+  items.forEach(function (it) {
+    var phone = String(it.phone || "").replace(/\D/g, "");
+    var text = String(it.text || "").trim();
+    if (phone.length < 10 || phone.length > 15 || !text) return;
+    var last10 = phone.slice(-10);
+    if (seen[last10]) return; // never message the same number twice in one broadcast
+    seen[last10] = true;
+    clean.push({
+      role: String(it.role || ""), leadId: String(it.leadId || ""), name: String(it.name || ""),
+      phone: last10, text: text.slice(0, 4000),
+    });
+  });
+  if (!clean.length) throw new Error("None of the recipients had a valid number and message.");
+
+  var jobId = "BC-" + Utilities.getUuid().slice(0, 6).toUpperCase();
+  var now = new Date().toISOString();
+  var jobs = prepareSheet("Broadcasts");
+  jobs.sheet.appendRow(jobs.headers.map(function (h) {
+    var v = {
+      id: jobId, timestamp: now, name: String(p.name || "Broadcast").slice(0, 120),
+      message: String(p.message || "").slice(0, 4000), audience: String(p.audience || "").slice(0, 300),
+      total: clean.length, sent: 0, failed: 0, status: "queued", claimedBy: "", updatedAt: now,
+    };
+    return v[h] !== undefined ? v[h] : "";
+  }));
+
+  var prepared = prepareSheet("BroadcastItems");
+  var rows = clean.map(function (c, i) {
+    var v = {
+      id: jobId + "-" + (i + 1), jobId: jobId, idx: i + 1, role: c.role, leadId: c.leadId, name: c.name,
+      phone: "'" + c.phone, text: c.text, status: "pending", error: "", updatedAt: now,
+    };
+    return prepared.headers.map(function (h) { return v[h] !== undefined ? v[h] : ""; });
+  });
+  prepared.sheet.getRange(prepared.sheet.getLastRow() + 1, 1, rows.length, prepared.headers.length).setValues(rows);
+  return { id: jobId, total: clean.length, skipped: items.length - clean.length };
+}
+
+function recentJobs(limit) {
+  return readSheet("Broadcasts").reverse().slice(0, limit || 20);
+}
+
+function listBroadcasts() {
+  var props = PropertiesService.getScriptProperties();
+  return {
+    jobs: recentJobs(20),
+    agentSeen: Number(props.getProperty("AGENT_SEEN") || 0),
+    agentNote: props.getProperty("AGENT_NOTE") || "",
+    now: Date.now(),
+  };
+}
+
+function itemsOf(jobId) {
+  return readSheet("BroadcastItems")
+    .filter(function (r) { return r.jobId === jobId; })
+    .sort(function (a, b) { return Number(a.idx) - Number(b.idx); })
+    .map(function (r) { r.phone = String(r.phone).replace(/\D/g, ""); return r; });
+}
+
+function getBroadcast(id) {
+  var job = readSheet("Broadcasts").filter(function (j) { return j.id === id; })[0];
+  if (!job) throw new Error("Broadcast not found.");
+  return { job: job, items: itemsOf(id) };
+}
+
+function setCells(sheet, headers, rowIndex, patch) {
+  Object.keys(patch).forEach(function (k) {
+    var col = headers.indexOf(k);
+    if (col !== -1) sheet.getRange(rowIndex, col + 1).setValue(patch[k]);
+  });
+}
+
+// Recounts a job from its items and closes it when nothing is left to send.
+function refreshJob(jobId) {
+  var items = itemsOf(jobId);
+  var sent = 0, failed = 0, open = 0;
+  items.forEach(function (r) {
+    if (r.status === "sent") sent++;
+    else if (r.status === "failed") failed++;
+    else if (r.status === "pending" || r.status === "sending") open++;
+  });
+  var prepared = prepareSheet("Broadcasts");
+  var row = findRowIndexById(prepared.sheet, jobId);
+  if (row === -1) return null;
+  var current = prepared.sheet.getRange(row, prepared.headers.indexOf("status") + 1).getValue();
+  var status = current;
+  if (current !== "cancelled") status = open === 0 ? (sent === 0 && failed > 0 ? "failed" : "done") : "running";
+  setCells(prepared.sheet, prepared.headers, row, { sent: sent, failed: failed, status: status, updatedAt: new Date().toISOString() });
+  return { sent: sent, failed: failed, status: status };
+}
+
+function cancelBroadcast(id) {
+  var prepared = prepareSheet("BroadcastItems");
+  var values = prepared.sheet.getDataRange().getValues();
+  var jCol = prepared.headers.indexOf("jobId"), sCol = prepared.headers.indexOf("status"), uCol = prepared.headers.indexOf("updatedAt");
+  var now = new Date().toISOString();
+  for (var i = 1; i < values.length; i++) {
+    if (values[i][jCol] === id && values[i][sCol] === "pending") {
+      prepared.sheet.getRange(i + 1, sCol + 1).setValue("skipped");
+      prepared.sheet.getRange(i + 1, uCol + 1).setValue(now);
+    }
+  }
+  var jobs = prepareSheet("Broadcasts");
+  var row = findRowIndexById(jobs.sheet, id);
+  if (row === -1) throw new Error("Broadcast not found.");
+  setCells(jobs.sheet, jobs.headers, row, { status: "cancelled", updatedAt: now });
+  return { ok: true };
+}
+
+// The PC console calls this every few seconds. Returns the oldest unfinished
+// broadcast (and its people still to send) or { job: null }.
+function agentPoll(p) {
+  var props = PropertiesService.getScriptProperties();
+  props.setProperty("AGENT_SEEN", String(Date.now()));
+  props.setProperty("AGENT_NOTE", String(p.note || "").slice(0, 120));
+  if (p.peek) return { job: null }; // heartbeat only: "I'm online but can't send right now"
+  var agentId = String(p.agentId || "pc");
+  var staleMs = 3 * 60 * 1000;
+
+  var jobs = readSheet("Broadcasts").filter(function (j) {
+    if (j.status === "queued") return true;
+    if (j.status !== "running") return false;
+    // a running job belongs to one PC; take it over only if that PC went quiet
+    return j.claimedBy === agentId || Date.now() - new Date(j.updatedAt).getTime() > staleMs;
+  });
+  if (!jobs.length) return { job: null };
+  var job = jobs[0]; // oldest first (sheet order)
+
+  var jobsSheet = prepareSheet("Broadcasts");
+  var row = findRowIndexById(jobsSheet.sheet, job.id);
+  setCells(jobsSheet.sheet, jobsSheet.headers, row, { status: "running", claimedBy: agentId, updatedAt: new Date().toISOString() });
+
+  var todo = itemsOf(job.id).filter(function (r) { return r.status === "pending" || r.status === "sending"; });
+  return { job: { id: job.id, name: job.name, total: job.total }, items: todo };
+}
+
+// results: [{ itemId, status: "sending" | "sent" | "failed", error }]
+function agentReport(p) {
+  var results = p.results || [];
+  var prepared = prepareSheet("BroadcastItems");
+  var values = prepared.sheet.getDataRange().getValues();
+  var idCol = prepared.headers.indexOf("id");
+  var rowOf = {};
+  for (var i = 1; i < values.length; i++) rowOf[values[i][idCol]] = i + 1;
+  var now = new Date().toISOString();
+  var allowed = { sending: true, sent: true, failed: true };
+  results.forEach(function (r) {
+    var row = rowOf[r.itemId];
+    if (!row || !allowed[r.status]) return;
+    setCells(prepared.sheet, prepared.headers, row, { status: r.status, error: String(r.error || "").slice(0, 300), updatedAt: now });
+  });
+  var jobId = String(p.jobId || "");
+  if (jobId && p.cancelJob) cancelBroadcast(jobId); // console Stop / Skip: drop whatever is left
+  var summary = jobId ? refreshJob(jobId) : null;
+  PropertiesService.getScriptProperties().setProperty("AGENT_SEEN", String(Date.now()));
+  return { ok: true, jobStatus: summary ? summary.status : "unknown", sent: summary ? summary.sent : 0, failed: summary ? summary.failed : 0 };
+}
+
+function checkAgent(p) {
+  var props = PropertiesService.getScriptProperties();
+  var given = String(p.key || "");
+  var agentKey = props.getProperty("AGENT_KEY");
+  var admin = props.getProperty("ADMIN_PASSWORD");
+  if (given && ((agentKey && given === agentKey) || (admin && given === admin))) return;
+  throw new Error("Wrong agent key");
+}
+
+/**
+ * Optional, run ONCE from the editor: creates a separate key for the PC
+ * console so it never needs your admin password. View > Logs shows the key;
+ * paste it into the console's data/admin_sync.json as "agent_key".
+ */
+function createAgentKey() {
+  var key = Utilities.getUuid().replace(/-/g, "").slice(0, 20);
+  PropertiesService.getScriptProperties().setProperty("AGENT_KEY", key);
+  Logger.log("AGENT KEY: " + key);
+  return key;
+}
+
 function checkPassword(password) {
   var expected = PropertiesService.getScriptProperties().getProperty("ADMIN_PASSWORD");
   if (!expected) throw new Error("Admin password not configured — run setup() once in the Apps Script editor.");
@@ -507,7 +732,7 @@ function jsonResponse(obj) {
  */
 function setup() {
   PropertiesService.getScriptProperties().setProperty("ADMIN_PASSWORD", "changeme123");
-  ["Mediators", "Sellers", "Buyers", "Properties", "QuickNotes"].forEach(getSheet);
+  ["Mediators", "Sellers", "Buyers", "Properties", "QuickNotes", "Broadcasts", "BroadcastItems"].forEach(getSheet);
   Logger.log("Setup complete. Admin password set — remember to change it!");
 }
 
