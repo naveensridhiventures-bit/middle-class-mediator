@@ -6,6 +6,7 @@ import PropertiesTab from "../components/admin/PropertiesTab";
 import CommandCenter from "../components/admin/CommandCenter";
 import TodayBoard from "../components/admin/TodayBoard";
 import MatchesBoard from "../components/admin/MatchesBoard";
+import BroadcastBoard from "../components/admin/BroadcastBoard";
 import useAllLeads from "../lib/useAllLeads";
 import { buildTasks, leadsToCsv } from "../lib/insights";
 import { downloadCsv } from "../lib/exportCsv";
@@ -151,11 +152,12 @@ const TABS = [
   { key: "buyer", label: "Buyers", color: COLORS.coral },
   { key: "mediator", label: "Mediators", color: COLORS.steel },
   { key: "matches", label: "Matches", color: "#7A5BB0" },
+  { key: "broadcast", label: "Broadcast", color: "#1E9E5A" },
   { key: "properties", label: "Published listings", color: COLORS.sage },
 ];
 
 // Tabs that read from the shared all-leads fetch rather than fetching on their own.
-const INSIGHT_TABS = ["overview", "today", "matches"];
+const INSIGHT_TABS = ["overview", "today", "matches", "broadcast"];
 
 // Pipeline stages per role, handed to the Overview funnels.
 const STATUSES_BY_ROLE = {
@@ -248,6 +250,7 @@ export default function AdminDashboard() {
     { id: "refresh", label: "Refresh all data", run: refreshInsights },
     { id: "csv-seller", label: "Export sellers to CSV", run: () => downloadCsv(`mcm-sellers-${new Date().toISOString().slice(0, 10)}.csv`, leadsToCsv("seller", insights.data.seller || [])) },
     { id: "csv-buyer", label: "Export buyers to CSV", run: () => downloadCsv(`mcm-buyers-${new Date().toISOString().slice(0, 10)}.csv`, leadsToCsv("buyer", insights.data.buyer || [])) },
+    { id: "broadcast", label: "Send a bulk WhatsApp message", run: () => setTab("broadcast") },
     { id: "quick", label: "Quick call notes", run: () => navigate("/quick") },
     { id: "field", label: "New field visit", run: () => navigate("/control/field-visit") },
     { id: "gallery", label: "Open buyer gallery", run: () => navigate("/gallery") },
@@ -368,6 +371,9 @@ export default function AdminDashboard() {
           )}
           {tab === "today" && <TodayBoard {...insights} password={password} adminName={adminName} />}
           {tab === "matches" && <MatchesBoard {...insights} adminName={adminName} />}
+          {tab === "broadcast" && (
+            <BroadcastBoard {...insights} adminName={adminName} password={password} />
+          )}
           {active && (
             <CRMBoard
               key={tab}
